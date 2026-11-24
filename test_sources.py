@@ -16,7 +16,7 @@ DISPLAY_LIMIT = 10
 TIMEOUT_SECONDS = 30
 
 
-# Egyértelműen elfogadható publikációtípusok
+# Elfogadott tudományos publikációtípusok
 ACCEPTED_OPENALEX_TYPES = {
     "article",
     "book",
@@ -24,6 +24,7 @@ ACCEPTED_OPENALEX_TYPES = {
     "dissertation",
     "preprint",
     "proceedings-article",
+    "conference-paper",
     "report",
 }
 
@@ -40,7 +41,7 @@ ACCEPTED_CROSSREF_TYPES = {
     "reference-entry",
 }
 
-# Egyértelműen kizárandó típusok
+# Kizárandó rekordtípusok
 EXCLUDED_TYPES = {
     "dataset",
     "software",
@@ -55,9 +56,27 @@ EXCLUDED_TYPES = {
     "proceedings",
     "journal",
     "book-series",
+    "study-registration",
 }
 
-# A nem egyértelmű típusok kézi ellenőrzést kapnak.
+# Olyan általános címek, amelyek nem fogadhatók el
+# automatikusan, de kézi ellenőrzést érdemelnek.
+REVIEW_TITLES = {
+    "index",
+    "chronology",
+    "contents",
+    "table of contents",
+    "foreword",
+    "preface",
+    "acknowledgements",
+    "acknowledgments",
+}
+
+# Ezek a címek önálló kód- vagy szoftverrekordra utalnak.
+EXCLUDED_TITLE_PREFIXES = (
+    "code for ",
+    "software for ",
+)
 
 
 def get_start_date():
@@ -141,21 +160,32 @@ def request_crossref(start_date, end_date):
     return response.json().get("message", {}).get("items", [])
 
 
-def classify_type(publication_type, accepted_types):
-    """Publikációtípus besorolása."""
+def classify_record(publication_type, accepted_types, title):
+    """A rekord típusának és címének együttes értékelése."""
 
-    if not publication_type:
-        return "ELLENŐRZENDŐ"
+    normalized_title = (title or "").strip().lower()
+    normalized_type = (publication_type or "").strip().lower()
 
-    normalized = publication_type.lower().strip()
+    # Értelmezhető cím kötelező.
+    if not normalized_title:
+        return "KIZÁRVA – HIÁNYZÓ CÍM"
 
-    if normalized in EXCLUDED_TYPES:
-        return "KIZÁRVA"
+    # Kód- és szoftverrekordok kizárása.
+    if normalized_title.startswith(EXCLUDED_TITLE_PREFIXES):
+        return "KIZÁRVA – KÓD VAGY SZOFTVER"
 
-    if normalized in accepted_types:
+    # Általános címek kézi ellenőrzése.
+    if normalized_title in REVIEW_TITLES:
+        return "ELLENŐRZENDŐ – ÁLTALÁNOS CÍM"
+
+    # Publikációtípus ellenőrzése.
+    if normalized_type in EXCLUDED_TYPES:
+        return "KIZÁRVA – NEM KÍVÁNT TÍPUS"
+
+    if normalized_type in accepted_types:
         return "ELFOGADHATÓ"
 
-    return "ELLENŐRZENDŐ"
+    return "ELLENŐRZENDŐ – ISMERETLEN TÍPUS"
 
 
 def check_language(language):
@@ -181,26 +211,145 @@ def check_topics(topics):
     return "VAN TÉMAKÖRI ADAT"
 
 
-def print_record(
-    index,
-    title,
-    publication_date,
-    publication_type,
-    language,
-    topics,
-    authors,
-    has_abstract,
-    classification,
-):
-    print(f"\n{index}. {title}")
-    print("Dátum:", publication_date or "Nincs adat")
-    print("Típus:", publication_type or "Nincs adat")
-    print("Besorolás:", classification)
-    print("Nyelv:", check_language(language))
-    print("Témák:", check_topics(topics))
-    print("Témakörök:", ", ".join(topics[:3]) if topics else "Nincs adat")
-    print("Szerzők:", ", ".join(authors[:3]) if authors else "Nincs adat")
-    print("Absztrakt:", "Van" if has_abstract else "Nincs")
+def get_crossref_publication_date(item):
+    """
+    A rendelkezésre álló publikációs dátumok közül
+    a legkorábbi érvényes dátum kiválasztása.
+
+    A Crossref rekord létrehozási dátumát nem használjuk.
+    """
+
+    date_fields = [
+        "published-online",
+        "published-print",
+        "published",
+        "posted",
+    ]
+
+    available_dates = []
+
+    for field in date_fields:
+        date_parts = (
+            item.get(field, {}).get("date-parts") or []
+        )
+
+        if not date_parts or not date_parts[0]:
+            continue
+
+        parts = date_parts[0]
+
+        try:
+            year = int(parts[0])
+            month = int(parts[1]) if len(parts) > 1 else 1
+            day = int(parts[2]) if len(parts) > 2 else 1
+
+            available_dates.append(
+                date(year, month, day)
+            )
+
+        except (ValueError, TypeError, IndexError):
+            continue
+
+    if not available_dates:
+        return None
+
+    return min(available_dates).isoformat()
+
+
+def print_record(index, record):
+    print(f"\n{index}. {record['title']}")
+    print("Dátum:", record["date"] or "Nincs adat")
+    print("Típus:", record["type"] or "Nincs adat")
+    print("Besorolás:", record["classification"])
+    print("Nyelv:", check_language(record["language"]))
+    print("Témák:", check_topics(record["topics"]))
+
+    print(
+        "Témakörök:",
+        ", ".join(record["topics"][:3])
+        if record["topics"]
+        else "Nincs adat"
+    )
+
+    print(
+        "Szerzők:",
+        ", ".join(record["authors"][:3])
+        if record["authors"]
+        else "Nincs adat"
+    )
+
+    print(
+        "Absztrakt:",
+        "Van" if record["abstract"] else "Nincs"
+    )
+
+
+def print_summary(records, source_name):
+    counts = Counter(
+        record["classification"].split(" – ")[0]
+        for record in records
+    )
+
+    print("Lekért rekordok:", len(records))
+    print("Elfogadható típus és cím:", counts["ELFOGADHATÓ"])
+    print("Kizárt rekord:", counts["KIZÁRVA"])
+    print("Ellenőrzendő rekord:", counts["ELLENŐRZENDŐ"])
+
+    print_header(
+        f"{source_name} – ELFOGADHATÓ PUBLIKÁCIÓK MINTÁJA"
+    )
+
+    accepted = [
+        record for record in records
+        if record["classification"] == "ELFOGADHATÓ"
+    ]
+
+    if not accepted:
+        print("Nem találtunk elfogadható rekordot.")
+    else:
+        for index, record in enumerate(
+            accepted[:DISPLAY_LIMIT],
+            start=1
+        ):
+            print_record(index, record)
+
+    print_header(
+        f"{source_name} – KIZÁRT REKORDOK"
+    )
+
+    excluded = [
+        record for record in records
+        if record["classification"].startswith("KIZÁRVA")
+    ]
+
+    if not excluded:
+        print("Nincs kizárt rekord.")
+    else:
+        for index, record in enumerate(excluded[:10], start=1):
+            print(
+                f"{index}. {record['title']} "
+                f"| {record['type']} "
+                f"| {record['classification']}"
+            )
+
+    print_header(
+        f"{source_name} – ELLENŐRZENDŐ REKORDOK"
+    )
+
+    review = [
+        record for record in records
+        if record["classification"].startswith("ELLENŐRZENDŐ")
+    ]
+
+    if not review:
+        print("Nincs kézi ellenőrzést igénylő rekord.")
+    else:
+        for index, record in enumerate(review[:10], start=1):
+            print(
+                f"{index}. {record['title']} "
+                f"| Típus: {record['type']} "
+                f"| {record['classification']}"
+            )
 
 
 def process_openalex(records):
@@ -210,11 +359,7 @@ def process_openalex(records):
 
     for item in records:
         publication_type = item.get("type") or ""
-
-        classification = classify_type(
-            publication_type,
-            ACCEPTED_OPENALEX_TYPES,
-        )
+        title = item.get("title") or ""
 
         topics = [
             topic.get("display_name", "")
@@ -228,8 +373,14 @@ def process_openalex(records):
             if authorship.get("author", {}).get("display_name")
         ]
 
+        classification = classify_record(
+            publication_type,
+            ACCEPTED_OPENALEX_TYPES,
+            title,
+        )
+
         classified.append({
-            "title": item.get("title") or "",
+            "title": title,
             "date": item.get("publication_date"),
             "type": publication_type,
             "language": item.get("language"),
@@ -254,14 +405,10 @@ def process_crossref(records):
 
         publication_type = item.get("type") or ""
 
-        classification = classify_type(
-            publication_type,
-            ACCEPTED_CROSSREF_TYPES,
-        )
-
         subjects = item.get("subject") or []
 
         authors = []
+
         for author in item.get("author") or []:
             name = " ".join(
                 part for part in [
@@ -270,44 +417,19 @@ def process_crossref(records):
                 ]
                 if part
             )
+
             if name:
                 authors.append(name)
 
-        date_fields = [
-            "published-online",
-            "published-print",
-            "published",
-            "posted",
-            "created",
-        ]
-
-        available_dates = []
-        for field in date_fields:
-            date_parts = (
-                item.get(field, {}).get("date-parts") or []
-            )
-            if date_parts and date_parts[0]:
-                parts = date_parts[0]
-                year = parts[0]
-                month = parts[1] if len(parts) > 1 else 1
-                day = parts[2] if len(parts) > 2 else 1
-
-                try:
-                    available_dates.append(
-                        date(year, month, day)
-                    )
-                except (ValueError, TypeError):
-                    pass
-
-        earliest_date = (
-            min(available_dates).isoformat()
-            if available_dates
-            else None
+        classification = classify_record(
+            publication_type,
+            ACCEPTED_CROSSREF_TYPES,
+            title,
         )
 
         classified.append({
             "title": title,
-            "date": earliest_date,
+            "date": get_crossref_publication_date(item),
             "type": publication_type,
             "language": item.get("language"),
             "topics": subjects,
@@ -318,68 +440,6 @@ def process_crossref(records):
 
     print_summary(classified, "CROSSREF")
     return classified
-
-
-def print_summary(records, source_name):
-    counts = Counter(
-        record["classification"]
-        for record in records
-    )
-
-    print("Lekért rekordok:", len(records))
-    print("Elfogadható típus:", counts["ELFOGADHATÓ"])
-    print("Kizárt típus:", counts["KIZÁRVA"])
-    print("Kézi ellenőrzést igényel:", counts["ELLENŐRZENDŐ"])
-
-    print_header(
-        f"{source_name} – ELFOGADHATÓ PUBLIKÁCIÓK MINTÁJA"
-    )
-
-    accepted = [
-        record for record in records
-        if record["classification"] == "ELFOGADHATÓ"
-    ]
-
-    if not accepted:
-        print("Nem találtunk elfogadható típusú rekordot.")
-    else:
-        for index, record in enumerate(
-            accepted[:DISPLAY_LIMIT],
-            start=1
-        ):
-            print_record(
-                index=index,
-                title=record["title"] or "[HIÁNYZÓ CÍM]",
-                publication_date=record["date"],
-                publication_type=record["type"],
-                language=record["language"],
-                topics=record["topics"],
-                authors=record["authors"],
-                has_abstract=record["abstract"],
-                classification=record["classification"],
-            )
-
-    print_header(
-        f"{source_name} – ELLENŐRZENDŐ TÍPUSOK"
-    )
-
-    review_records = [
-        record for record in records
-        if record["classification"] == "ELLENŐRZENDŐ"
-    ]
-
-    if not review_records:
-        print("Nincs kézi ellenőrzést igénylő rekord.")
-    else:
-        for index, record in enumerate(
-            review_records[:5],
-            start=1
-        ):
-            print(
-                f"{index}. "
-                f"{record['title'] or '[HIÁNYZÓ CÍM]'} "
-                f"| Típus: {record['type'] or 'Nincs adat'}"
-            )
 
 
 def main():
@@ -416,18 +476,17 @@ def main():
 
         print("OpenAlex rekordok:", len(openalex_classified))
         print("Crossref rekordok:", len(crossref_classified))
+
         print(
             "Összes lekért rekord:",
             len(openalex_classified) + len(crossref_classified),
         )
 
-        print(
-            "A Supabase adatbázis nem módosult."
-        )
+        print("Supabase adatbázis módosítása: NEM")
 
         print(
-            "A hiányzó nyelvi és témaköri adatok "
-            "egyelőre csak jelölést kaptak."
+            "A nyelvi és témaköri hiányosságok "
+            "további feldolgozásra várnak."
         )
 
     except requests.exceptions.HTTPError as error:
