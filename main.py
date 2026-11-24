@@ -9,20 +9,22 @@ def main():
     print("===================================")
 
     supabase_url = os.getenv("SUPABASE_URL")
-    supabase_key = os.getenv("SUPABASE_KEY")
+    supabase_key = os.getenv("SUPABASE_SECRET_KEY")
 
     if not supabase_url or not supabase_key:
         print("HIBA: Hiányzó Supabase kapcsolati adat.")
         print("Szükséges GitHub Secrets:")
         print("- SUPABASE_URL")
-        print("- SUPABASE_KEY")
+        print("- SUPABASE_SECRET_KEY")
         sys.exit(1)
 
-    endpoint = f"{supabase_url.rstrip('/')}/rest/v1/sources?select=id,name&limit=5"
+    endpoint = (
+        f"{supabase_url.rstrip('/')}"
+        "/rest/v1/sources?select=id,name&limit=5"
+    )
 
     headers = {
         "apikey": supabase_key,
-        "Authorization": f"Bearer {supabase_key}",
         "Content-Type": "application/json"
     }
 
@@ -35,7 +37,7 @@ def main():
 
         if response.status_code == 200:
             print("SIKER: A SYNAPSE elérte a Supabase adatbázist.")
-            print("A források száma a tesztválaszban:", len(response.json()))
+            print("A források száma:", len(response.json()))
             print("Kapcsolat rendben.")
         else:
             print("HIBA: A Supabase nem fogadta el a kérést.")
