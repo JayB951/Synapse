@@ -3,6 +3,7 @@ import os
 import sys
 import calendar
 from datetime import date
+from collections import Counter
 
 import requests
 
@@ -10,30 +11,80 @@ import requests
 OPENALEX_URL = "https://api.openalex.org/works"
 CROSSREF_URL = "https://api.crossref.org/works"
 
-RESULT_LIMIT = 10
+FETCH_LIMIT = 50
+DISPLAY_LIMIT = 10
 TIMEOUT_SECONDS = 30
+
+
+# Egyértelműen elfogadható publikációtípusok
+ACCEPTED_OPENALEX_TYPES = {
+    "article",
+    "book",
+    "book-chapter",
+    "dissertation",
+    "preprint",
+    "proceedings-article",
+    "report",
+}
+
+ACCEPTED_CROSSREF_TYPES = {
+    "journal-article",
+    "proceedings-article",
+    "book",
+    "book-chapter",
+    "posted-content",
+    "dissertation",
+    "report",
+    "monograph",
+    "edited-book",
+    "reference-entry",
+}
+
+# Egyértelműen kizárandó típusok
+EXCLUDED_TYPES = {
+    "dataset",
+    "software",
+    "component",
+    "paratext",
+    "editorial",
+    "journal-editorial",
+    "book-review",
+    "peer-review",
+    "journal-issue",
+    "journal-volume",
+    "proceedings",
+    "journal",
+    "book-series",
+}
+
+# A nem egyértelmű típusok kézi ellenőrzést kapnak.
 
 
 def get_start_date():
     """A mai naphoz képest 12 hónappal korábbi dátum."""
     today = date.today()
     year = today.year - 1
-    day = min(today.day, calendar.monthrange(year, today.month)[1])
+    day = min(
+        today.day,
+        calendar.monthrange(year, today.month)[1]
+    )
     return date(year, today.month, day)
 
 
 def print_header(title):
     print()
-    print("=" * 65)
+    print("=" * 70)
     print(title)
-    print("=" * 65)
+    print("=" * 70)
 
 
 def request_openalex(start_date, end_date):
     api_key = os.getenv("OPENALEX_API_KEY")
 
     if not api_key:
-        raise RuntimeError("Hiányzik az OPENALEX_API_KEY GitHub Secret.")
+        raise RuntimeError(
+            "Hiányzik az OPENALEX_API_KEY GitHub Secret."
+        )
 
     params = {
         "api_key": api_key,
@@ -42,7 +93,7 @@ def request_openalex(start_date, end_date):
             f"to_publication_date:{end_date},"
             "language:en"
         ),
-        "per_page": RESULT_LIMIT,
+        "per_page": FETCH_LIMIT,
         "sort": "publication_date:desc",
     }
 
@@ -60,14 +111,16 @@ def request_crossref(start_date, end_date):
     mailto = os.getenv("CROSSREF_MAILTO")
 
     if not mailto:
-        raise RuntimeError("Hiányzik a CROSSREF_MAILTO GitHub Secret.")
+        raise RuntimeError(
+            "Hiányzik a CROSSREF_MAILTO GitHub Secret."
+        )
 
     params = {
         "filter": (
             f"from-pub-date:{start_date},"
             f"until-pub-date:{end_date}"
         ),
-        "rows": RESULT_LIMIT,
+        "rows": FETCH_LIMIT,
         "sort": "published",
         "order": "desc",
         "mailto": mailto,
@@ -88,98 +141,294 @@ def request_crossref(start_date, end_date):
     return response.json().get("message", {}).get("items", [])
 
 
-def print_openalex_records(records):
-    print_header("OPENALEX – LEKÉRT PUBLIKÁCIÓK")
+def classify_type(publication_type, accepted_types):
+    """Publikációtípus besorolása."""
 
-    print("Rekordok száma:", len(records))
+    if not publication_type:
+        return "ELLENŐRZENDŐ"
 
-    for index, item in enumerate(records, start=1):
-        title = item.get("title") or "[HIÁNYZÓ CÍM]"
-        topics = item.get("topics") or []
-        authorships = item.get("authorships") or []
+    normalized = publication_type.lower().strip()
 
-        topic_names = [
-            topic.get("display_name", "")
-            for topic in topics[:3]
-        ]
+    if normalized in EXCLUDED_TYPES:
+        return "KIZÁRVA"
 
-        author_names = [
-            authorship.get("author", {}).get("display_name", "")
-            for authorship in authorships[:3]
-        ]
+    if normalized in accepted_types:
+        return "ELFOGADHATÓ"
 
-        print(f"\n{index}. {title}")
-        print("Dátum:", item.get("publication_date"))
-        print("Nyelv:", item.get("language"))
-        print("Típus:", item.get("type"))
-        print("DOI:", item.get("doi"))
-        print("Témák:", ", ".join(topic_names) or "Nincs adat")
-        print("Szerzők:", ", ".join(author_names) or "Nincs adat")
-        print("Absztrakt:", "Van" if item.get("abstract_inverted_index") else "Nincs")
+    return "ELLENŐRZENDŐ"
 
 
-def print_crossref_records(records):
-    print_header("CROSSREF – LEKÉRT PUBLIKÁCIÓK")
+def check_language(language):
+    """Nyelvi metaadat előzetes ellenőrzése."""
 
-    print("Rekordok száma:", len(records))
+    if not language:
+        return "HIÁNYZIK – NYELVFELISMERÉS SZÜKSÉGES"
 
-    for index, item in enumerate(records, start=1):
-        titles = item.get("title") or []
-        title = titles[0] if titles else "[HIÁNYZÓ CÍM]"
+    normalized = str(language).lower().strip()
 
-        subjects = item.get("subject") or []
-        authors = item.get("author") or []
+    if normalized in {"en", "eng", "english"}:
+        return "ANGOL – METAADAT ALAPJÁN"
 
-        author_names = [
-            " ".join(
-                part for part in [
-                    author.get("given", ""),
-                    author.get("family", "")
-                ] if part
-            )
-            for author in authors[:3]
-        ]
+    return f"NEM ANGOL VAGY NEM FELISMERT: {language}"
 
-        publication_date = (
-            item.get("published-online")
-            or item.get("published-print")
-            or item.get("published")
-            or item.get("posted")
+
+def check_topics(topics):
+    """Témaköri adatok meglétének ellenőrzése."""
+
+    if not topics:
+        return "HIÁNYZIK – KÉSŐBBI TÉMAAZONOSÍTÁS SZÜKSÉGES"
+
+    return "VAN TÉMAKÖRI ADAT"
+
+
+def print_record(
+    index,
+    title,
+    publication_date,
+    publication_type,
+    language,
+    topics,
+    authors,
+    has_abstract,
+    classification,
+):
+    print(f"\n{index}. {title}")
+    print("Dátum:", publication_date or "Nincs adat")
+    print("Típus:", publication_type or "Nincs adat")
+    print("Besorolás:", classification)
+    print("Nyelv:", check_language(language))
+    print("Témák:", check_topics(topics))
+    print("Témakörök:", ", ".join(topics[:3]) if topics else "Nincs adat")
+    print("Szerzők:", ", ".join(authors[:3]) if authors else "Nincs adat")
+    print("Absztrakt:", "Van" if has_abstract else "Nincs")
+
+
+def process_openalex(records):
+    print_header("OPENALEX – ADATMINŐSÉGI ELLENŐRZÉS")
+
+    classified = []
+
+    for item in records:
+        publication_type = item.get("type") or ""
+
+        classification = classify_type(
+            publication_type,
+            ACCEPTED_OPENALEX_TYPES,
         )
 
-        print(f"\n{index}. {title}")
-        print("Dátum:", publication_date)
-        print("Nyelv:", item.get("language") or "Nincs adat")
-        print("Típus:", item.get("type"))
-        print("DOI:", item.get("DOI"))
-        print("Témák:", ", ".join(subjects[:3]) or "Nincs adat")
-        print("Szerzők:", ", ".join(author_names) or "Nincs adat")
-        print("Absztrakt:", "Van" if item.get("abstract") else "Nincs")
+        topics = [
+            topic.get("display_name", "")
+            for topic in (item.get("topics") or [])
+            if topic.get("display_name")
+        ]
+
+        authors = [
+            authorship.get("author", {}).get("display_name", "")
+            for authorship in (item.get("authorships") or [])
+            if authorship.get("author", {}).get("display_name")
+        ]
+
+        classified.append({
+            "title": item.get("title") or "",
+            "date": item.get("publication_date"),
+            "type": publication_type,
+            "language": item.get("language"),
+            "topics": topics,
+            "authors": authors,
+            "abstract": bool(item.get("abstract_inverted_index")),
+            "classification": classification,
+        })
+
+    print_summary(classified, "OPENALEX")
+    return classified
+
+
+def process_crossref(records):
+    print_header("CROSSREF – ADATMINŐSÉGI ELLENŐRZÉS")
+
+    classified = []
+
+    for item in records:
+        titles = item.get("title") or []
+        title = titles[0] if titles else ""
+
+        publication_type = item.get("type") or ""
+
+        classification = classify_type(
+            publication_type,
+            ACCEPTED_CROSSREF_TYPES,
+        )
+
+        subjects = item.get("subject") or []
+
+        authors = []
+        for author in item.get("author") or []:
+            name = " ".join(
+                part for part in [
+                    author.get("given", ""),
+                    author.get("family", ""),
+                ]
+                if part
+            )
+            if name:
+                authors.append(name)
+
+        date_fields = [
+            "published-online",
+            "published-print",
+            "published",
+            "posted",
+            "created",
+        ]
+
+        available_dates = []
+        for field in date_fields:
+            date_parts = (
+                item.get(field, {}).get("date-parts") or []
+            )
+            if date_parts and date_parts[0]:
+                parts = date_parts[0]
+                year = parts[0]
+                month = parts[1] if len(parts) > 1 else 1
+                day = parts[2] if len(parts) > 2 else 1
+
+                try:
+                    available_dates.append(
+                        date(year, month, day)
+                    )
+                except (ValueError, TypeError):
+                    pass
+
+        earliest_date = (
+            min(available_dates).isoformat()
+            if available_dates
+            else None
+        )
+
+        classified.append({
+            "title": title,
+            "date": earliest_date,
+            "type": publication_type,
+            "language": item.get("language"),
+            "topics": subjects,
+            "authors": authors,
+            "abstract": bool(item.get("abstract")),
+            "classification": classification,
+        })
+
+    print_summary(classified, "CROSSREF")
+    return classified
+
+
+def print_summary(records, source_name):
+    counts = Counter(
+        record["classification"]
+        for record in records
+    )
+
+    print("Lekért rekordok:", len(records))
+    print("Elfogadható típus:", counts["ELFOGADHATÓ"])
+    print("Kizárt típus:", counts["KIZÁRVA"])
+    print("Kézi ellenőrzést igényel:", counts["ELLENŐRZENDŐ"])
+
+    print_header(
+        f"{source_name} – ELFOGADHATÓ PUBLIKÁCIÓK MINTÁJA"
+    )
+
+    accepted = [
+        record for record in records
+        if record["classification"] == "ELFOGADHATÓ"
+    ]
+
+    if not accepted:
+        print("Nem találtunk elfogadható típusú rekordot.")
+    else:
+        for index, record in enumerate(
+            accepted[:DISPLAY_LIMIT],
+            start=1
+        ):
+            print_record(
+                index=index,
+                title=record["title"] or "[HIÁNYZÓ CÍM]",
+                publication_date=record["date"],
+                publication_type=record["type"],
+                language=record["language"],
+                topics=record["topics"],
+                authors=record["authors"],
+                has_abstract=record["abstract"],
+                classification=record["classification"],
+            )
+
+    print_header(
+        f"{source_name} – ELLENŐRZENDŐ TÍPUSOK"
+    )
+
+    review_records = [
+        record for record in records
+        if record["classification"] == "ELLENŐRZENDŐ"
+    ]
+
+    if not review_records:
+        print("Nincs kézi ellenőrzést igénylő rekord.")
+    else:
+        for index, record in enumerate(
+            review_records[:5],
+            start=1
+        ):
+            print(
+                f"{index}. "
+                f"{record['title'] or '[HIÁNYZÓ CÍM]'} "
+                f"| Típus: {record['type'] or 'Nincs adat'}"
+            )
 
 
 def main():
-    print_header("SYNAPSE – ADATFORRÁS TESZT")
+    print_header("SYNAPSE – ADATMINŐSÉGI TESZT")
 
     start_date = get_start_date()
     end_date = date.today()
 
     print("Gyűjtési időszak:", start_date, "-", end_date)
-    print("OpenAlex mintaméret:", RESULT_LIMIT)
-    print("Crossref mintaméret:", RESULT_LIMIT)
+    print("Forrásonkénti lekérési limit:", FETCH_LIMIT)
+    print("Megjelenített elfogadható rekordok:", DISPLAY_LIMIT)
     print("Adatbázisba mentés: NINCS")
 
     try:
-        openalex_records = request_openalex(start_date, end_date)
-        print_openalex_records(openalex_records)
+        openalex_records = request_openalex(
+            start_date,
+            end_date,
+        )
 
-        crossref_records = request_crossref(start_date, end_date)
-        print_crossref_records(crossref_records)
+        crossref_records = request_crossref(
+            start_date,
+            end_date,
+        )
 
-        print_header("TESZT BEFEJEZVE")
-        print("OpenAlex rekordok:", len(openalex_records))
-        print("Crossref rekordok:", len(crossref_records))
-        print("Összesen:", len(openalex_records) + len(crossref_records))
-        print("A program nem módosította a Supabase adatbázist.")
+        openalex_classified = process_openalex(
+            openalex_records
+        )
+
+        crossref_classified = process_crossref(
+            crossref_records
+        )
+
+        print_header("SYNAPSE – ÖSSZESÍTÉS")
+
+        print("OpenAlex rekordok:", len(openalex_classified))
+        print("Crossref rekordok:", len(crossref_classified))
+        print(
+            "Összes lekért rekord:",
+            len(openalex_classified) + len(crossref_classified),
+        )
+
+        print(
+            "A Supabase adatbázis nem módosult."
+        )
+
+        print(
+            "A hiányzó nyelvi és témaköri adatok "
+            "egyelőre csak jelölést kaptak."
+        )
 
     except requests.exceptions.HTTPError as error:
         print("API HTTP HIBA:", error.response.status_code)
