@@ -57,14 +57,14 @@ SECTION_CONFIG = {
     "battlefield": {
         "name": "Battlefield",
         "queries": [
-            "decisive battles in military history",
-            "ancient battles military history",
-            "medieval battles siege warfare",
-            "World War II battles military history",
-            "Napoleonic Wars battles",
-            "naval battles in history",
-            "military campaigns historical warfare",
-            "famous military sieges in history",
+            'intitle:"Battle of" ancient battle',
+            'intitle:"Battle of" medieval battle',
+            'intitle:"Battle of" World War II',
+            'intitle:"Battle of" Napoleonic Wars',
+            'intitle:"Siege of" historical siege',
+            'intitle:"Battle of" naval battle',
+            'intitle:"Battle of" early modern warfare',
+            'intitle:"Battle of" modern military history',
         ],
     },
     "fundamentals": {
@@ -211,6 +211,25 @@ def is_valid_article(page):
         return False
 
     return True
+
+
+def is_valid_battle_article(page):
+    """Accept articles about a specific, named battle or siege, not books or general military topics."""
+    title = clean_text(page.get("title", ""))
+    extract = clean_text(page.get("extract", ""))
+    title_is_battle = re.search(r"\\b(battle|siege)\\b", title, re.IGNORECASE)
+    extract_describes_battle = re.search(
+        r"\\b(was a battle|was fought|battle took place|siege began|siege lasted|"
+        r"besieged|fought between|forces of|army of)\\b",
+        extract,
+        re.IGNORECASE,
+    )
+    excluded_title = re.search(
+        r"\\b(book|film|novel|video game|board game|album|song)\\b",
+        title,
+        re.IGNORECASE,
+    )
+    return bool(title and extract and title_is_battle and extract_describes_battle and not excluded_title)
 
 
 def get_coordinates(page):
@@ -429,6 +448,14 @@ def collect_section(supabase, section_code):
 
         if not is_valid_article(page):
             skipped += 1
+            continue
+
+        if section_code == "battlefield" and not is_valid_battle_article(page):
+            skipped += 1
+            logging.info(
+                "Battlefield: '%s' skipped because it is not a specific battle or siege article.",
+                page.get("title", ""),
+            )
             continue
 
         record = build_record(section_code, page, search_query)
