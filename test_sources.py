@@ -515,7 +515,6 @@ def process_openalex(records):
             is_english,
         )
 
-        # A közös adatmodell csak az eredeti besorolás után készül el.
         unified_record = model.from_openalex(
             item,
             classification=classification,
@@ -639,7 +638,7 @@ def merge_publication_records(first, second):
         if not merged.get(field) and second.get(field):
             merged[field] = second[field]
 
-    # Listamezők.
+    # Eredeti listamezők egyesítése.
     for field in [
         "authors",
         "topics",
@@ -650,6 +649,12 @@ def merge_publication_records(first, second):
             merged.get(field),
             second.get(field),
         )
+
+    # Egységesített témaköri lista összevonása.
+    merged["topic_terms"] = model.merge_topic_terms(
+        merged.get("topic_terms"),
+        second.get("topic_terms"),
+    )
 
     # Szótármezők: mindkét forrás adatait megőrizzük.
     for field in [
@@ -774,6 +779,20 @@ def print_unified_record(index, record):
         ", ".join((record.get("subjects") or [])[:3])
         or "Nincs adat"
     )
+
+    print("Egységesített témakörök:")
+
+    topic_terms = record.get("topic_terms") or []
+
+    if not topic_terms:
+        print("  Nincs adat")
+    else:
+        for term in topic_terms:
+            print(
+                f"  - {term['name']} "
+                f"[{', '.join(term['sources'])}]"
+            )
+
     print(
         "Absztrakt:",
         "Van" if record.get("abstract") else "Nincs"
@@ -832,6 +851,8 @@ def main():
     print("Kézi ellenőrzés: NINCS")
     print("Egységes adatmodell: publication_model.py")
     print("DOI-alapú deduplikáció: AKTÍV")
+    print("Témaköri egységesítés: AKTÍV")
+    print("OpenAlex témakörök és Crossref tárgyszavak: KÜLÖN MEGŐRIZVE")
 
     try:
         openalex_records = request_openalex(start_date, end_date)
