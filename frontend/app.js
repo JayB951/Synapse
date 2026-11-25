@@ -10,7 +10,6 @@ const sections = [
   ["09","closing","CLOSING","Egy könnyedebb lezárás: képregény és humor"]
 ];
 
-const grid = document.querySelector("#section-grid");
 const feed = document.querySelector("#article-feed");
 const statusTitle = document.querySelector("#edition-status-title");
 const statusText = document.querySelector("#edition-status-text");
@@ -52,25 +51,6 @@ function makeElement(tag, className, text) {
   if (className) node.className = className;
   if (text !== undefined && text !== null) node.textContent = text;
   return node;
-}
-
-function renderSections(items = []) {
-  if (!grid) return;
-  const counts = Object.fromEntries(sections.map(([, code]) => [code, 0]));
-  items.forEach(item => {
-    if (Object.hasOwn(counts, item.section_code)) counts[item.section_code]++;
-  });
-  grid.replaceChildren();
-  sections.forEach(([number, code, title, description]) => {
-    const card = makeElement("article", "section-card");
-    card.append(
-      makeElement("span", "card-number", number + " / " + String(counts[code]).padStart(2, "0")),
-      makeElement("span", "card-arrow", "↗"),
-      makeElement("h3", "", title),
-      makeElement("p", "", description)
-    );
-    grid.append(card);
-  });
 }
 
 function getSourceRecord(item) {
@@ -296,7 +276,6 @@ async function loadPublishedEdition() {
 
   if (!supabaseUrl || !anonKey || supabaseUrl.includes("IDE_") || anonKey.includes("IDE_")) {
     showStatus("A Supabase-kapcsolat konfigurálásra vár", "A nyilvános adatkapcsolat beállítása hiányzik.", "F1 · CONFIG REQUIRED");
-    renderSections();
     renderArticles();
     return;
   }
@@ -314,7 +293,6 @@ async function loadPublishedEdition() {
 
     if (!editions.length) {
       showStatus("Jelenleg nincs publikált napi kiadás", "A rendszer kapcsolata él. Amint egy kiadás published státuszt kap, itt automatikusan megjelenik. A piszkozatok nem nyilvánosak.", "SUPABASE · CONNECTED");
-      renderSections();
       renderArticles();
       if (countNode) countNode.textContent = "— TARTALOM · 9 ROVAT";
       return;
@@ -341,7 +319,6 @@ async function loadPublishedEdition() {
     if (headerDate) headerDate.textContent = formatted.toLocaleUpperCase("hu-HU");
     if (countNode) countNode.textContent = `${items.length} TARTALOM · 9 ROVAT`;
     showStatus(edition.title || "A napi kiadás elérhető", edition.introduction || "A mai kiadás betöltődött.", `PUBLISHED · ${items.length} ITEMS`);
-    renderSections(items);
     renderArticles(items);
   } catch (error) {
     console.error("WORLD SHARDS Supabase error:", error);
