@@ -231,6 +231,9 @@ function openArticle(item, sectionName) {
     } else if (item.section_code === "battlefield") {
       const image = makeSectionImage(source, item.display_title, "reader-battle-image", "A csata történelmi ábrázolása");
       if (image) readerImage.append(image);
+    } else if (item.section_code === "closing" && source?.source_name === "xkcd") {
+      const image = makeSectionImage(source, item.display_title, "reader-xkcd-image", "xkcd képregény");
+      if (image) readerImage.append(image);
     }
   }
   renderArticleBody(readerBody, item.display_body, item.section_code === "world_explorer" ? source?.gallery_images : []);
@@ -316,6 +319,8 @@ function renderArticles(items = []) {
         sectionImage = makeSectionImage(source, item.display_title, "article-place-image", "A bemutatott helyszín");
       } else if (code === "battlefield") {
         sectionImage = makeSectionImage(source, item.display_title, "article-battle-image", "A csata történelmi ábrázolása");
+      } else if (code === "closing" && source?.source_name === "xkcd") {
+        sectionImage = makeSectionImage(source, item.display_title, "article-xkcd-image", "xkcd képregény");
       }
       if (sectionImage) card.append(sectionImage);
       card.append(meta, titleNode, summary, feedback, button);
