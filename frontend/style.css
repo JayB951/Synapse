@@ -50,3 +50,21 @@
 .article-xkcd-image{display:block;width:100%;max-height:560px;object-fit:contain;object-position:center;background:#fff;margin:0 0 22px;padding:16px;border:1px solid var(--line)}
 .reader-xkcd-image{display:block;width:100%;max-height:720px;object-fit:contain;object-position:center;background:#fff;padding:18px;border:1px solid var(--line)}
 @media(max-width:760px){.article-xkcd-image{max-height:440px;padding:10px}.reader-xkcd-image{max-height:560px;padding:10px}}
+
+
+/* M2.4 – korábbi publikált kiadások archívuma */
+.edition-archive{margin:100px 0 90px;padding-top:34px;border-top:1px solid var(--line)}
+.archive-heading{display:flex;justify-content:space-between;align-items:flex-end;gap:24px;margin-bottom:24px}
+.archive-heading h2{font:600 clamp(28px,4vw,42px)/1.2 Manrope,sans-serif;letter-spacing:-1.5px;margin:18px 0 8px}
+.archive-heading h2 em{font-family:var(--serif);font-weight:400;color:var(--gold)}
+.archive-heading p{margin:0;color:var(--muted);font-size:13px}
+.archive-count{font:10px 'DM Mono',monospace;letter-spacing:1px;color:var(--gold);white-space:nowrap;padding-bottom:5px}
+.archive-list{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.archive-entry{display:flex;flex-direction:column;align-items:flex-start;gap:11px;min-height:142px;padding:20px;text-align:left;border:1px solid var(--line);background:linear-gradient(145deg,#141f2d,#0e151f);color:var(--text);cursor:pointer;transition:border-color .2s,background .2s}
+.archive-entry:hover,.archive-entry.is-active{border-color:rgba(197,166,107,.55);background:linear-gradient(145deg,#192637,#101925)}
+.archive-entry-date{font:10px 'DM Mono',monospace;letter-spacing:.6px;color:var(--gold)}
+.archive-entry-title{font:600 15px/1.4 Manrope,sans-serif}
+.archive-entry-label{margin-top:auto;font:9px 'DM Mono',monospace;letter-spacing:.8px;color:#718093}
+.archive-empty{grid-column:1/-1;padding:18px 0;color:var(--muted);font-size:13px}
+@media(max-width:900px){.archive-list{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:600px){.edition-archive{margin:70px 0}.archive-heading{align-items:flex-start;flex-direction:column;gap:12px}.archive-list{grid-template-columns:1fr}.archive-entry{min-height:112px}}
