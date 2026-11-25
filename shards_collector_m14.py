@@ -222,6 +222,7 @@ def build_unsolved_record(page, search_query):
         "body": extract,
         "source_name": "Wikipedia",
         "source_url": source_url,
+        "image_url": image_url,
         "source_language": "en",
         "status": "candidate",
         "metadata": {
@@ -325,7 +326,6 @@ def build_xkcd_record(comic):
 
     body_parts = [
         f"Comic title: {title}",
-        f"Image: {image_url}",
     ]
 
     if alt_text:
