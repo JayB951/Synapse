@@ -18,6 +18,7 @@ SECTION_LIMITS = {
     "fundamentals": 1,
     "world_explorer": 1,
     "unsolved": 1,
+    "music_of_the_day": 1,
 }
 
 CLOSING_LIMIT = 2
@@ -160,7 +161,7 @@ def create_edition(supabase, edition_date):
         "metadata": {
             "builder_version": VERSION,
             "selection_method": "automatic",
-            "planned_item_count": 13,
+            "planned_item_count": 14,
         },
     }
 
