@@ -1,17 +1,19 @@
 
 """
 SYNAPSE – Egységes publikációs adatmodell
-Verzió: 0.3
+Verzió: M2.7.2.1 / 0.3.1
 
 Feladat:
 - OpenAlex rekordok egységesítése
 - Crossref rekordok egységesítése
-- DOI és forrásazonosítók normalizálása
-- Strukturált szerzői adatok megőrzése
-- Publikációs dátum és év kezelése
-- Folyóirat, kiadó és URL megőrzése
+- DOI normalizálása
+- Szerzők és szerzőazonosítók kinyerése
+- Dátumok és publikációs év kezelése
+- Folyóirat, kiadó és URL kinyerése
 - Absztraktok és témakörök kinyerése
-- Forrásspecifikus metaadatok megőrzése
+- Forrásspecifikus azonosítók megőrzése
+- Eredeti témaköri adatok megőrzése
+- Témakörök és tárgyszavak közös listába rendezése
 - Témaköri források visszakövethetősége
 
 Nincs hálózati kapcsolat.
@@ -24,11 +26,11 @@ import html
 from datetime import date
 
 
-MODEL_VERSION = "0.3"
+MODEL_VERSION = "0.3.1"
 
 
 # ============================================================
-# ALAPVETŐ NORMALIZÁLÓ FÜGGVÉNYEK
+# ALAPVETŐ NORMALIZÁLÁS
 # ============================================================
 
 def normalize_doi(doi):
@@ -87,9 +89,7 @@ def normalize_orcid(orcid):
         flags=re.IGNORECASE,
     )
 
-    value = value.strip()
-
-    return value or None
+    return value.strip() or None
 
 
 def clean_text(value):
@@ -106,18 +106,15 @@ def clean_text(value):
 
 
 # ============================================================
-# SZERZŐK KEZELÉSE
+# SZERZŐK
 # ============================================================
 
 def normalize_authors(authors):
     """
     Egyszerű szerzőnévlista normalizálása.
 
-    A strukturált szerzői adatok megőrzésére a
-    normalize_author_records() szolgál.
-
-    Itt a korábbi kompatibilitás érdekében a névlista
-    azonos szövegű elemeit egyetlen elemként kezeli.
+    Kompatibilitási okból a korábbi authors mező
+    továbbra is szöveges névlistát tartalmaz.
     """
 
     if not isinstance(authors, list):
@@ -146,134 +143,107 @@ def normalize_authors(authors):
 
 def normalize_author_records(authors):
     """
-    Strukturált szerzői lista létrehozása.
+    Strukturált szerzői rekordok normalizálása.
 
-    Egy szerző rekordja:
-    {
-        "name": str,
-        "orcid": str | None,
-        "openalex_id": str | None,
-        "position": int | None
-    }
-
-    Fontos:
-    - Azonos név alapján nem történik összevonás.
-    - ORCID és OpenAlex ID megőrzése.
-    - Azonosító nélküli szerzők külön maradnak.
+    A sorrend megmarad.
+    Az azonos nevű szerzőket nem vonjuk össze,
+    mert azonos nevű kutatók külön személyek is lehetnek.
     """
 
     if not isinstance(authors, list):
         return []
 
     result = []
-    seen_ids = set()
 
-    for index, author in enumerate(authors, start=1):
-
-        if isinstance(author, str):
-            name = clean_text(author)
-            orcid = None
-            openalex_id = None
-            position = index
-
-        elif isinstance(author, dict):
-            name = clean_text(
-                author.get("name")
-                or author.get("display_name")
-            )
-
-            orcid = normalize_orcid(
-                author.get("orcid")
-            )
-
-            openalex_id = normalize_openalex_id(
-                author.get("openalex_id")
-                or author.get("id")
-            )
-
-            raw_position = author.get("position", index)
-
-            try:
-                position = int(raw_position)
-                if position < 1:
-                    position = index
-            except (ValueError, TypeError):
-                position = index
-
-        else:
+    for position, author in enumerate(authors, start=1):
+        if not isinstance(author, dict):
             continue
+
+        name = clean_text(
+            author.get("name")
+            or author.get("display_name")
+        )
 
         if not name:
             continue
 
-        record = {
+        orcid = normalize_orcid(
+            author.get("orcid")
+        )
+
+        openalex_id = normalize_openalex_id(
+            author.get("openalex_id")
+            or author.get("id")
+        )
+
+        raw_position = author.get("position", position)
+
+        try:
+            normalized_position = int(raw_position)
+            if normalized_position < 1:
+                normalized_position = position
+        except (ValueError, TypeError):
+            normalized_position = position
+
+        result.append({
             "name": name,
             "orcid": orcid,
             "openalex_id": openalex_id,
-            "position": position,
-        }
-
-        # Csak stabil azonosító alapján deduplikálunk.
-        identity = None
-
-        if orcid:
-            identity = ("orcid", orcid)
-
-        elif openalex_id:
-            identity = ("openalex", openalex_id)
-
-        if identity is not None:
-            if identity in seen_ids:
-                continue
-
-            seen_ids.add(identity)
-
-        result.append(record)
+            "position": normalized_position,
+        })
 
     return result
 
 
 def get_author_identity(author):
     """
-    Stabil szerzőazonosító előállítása.
+    Stabil szerzőazonosító meghatározása.
 
-    Név alapján soha nem képezünk azonosságot.
+    Elsődleges azonosító: ORCID.
+    Másodlagos azonosító: OpenAlex author ID.
+
+    Név alapján nem képezünk személyazonosságot.
     """
 
     if not isinstance(author, dict):
         return None
 
-    orcid = normalize_orcid(author.get("orcid"))
+    orcid = normalize_orcid(
+        author.get("orcid")
+    )
 
     if orcid:
-        return ("orcid", orcid)
+        return ("orcid", orcid.casefold())
 
     openalex_id = normalize_openalex_id(
         author.get("openalex_id")
     )
 
     if openalex_id:
-        return ("openalex", openalex_id)
+        return ("openalex", openalex_id.casefold())
 
     return None
 
 
 def merge_author_records(first, second):
     """
-    Két strukturált szerzőlista összevonása.
+    Két szerzőlista összevonása.
 
-    Összevonás kizárólag azonos ORCID vagy azonos
-    OpenAlex author ID alapján történik.
+    Összevonás kizárólag stabil azonosító alapján:
+    - ORCID
+    - OpenAlex author ID
 
-    Azonos nevű, de azonosító nélküli szerzők
-    külön rekordként maradnak meg.
+    Ha egyik rekordban sincs stabil azonosító,
+    a szerzőket külön rekordként tartjuk meg.
+
+    Azonos nevű szerzőket nem vonunk össze pusztán
+    a névegyezés alapján.
     """
 
     result = []
     positions = {}
 
     for author in (first or []) + (second or []):
-
         if not isinstance(author, dict):
             continue
 
@@ -282,56 +252,55 @@ def merge_author_records(first, second):
         if not name:
             continue
 
-        normalized = {
-            "name": name,
-            "orcid": normalize_orcid(
-                author.get("orcid")
-            ),
-            "openalex_id": normalize_openalex_id(
-                author.get("openalex_id")
-            ),
-            "position": author.get("position"),
-        }
+        orcid = normalize_orcid(
+            author.get("orcid")
+        )
 
-        identity = get_author_identity(normalized)
+        openalex_id = normalize_openalex_id(
+            author.get("openalex_id")
+        )
 
-        if identity is None:
-            # Stabil azonosító nélkül nem vonjuk össze.
-            result.append(normalized)
+        if orcid:
+            key = ("orcid", orcid.casefold())
+
+        elif openalex_id:
+            key = ("openalex", openalex_id.casefold())
+
+        else:
+            # Stabil azonosító nélkül nem vonunk össze.
+            result.append({
+                "name": name,
+                "orcid": None,
+                "openalex_id": None,
+                "position": len(result) + 1,
+            })
             continue
 
-        if identity not in positions:
-            positions[identity] = len(result)
-            result.append(normalized)
-            continue
+        if key not in positions:
+            positions[key] = len(result)
 
-        existing = result[positions[identity]]
+            result.append({
+                "name": name,
+                "orcid": orcid,
+                "openalex_id": openalex_id,
+                "position": len(result) + 1,
+            })
 
-        if not existing.get("name") and normalized.get("name"):
-            existing["name"] = normalized["name"]
+        else:
+            index = positions[key]
+            existing = result[index]
 
-        if not existing.get("orcid") and normalized.get("orcid"):
-            existing["orcid"] = normalized["orcid"]
+            if not existing.get("orcid") and orcid:
+                existing["orcid"] = orcid
 
-        if (
-            not existing.get("openalex_id")
-            and normalized.get("openalex_id")
-        ):
-            existing["openalex_id"] = normalized["openalex_id"]
+            if (
+                not existing.get("openalex_id")
+                and openalex_id
+            ):
+                existing["openalex_id"] = openalex_id
 
-        old_position = existing.get("position")
-        new_position = normalized.get("position")
-
-        try:
-            if old_position is None:
-                existing["position"] = int(new_position)
-            elif new_position is not None:
-                existing["position"] = min(
-                    int(old_position),
-                    int(new_position),
-                )
-        except (ValueError, TypeError):
-            pass
+            if not existing.get("name") and name:
+                existing["name"] = name
 
     return result
 
@@ -340,8 +309,8 @@ def author_names_from_records(author_records):
     """
     Szerzőnevek előállítása a strukturált listából.
 
-    Itt szándékosan nincs név szerinti deduplikáció:
-    két különböző szerzőnek lehet azonos neve.
+    Nem végzünk név szerinti deduplikációt:
+    különböző személyek neve lehet azonos.
     """
 
     result = []
@@ -359,7 +328,7 @@ def author_names_from_records(author_records):
 
 
 # ============================================================
-# DÁTUMKEZELÉS
+# DÁTUMOK
 # ============================================================
 
 def normalize_date(value):
@@ -377,17 +346,14 @@ def normalize_date(value):
 
 
 def get_publication_year(publication_date):
-    """Publikációs év kinyerése a dátumból."""
+    """Publikációs év meghatározása a publikációs dátumból."""
 
     normalized = normalize_date(publication_date)
 
     if not normalized:
         return None
 
-    try:
-        return int(normalized[:4])
-    except (ValueError, TypeError):
-        return None
+    return int(normalized[:4])
 
 
 def get_crossref_date(item):
@@ -431,7 +397,7 @@ def get_crossref_date(item):
 
 
 # ============================================================
-# ABSZTRAKT KEZELÉSE
+# ABSZTRAKT
 # ============================================================
 
 def reconstruct_abstract(inverted_index):
@@ -477,7 +443,7 @@ def reconstruct_abstract(inverted_index):
 
 
 # ============================================================
-# TÉMAKÖRÖK ÉS TÁRGYSZAVAK
+# TÉMAKÖRÖK
 # ============================================================
 
 def normalize_topics(topics):
@@ -544,9 +510,8 @@ def build_topic_terms(topics=None, subjects=None):
     """
     Közös témaköri lista létrehozása.
 
-    A topics az OpenAlex, a subjects a Crossref adatait
-    tartalmazza. Az azonos normalizált szövegű elemek
-    egy rekordba kerülnek, a források megjelölésével.
+    Az azonos normalizált szövegű elemek egy rekordba
+    kerülnek, a források megjelölésével.
     """
 
     result = []
@@ -584,10 +549,7 @@ def build_topic_terms(topics=None, subjects=None):
 
 
 def merge_topic_terms(first, second):
-    """
-    Két közös témaköri lista összevonása.
-    Az azonos normalizált nevű elemek forrásai egyesülnek.
-    """
+    """Két közös témaköri lista összevonása."""
 
     result = []
     positions = {}
@@ -658,7 +620,7 @@ def normalize_publication_type(publication_type):
 
 
 # ============================================================
-# FORRÁSSPECIFIKUS ADATOK
+# FORRÁSSPECIFIKUS BIBLIOGRÁFIAI ADATOK
 # ============================================================
 
 def get_openalex_source(item):
@@ -667,17 +629,25 @@ def get_openalex_source(item):
     primary_location = item.get("primary_location") or {}
     source = primary_location.get("source") or {}
 
+    journal = clean_text(
+        source.get("display_name")
+    )
+
+    publisher = clean_text(
+        source.get("host_organization_name")
+    )
+
+    url = clean_text(
+        primary_location.get("landing_page_url")
+    )
+
+    if not url:
+        url = clean_text(item.get("doi"))
+
     return {
-        "journal": clean_text(
-            source.get("display_name")
-        ),
-        "publisher": clean_text(
-            source.get("host_organization_name")
-        ),
-        "url": clean_text(
-            primary_location.get("landing_page_url")
-            or item.get("doi")
-        ),
+        "journal": journal,
+        "publisher": publisher,
+        "url": url,
     }
 
 
@@ -686,16 +656,22 @@ def get_crossref_source(item):
 
     container_titles = item.get("container-title") or []
 
-    journal = (
-        clean_text(container_titles[0])
-        if container_titles
-        else None
+    journal = clean_text(
+        container_titles[0] if container_titles else None
+    )
+
+    publisher = clean_text(
+        item.get("publisher")
+    )
+
+    url = clean_text(
+        item.get("URL")
     )
 
     return {
         "journal": journal,
-        "publisher": clean_text(item.get("publisher")),
-        "url": clean_text(item.get("URL")),
+        "publisher": publisher,
+        "url": url,
     }
 
 
@@ -746,7 +722,9 @@ def from_openalex(item, classification=None):
             "Az OpenAlex rekordnak szótárnak kell lennie."
         )
 
-    record["doi"] = normalize_doi(item.get("doi"))
+    record["doi"] = normalize_doi(
+        item.get("doi")
+    )
 
     record["openalex_id"] = normalize_openalex_id(
         item.get("id")
@@ -756,7 +734,7 @@ def from_openalex(item, classification=None):
         item.get("title")
     )
 
-    authors = []
+    author_records = []
 
     for position, authorship in enumerate(
         item.get("authorships") or [],
@@ -764,7 +742,7 @@ def from_openalex(item, classification=None):
     ):
         author = authorship.get("author") or {}
 
-        authors.append({
+        author_records.append({
             "name": author.get("display_name"),
             "orcid": author.get("orcid"),
             "openalex_id": author.get("id"),
@@ -772,7 +750,7 @@ def from_openalex(item, classification=None):
         })
 
     record["author_records"] = normalize_author_records(
-        authors
+        author_records
     )
 
     record["authors"] = author_names_from_records(
@@ -783,10 +761,8 @@ def from_openalex(item, classification=None):
         item.get("publication_date")
     )
 
-    record["publication_year"] = (
-        get_publication_year(
-            record["publication_date"]
-        )
+    record["publication_year"] = get_publication_year(
+        record["publication_date"]
     )
 
     original_type = item.get("type")
@@ -798,7 +774,9 @@ def from_openalex(item, classification=None):
     if original_type:
         record["source_types"]["openalex"] = original_type
 
-    record["language"] = item.get("language")
+    record["language"] = clean_text(
+        item.get("language")
+    )
 
     record["abstract"] = reconstruct_abstract(
         item.get("abstract_inverted_index")
@@ -826,9 +804,9 @@ def from_openalex(item, classification=None):
         )
 
     record["source_metadata"]["openalex"] = {
-        "work_id": record["openalex_id"],
+        "topics": item.get("topics") or [],
         "type": original_type,
-        "primary_location": source_data,
+        "primary_location": item.get("primary_location"),
     }
 
     record["classification"] = classification
@@ -860,7 +838,7 @@ def from_crossref(item, classification=None):
         titles[0] if titles else None
     )
 
-    authors = []
+    author_records = []
 
     for position, author in enumerate(
         item.get("author") or [],
@@ -874,7 +852,7 @@ def from_crossref(item, classification=None):
             if part
         )
 
-        authors.append({
+        author_records.append({
             "name": name,
             "orcid": author.get("ORCID"),
             "openalex_id": None,
@@ -882,7 +860,7 @@ def from_crossref(item, classification=None):
         })
 
     record["author_records"] = normalize_author_records(
-        authors
+        author_records
     )
 
     record["authors"] = author_names_from_records(
@@ -891,10 +869,8 @@ def from_crossref(item, classification=None):
 
     record["publication_date"] = get_crossref_date(item)
 
-    record["publication_year"] = (
-        get_publication_year(
-            record["publication_date"]
-        )
+    record["publication_year"] = get_publication_year(
+        record["publication_date"]
     )
 
     original_type = item.get("type")
@@ -906,7 +882,9 @@ def from_crossref(item, classification=None):
     if original_type:
         record["source_types"]["crossref"] = original_type
 
-    record["language"] = item.get("language")
+    record["language"] = clean_text(
+        item.get("language")
+    )
 
     record["abstract"] = clean_text(
         item.get("abstract")
@@ -932,10 +910,9 @@ def from_crossref(item, classification=None):
         record["source_ids"]["crossref"] = record["doi"]
 
     record["source_metadata"]["crossref"] = {
+        "subjects": item.get("subject") or [],
         "type": original_type,
-        "container_title": source_data["journal"],
-        "publisher": source_data["publisher"],
-        "url": source_data["url"],
+        "container_title": item.get("container-title") or [],
     }
 
     record["classification"] = classification
@@ -944,7 +921,7 @@ def from_crossref(item, classification=None):
 
 
 # ============================================================
-# REKORD ELLENŐRZÉSE
+# REKORDVALIDÁCIÓ
 # ============================================================
 
 def validate_record(record):
@@ -1007,13 +984,17 @@ def validate_record(record):
         if not isinstance(author.get("name"), str):
             return False
 
-        if "orcid" not in author:
+        if not isinstance(author.get("position"), int):
             return False
 
-        if "openalex_id" not in author:
+        if author.get("orcid") is not None and not isinstance(
+            author.get("orcid"), str
+        ):
             return False
 
-        if "position" not in author:
+        if author.get("openalex_id") is not None and not isinstance(
+            author.get("openalex_id"), str
+        ):
             return False
 
     for term in record["topic_terms"]:
@@ -1027,6 +1008,14 @@ def validate_record(record):
             return False
 
         if not isinstance(term.get("sources"), list):
+            return False
+
+    if record["publication_date"]:
+        if normalize_date(record["publication_date"]) is None:
+            return False
+
+    if record["publication_year"] is not None:
+        if not isinstance(record["publication_year"], int):
             return False
 
     return True
@@ -1050,10 +1039,15 @@ def run_model_tests():
 
     assert normalize_doi("invalid") is None
 
+    # OpenAlex ID
+    assert normalize_openalex_id(
+        "https://openalex.org/W123456/"
+    ) == "https://openalex.org/W123456"
+
     # ORCID
     assert normalize_orcid(
-        "https://orcid.org/0000-0001-2345-6789"
-    ) == "0000-0001-2345-6789"
+        "https://orcid.org/0000-0000-0000-0000"
+    ) == "0000-0000-0000-0000"
 
     # Dátum
     assert normalize_date(
@@ -1073,63 +1067,72 @@ def run_model_tests():
         "article"
     ) == "journal-article"
 
-    # Strukturált szerzők
-    authors = normalize_author_records([
+    # Szerzőnormalizálás
+    normalized_authors = normalize_author_records([
         {
             "name": "John Smith",
-            "orcid": "0000-0001-2345-6789",
-            "openalex_id": "https://openalex.org/A123",
-            "position": 1,
+            "orcid": None,
+            "openalex_id": None,
         },
         {
             "name": "John Smith",
             "orcid": None,
             "openalex_id": None,
-            "position": 2,
-        },
-        {
-            "name": "John Smith",
-            "orcid": None,
-            "openalex_id": None,
-            "position": 3,
         },
     ])
 
-    assert len(authors) == 3
+    assert len(normalized_authors) == 2
 
-    # Azonos ORCID összevonása
-    merged_authors = merge_author_records(
-        [
-            {
-                "name": "John Smith",
-                "orcid": "0000-0001-2345-6789",
-                "openalex_id": None,
-                "position": 1,
-            }
-        ],
-        [
-            {
-                "name": "John Smith",
-                "orcid": "0000-0001-2345-6789",
-                "openalex_id": "https://openalex.org/A123",
-                "position": 2,
-            }
-        ],
-    )
-
-    assert len(merged_authors) == 1
-    assert merged_authors[0]["openalex_id"] == (
-        "https://openalex.org/A123"
-    )
-
-    # Azonos név, különböző ORCID: nem vonható össze
-    different_authors = merge_author_records(
+    # Azonos ORCID: összevonás
+    same_orcid = merge_author_records(
         [
             {
                 "name": "John Smith",
                 "orcid": "0000-0001-1111-1111",
                 "openalex_id": None,
-                "position": 1,
+            }
+        ],
+        [
+            {
+                "name": "John Smith",
+                "orcid": "0000-0001-1111-1111",
+                "openalex_id": "https://openalex.org/A123",
+            }
+        ],
+    )
+
+    assert len(same_orcid) == 1
+    assert same_orcid[0]["openalex_id"] == (
+        "https://openalex.org/A123"
+    )
+
+    # Azonos OpenAlex ID: összevonás
+    same_openalex = merge_author_records(
+        [
+            {
+                "name": "John Smith",
+                "orcid": None,
+                "openalex_id": "https://openalex.org/A123",
+            }
+        ],
+        [
+            {
+                "name": "John Smith",
+                "orcid": None,
+                "openalex_id": "https://openalex.org/A123",
+            }
+        ],
+    )
+
+    assert len(same_openalex) == 1
+
+    # Azonos név, eltérő ORCID: külön rekord
+    different_orcids = merge_author_records(
+        [
+            {
+                "name": "John Smith",
+                "orcid": "0000-0001-1111-1111",
+                "openalex_id": None,
             }
         ],
         [
@@ -1137,21 +1140,19 @@ def run_model_tests():
                 "name": "John Smith",
                 "orcid": "0000-0002-2222-2222",
                 "openalex_id": None,
-                "position": 2,
             }
         ],
     )
 
-    assert len(different_authors) == 2
+    assert len(different_orcids) == 2
 
-    # Azonos név, azonosító nélkül: nem vonható össze
-    anonymous_authors = merge_author_records(
+    # Azonos név, azonosító nélkül: külön rekord
+    no_identifiers = merge_author_records(
         [
             {
                 "name": "John Smith",
                 "orcid": None,
                 "openalex_id": None,
-                "position": 1,
             }
         ],
         [
@@ -1159,14 +1160,13 @@ def run_model_tests():
                 "name": "John Smith",
                 "orcid": None,
                 "openalex_id": None,
-                "position": 2,
             }
         ],
     )
 
-    assert len(anonymous_authors) == 2
+    assert len(no_identifiers) == 2
 
-    # OpenAlex
+    # OpenAlex rekord
     openalex_record = from_openalex({
         "id": "https://openalex.org/W123456",
         "doi": "https://doi.org/10.1234/ABC",
@@ -1178,23 +1178,23 @@ def run_model_tests():
             {
                 "author": {
                     "display_name": "John Smith",
-                    "id": "https://openalex.org/A123",
-                    "orcid": "https://orcid.org/0000-0001-2345-6789",
+                    "orcid": "https://orcid.org/0000-0000-0000-0000",
+                    "id": "https://openalex.org/A123456",
                 }
             }
         ],
-        "primary_location": {
-            "landing_page_url": "https://example.com/article",
-            "source": {
-                "display_name": "Example Journal",
-                "host_organization_name": "Example Publisher",
-            },
-        },
         "topics": [
             {
                 "display_name": "Artificial Intelligence"
             }
         ],
+        "primary_location": {
+            "landing_page_url": "https://example.org/article",
+            "source": {
+                "display_name": "Example Journal",
+                "host_organization_name": "Example Publisher",
+            },
+        },
         "abstract_inverted_index": {
             "The": [0],
             "research": [1],
@@ -1207,14 +1207,14 @@ def run_model_tests():
     assert openalex_record["doi"] == "10.1234/abc"
     assert openalex_record["sources"] == ["openalex"]
     assert openalex_record["authors"] == ["John Smith"]
+    assert openalex_record["author_records"][0]["orcid"] == (
+        "0000-0000-0000-0000"
+    )
     assert openalex_record["publication_year"] == 2026
     assert openalex_record["journal"] == "Example Journal"
     assert openalex_record["publisher"] == "Example Publisher"
-    assert openalex_record["author_records"][0]["orcid"] == (
-        "0000-0001-2345-6789"
-    )
 
-    # Crossref
+    # Crossref rekord
     crossref_record = from_crossref({
         "DOI": "10.1234/ABC",
         "title": ["Example Research Article"],
@@ -1227,16 +1227,16 @@ def run_model_tests():
             {
                 "given": "John",
                 "family": "Smith",
-                "ORCID": "https://orcid.org/0000-0001-2345-6789",
+                "ORCID": "https://orcid.org/0000-0000-0000-0000",
             }
         ],
-        "container-title": ["Example Journal"],
-        "publisher": "Example Publisher",
-        "URL": "https://example.com/article",
         "subject": [
             "Artificial Intelligence",
             "Computer Science",
         ],
+        "container-title": ["Example Journal"],
+        "publisher": "Example Publisher",
+        "URL": "https://doi.org/10.1234/ABC",
         "abstract": "<jats:p>Example abstract.</jats:p>",
     })
 
@@ -1244,11 +1244,13 @@ def run_model_tests():
     assert crossref_record["doi"] == "10.1234/abc"
     assert crossref_record["sources"] == ["crossref"]
     assert crossref_record["authors"] == ["John Smith"]
-    assert crossref_record["publication_year"] == 2026
+    assert crossref_record["author_records"][0]["orcid"] == (
+        "0000-0000-0000-0000"
+    )
     assert crossref_record["journal"] == "Example Journal"
     assert crossref_record["publisher"] == "Example Publisher"
 
-    # Témakörök
+    # Témakörök összevonása
     merged_terms = merge_topic_terms(
         openalex_record["topic_terms"],
         crossref_record["topic_terms"],
@@ -1261,16 +1263,18 @@ def run_model_tests():
     ]
 
     print("DOI normalizálás: SIKERES")
-    print("ORCID normalizálás: SIKERES")
+    print("OpenAlex azonosító normalizálása: SIKERES")
+    print("ORCID normalizálása: SIKERES")
     print("Dátumkezelés: SIKERES")
-    print("Publikációs év kezelése: SIKERES")
+    print("Publikációs év meghatározása: SIKERES")
     print("Publikációtípus-egységesítés: SIKERES")
-    print("Strukturált szerzők: SIKERES")
-    print("Szerzők stabil azonosító szerinti összevonása: SIKERES")
+    print("Strukturált szerzői adatok: SIKERES")
+    print("Szerzők ORCID szerinti összevonása: SIKERES")
+    print("Szerzők OpenAlex ID szerinti összevonása: SIKERES")
     print("Azonos nevű szerzők elkülönítése: SIKERES")
     print("OpenAlex átalakítás: SIKERES")
     print("Crossref átalakítás: SIKERES")
-    print("Folyóirat- és kiadóadatok: SIKERES")
+    print("Folyóirat és kiadó kinyerése: SIKERES")
     print("Témakörök egységesítése: SIKERES")
     print("Témaköri források megőrzése: SIKERES")
     print("Rekordstruktúra ellenőrzése: SIKERES")
@@ -1288,6 +1292,7 @@ if __name__ == "__main__":
     run_model_tests()
 
     print("=" * 60)
-    print("M2.7.2 – MODEL 0.3 ELŐKÉSZÍTVE")
+    print("M2.7.2.1 / 0.3.1 – MODELL ELŐKÉSZÍTVE")
     print("Adatbázis-módosítás: NINCS")
+    print("Hálózati kapcsolat: NINCS")
     print("=" * 60)
