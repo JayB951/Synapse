@@ -331,36 +331,44 @@ function renderArticles(items = []) {
   });
 }
 
-async function loadPublishedEdition() {
-  const config = window.WORLD_SHARDS_CONFIG || {};
-  const supabaseUrl = (config.supabaseUrl || "").replace(/\/$/, "");
-  const anonKey = config.supabaseAnonKey || "";
+const archiveList = document.querySelector("#archive-list");
+const archiveCount = document.querySelector("#archive-count");
+let publishedEditions = [];
+let activeEditionId = null;
 
-  if (!supabaseUrl || !anonKey || supabaseUrl.includes("IDE_") || anonKey.includes("IDE_")) {
-    showStatus("A Supabase-kapcsolat konfigurálásra vár", "A nyilvános adatkapcsolat beállítása hiányzik.", "F1 · CONFIG REQUIRED");
-    renderArticles();
+function renderArchive(editions) {
+  if (!archiveList) return;
+  archiveList.replaceChildren();
+  if (archiveCount) archiveCount.textContent = `${editions.length} KIADÁS`;
+  if (!editions.length) {
+    archiveList.append(makeElement("p", "archive-empty", "Még nincs korábbi publikált kiadás."));
     return;
   }
 
+  editions.forEach((edition, index) => {
+    const button = makeElement("button", "archive-entry");
+    button.type = "button";
+    button.classList.toggle("is-active", edition.id === activeEditionId);
+    button.setAttribute("aria-pressed", String(edition.id === activeEditionId));
+    const date = makeElement("span", "archive-entry-date", formatEditionDate(edition.edition_date));
+    const title = makeElement("strong", "archive-entry-title", edition.title || "WORLD SHARDS – napi kiadás");
+    const label = makeElement("span", "archive-entry-label", index === 0 ? "LEGFRISSEBB KIADÁS" : "KIADÁS MEGNYITÁSA");
+    button.append(date, title, label);
+    button.addEventListener("click", () => loadEdition(edition));
+    archiveList.append(button);
+  });
+}
+
+async function loadEdition(edition) {
+  const config = window.WORLD_SHARDS_CONFIG || {};
+  const supabaseUrl = (config.supabaseUrl || "").replace(/\/$/, "");
+  const anonKey = config.supabaseAnonKey || "";
   const headers = { apikey: anonKey, Authorization: `Bearer ${anonKey}`, Accept: "application/json" };
 
   try {
-    showStatus("Kapcsolódás a napi kiadáshoz", "A publikált kiadás ellenőrzése folyamatban…");
-    const editionsResponse = await fetch(
-      `${supabaseUrl}/rest/v1/shard_editions?select=id,edition_date,title,introduction,status&status=eq.published&order=edition_date.desc&limit=1`,
-      { headers }
-    );
-    if (!editionsResponse.ok) throw new Error(`Kiadáslekérdezés: HTTP ${editionsResponse.status}`);
-    const editions = await editionsResponse.json();
-
-    if (!editions.length) {
-      showStatus("Jelenleg nincs publikált napi kiadás", "A rendszer kapcsolata él. Amint egy kiadás published státuszt kap, itt automatikusan megjelenik. A piszkozatok nem nyilvánosak.", "SUPABASE · CONNECTED");
-      renderArticles();
-      if (countNode) countNode.textContent = "— TARTALOM · 9 ROVAT";
-      return;
-    }
-
-    const edition = editions[0];
+    activeEditionId = edition.id;
+    renderArchive(publishedEditions);
+    showStatus("A kiadás betöltése", `${formatEditionDate(edition.edition_date)} – a tartalom betöltése folyamatban…`);
     const itemsResponse = await fetch(
       `${supabaseUrl}/rest/v1/shard_edition_items?select=id,section_code,position,display_title,display_summary,display_body,processing_status,shard_content_items(source_name,source_url,source_published_at,image_url,gallery_images)&edition_id=eq.${encodeURIComponent(edition.id)}&processing_status=eq.completed&order=position.asc`,
       { headers }
@@ -380,13 +388,53 @@ async function loadPublishedEdition() {
     if (dateNode) dateNode.textContent = formatted.toLocaleUpperCase("hu-HU");
     if (headerDate) headerDate.textContent = formatted.toLocaleUpperCase("hu-HU");
     if (countNode) countNode.textContent = `${items.length} TARTALOM · 9 ROVAT`;
-    showStatus(edition.title || "A napi kiadás elérhető", edition.introduction || "A mai kiadás betöltődött.", `PUBLISHED · ${items.length} ITEMS`);
+    showStatus(edition.title || "A kiadás elérhető", edition.introduction || "A kiválasztott kiadás betöltődött.", `PUBLISHED · ${items.length} ITEMS`);
     renderArticles(items);
+    renderArchive(publishedEditions);
+    document.querySelector("#edition")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  } catch (error) {
+    console.error("WORLD SHARDS edition error:", error);
+    showStatus("A kiválasztott kiadás most nem tölthető be", "Ellenőrizd a kapcsolatot, majd próbáld újra.", "EDITION · LOAD ERROR");
+  }
+}
+
+async function loadPublishedEdition() {
+  const config = window.WORLD_SHARDS_CONFIG || {};
+  const supabaseUrl = (config.supabaseUrl || "").replace(/\/$/, "");
+  const anonKey = config.supabaseAnonKey || "";
+
+  if (!supabaseUrl || !anonKey || supabaseUrl.includes("IDE_") || anonKey.includes("IDE_")) {
+    showStatus("A Supabase-kapcsolat konfigurálásra vár", "A nyilvános adatkapcsolat beállítása hiányzik.", "F1 · CONFIG REQUIRED");
+    renderArticles();
+    if (archiveList) archiveList.replaceChildren(makeElement("p", "archive-empty", "Az archívumhoz adatbázis-kapcsolat szükséges."));
+    return;
+  }
+
+  const headers = { apikey: anonKey, Authorization: `Bearer ${anonKey}`, Accept: "application/json" };
+
+  try {
+    showStatus("Kapcsolódás a kiadásokhoz", "A publikált lapszámok ellenőrzése folyamatban…");
+    const editionsResponse = await fetch(
+      `${supabaseUrl}/rest/v1/shard_editions?select=id,edition_date,title,introduction,status&status=eq.published&order=edition_date.desc&limit=365`,
+      { headers }
+    );
+    if (!editionsResponse.ok) throw new Error(`Kiadáslekérdezés: HTTP ${editionsResponse.status}`);
+    publishedEditions = await editionsResponse.json();
+    renderArchive(publishedEditions);
+
+    if (!publishedEditions.length) {
+      showStatus("Jelenleg nincs publikált napi kiadás", "A rendszer kapcsolata él. Amint egy kiadás published státuszt kap, itt automatikusan megjelenik. A piszkozatok nem nyilvánosak.", "SUPABASE · CONNECTED");
+      renderArticles();
+      if (countNode) countNode.textContent = "— TARTALOM · 9 ROVAT";
+      return;
+    }
+
+    await loadEdition(publishedEditions[0]);
   } catch (error) {
     console.error("WORLD SHARDS Supabase error:", error);
-    showStatus("A napi kiadás most nem tölthető be", "A Supabase-kapcsolat vagy az anon olvasási jogosultság ellenőrzést igényel. A piszkozatok ettől függetlenül nem kerülnek nyilvánosságra.", "SUPABASE · CONNECTION ERROR");
-    renderSections();
+    showStatus("A kiadások most nem tölthetők be", "A Supabase-kapcsolat vagy az anon olvasási jogosultság ellenőrzést igényel. A piszkozatok ettől függetlenül nem kerülnek nyilvánosságra.", "SUPABASE · CONNECTION ERROR");
     renderArticles();
+    if (archiveList) archiveList.replaceChildren(makeElement("p", "archive-empty", "Az archívum most nem érhető el."));
   }
 }
 
