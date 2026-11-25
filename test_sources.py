@@ -1,3 +1,4 @@
+
 import os
 import sys
 import calendar
@@ -7,6 +8,7 @@ from datetime import date
 from collections import Counter
 
 import requests
+import publication_model as model
 
 
 OPENALEX_URL = "https://api.openalex.org/works"
@@ -15,10 +17,6 @@ CROSSREF_URL = "https://api.crossref.org/works"
 FETCH_LIMIT = 50
 DISPLAY_LIMIT = 10
 TIMEOUT_SECONDS = 30
-
-# Az OpenAlex eredeti angol nyelvi API-szűrője megmarad.
-# A szövegalapú tartalékellenőrzés a hiányzó/bizonytalan
-# nyelvi metaadatú, ténylegesen lekért rekordokra vonatkozik.
 
 ACCEPTED_OPENALEX_TYPES = {
     "article",
@@ -179,7 +177,6 @@ def reconstruct_openalex_abstract(inverted_index):
 
     max_position = max(position for position, _ in positioned_words)
 
-    # Hibás vagy rendellenesen nagy index ne foglalhasson túl sok memóriát.
     if max_position > 20000:
         return ""
 
@@ -203,12 +200,6 @@ def clean_abstract(abstract):
 
 
 def get_language_metadata_status(language):
-    """
-    Visszatérési érték:
-    - 'english': a metaadat egyértelműen angol.
-    - 'non_english': a metaadat más nyelvet jelöl.
-    - 'unknown': hiányzó vagy nem eldönthető metaadat.
-    """
     if language is None:
         return "unknown"
 
@@ -230,7 +221,6 @@ def get_language_metadata_status(language):
 
 
 def count_language_words(text):
-    """A három keresett szót különálló szóként számolja."""
     normalized = (text or "").lower()
     normalized = re.sub(r"[^\w\s]", " ", normalized)
     words = normalized.split()
@@ -243,12 +233,6 @@ def count_language_words(text):
 
 
 def check_language(language, title="", abstract=""):
-    """
-    Elsődlegesen a nyelvi metaadat dönt.
-    Hiányzó/bizonytalan metaadat esetén a cím + absztrakt
-    szövegében mindhárom kulcsszónak legalább háromszor
-    kell szerepelnie.
-    """
     metadata_status = get_language_metadata_status(language)
 
     if metadata_status == "english":
@@ -286,7 +270,7 @@ def check_language(language, title="", abstract=""):
 
 
 def run_language_filter_tests():
-    """Gyors, hálózat nélküli ellenőrzés a nyelvi szabályokra."""
+    """A meglévő nyelvi szabályok önellenőrzése."""
     valid_text = "the and of " * 3
 
     assert check_language("en", "Short title", "")[1] is True
@@ -330,24 +314,28 @@ def classify_record(publication_type, accepted_types, title):
     return "KIZÁRVA – ISMERETLEN PUBLIKÁCIÓTÍPUS"
 
 
-
 def run_classification_filter_tests():
-    """A publikációtípus-szűrő automatikus tesztjei."""
+    """A publikációtípus-szűrő önellenőrzése."""
     assert classify_record(
         "article", ACCEPTED_OPENALEX_TYPES, "Research article"
     ) == "ELFOGADHATÓ"
+
     assert classify_record(
         "journal-article", ACCEPTED_CROSSREF_TYPES, "Research article"
     ) == "ELFOGADHATÓ"
+
     assert classify_record(
         "other", ACCEPTED_OPENALEX_TYPES, "French title"
     ) == "KIZÁRVA – ISMERETLEN PUBLIKÁCIÓTÍPUS"
+
     assert classify_record(
         "", ACCEPTED_CROSSREF_TYPES, "Untyped record"
     ) == "KIZÁRVA – ISMERETLEN PUBLIKÁCIÓTÍPUS"
+
     assert classify_record(
         "dataset", ACCEPTED_OPENALEX_TYPES, "Dataset record"
     ) == "KIZÁRVA – NEM KÍVÁNT TÍPUS"
+
     assert classify_record(
         "book-chapter", ACCEPTED_CROSSREF_TYPES, "Preface"
     ) == "KIZÁRVA – ÁLTALÁNOS CÍM"
@@ -476,7 +464,6 @@ def print_summary(records, source_name):
             )
 
 
-
 def apply_language_decision(classification, language_status, is_english):
     """A nyelvi kizárás minden publikációtípus-besorolást megelőz."""
     if not is_english:
@@ -493,6 +480,7 @@ def process_openalex(records):
     for item in records:
         publication_type = item.get("type") or ""
         title = item.get("title") or ""
+
         abstract_text = reconstruct_openalex_abstract(
             item.get("abstract_inverted_index")
         )
@@ -527,6 +515,12 @@ def process_openalex(records):
             is_english,
         )
 
+        # A közös adatmodell csak az eredeti besorolás után készül el.
+        unified_record = model.from_openalex(
+            item,
+            classification=classification,
+        )
+
         classified.append({
             "title": title,
             "date": item.get("publication_date"),
@@ -537,6 +531,7 @@ def process_openalex(records):
             "authors": authors,
             "abstract": abstract_text,
             "classification": classification,
+            "unified_record": unified_record,
         })
 
     print_summary(classified, "OPENALEX")
@@ -588,6 +583,11 @@ def process_crossref(records):
             is_english,
         )
 
+        unified_record = model.from_crossref(
+            item,
+            classification=classification,
+        )
+
         classified.append({
             "title": title,
             "date": get_crossref_publication_date(item),
@@ -598,10 +598,218 @@ def process_crossref(records):
             "authors": authors,
             "abstract": abstract_text,
             "classification": classification,
+            "unified_record": unified_record,
         })
 
     print_summary(classified, "CROSSREF")
     return classified
+
+
+def merge_list_values(first, second):
+    """Két lista egyesítése ismétlődések nélkül."""
+    result = []
+
+    for value in (first or []) + (second or []):
+        if value and value not in result:
+            result.append(value)
+
+    return result
+
+
+def merge_publication_records(first, second):
+    """
+    Két azonos DOI-jú rekord összevonása.
+    Az első rekord értékei élveznek elsőbbséget;
+    a hiányzó mezőket a második rekord tölti ki.
+    """
+
+    merged = dict(first)
+
+    # Egyszerű mezők: az első nem üres érték marad.
+    fields = [
+        "title",
+        "publication_date",
+        "publication_type",
+        "language",
+        "abstract",
+        "classification",
+    ]
+
+    for field in fields:
+        if not merged.get(field) and second.get(field):
+            merged[field] = second[field]
+
+    # Listamezők.
+    for field in [
+        "authors",
+        "topics",
+        "subjects",
+        "sources",
+    ]:
+        merged[field] = merge_list_values(
+            merged.get(field),
+            second.get(field),
+        )
+
+    # Szótármezők: mindkét forrás adatait megőrizzük.
+    for field in [
+        "source_types",
+        "source_ids",
+    ]:
+        combined = dict(merged.get(field) or {})
+        combined.update(second.get(field) or {})
+        merged[field] = combined
+
+    # Az OpenAlex azonosító megőrzése.
+    if not merged.get("openalex_id"):
+        merged["openalex_id"] = second.get("openalex_id")
+
+    return merged
+
+
+def deduplicate_publications(openalex_records, crossref_records):
+    """
+    DOI-alapú összevonás.
+
+    Csak elfogadható rekordok kerülnek be.
+    DOI nélküli rekordok külön rekordként maradnak meg.
+    """
+
+    merged_by_doi = {}
+    without_doi = []
+
+    doi_matches = 0
+    doi_without_doi = 0
+
+    accepted_openalex = [
+        record["unified_record"]
+        for record in openalex_records
+        if record["classification"] == "ELFOGADHATÓ"
+    ]
+
+    accepted_crossref = [
+        record["unified_record"]
+        for record in crossref_records
+        if record["classification"] == "ELFOGADHATÓ"
+    ]
+
+    # OpenAlex rekordok feldolgozása.
+    for record in accepted_openalex:
+        doi = model.normalize_doi(record.get("doi"))
+
+        if not doi:
+            doi_without_doi += 1
+            without_doi.append(record)
+            continue
+
+        record["doi"] = doi
+
+        if doi in merged_by_doi:
+            merged_by_doi[doi] = merge_publication_records(
+                merged_by_doi[doi],
+                record,
+            )
+            doi_matches += 1
+        else:
+            merged_by_doi[doi] = record
+
+    # Crossref rekordok feldolgozása.
+    for record in accepted_crossref:
+        doi = model.normalize_doi(record.get("doi"))
+
+        if not doi:
+            doi_without_doi += 1
+            without_doi.append(record)
+            continue
+
+        record["doi"] = doi
+
+        if doi in merged_by_doi:
+            merged_by_doi[doi] = merge_publication_records(
+                merged_by_doi[doi],
+                record,
+            )
+            doi_matches += 1
+        else:
+            merged_by_doi[doi] = record
+
+    final_records = list(merged_by_doi.values()) + without_doi
+
+    return {
+        "records": final_records,
+        "doi_matches": doi_matches,
+        "doi_without_doi": doi_without_doi,
+        "unique_doi_records": len(merged_by_doi),
+        "without_doi_records": len(without_doi),
+        "accepted_openalex": len(accepted_openalex),
+        "accepted_crossref": len(accepted_crossref),
+    }
+
+
+def print_unified_record(index, record):
+    print(f"\n{index}. {record.get('title') or 'Cím nélkül'}")
+    print("DOI:", record.get("doi") or "Nincs DOI")
+    print("Dátum:", record.get("publication_date") or "Nincs adat")
+    print("Típus:", record.get("publication_type") or "Nincs adat")
+    print(
+        "Források:",
+        ", ".join(record.get("sources") or [])
+    )
+    print(
+        "Forrásazonosítók:",
+        record.get("source_ids") or "Nincs adat"
+    )
+    print(
+        "Szerzők:",
+        ", ".join((record.get("authors") or [])[:3])
+        or "Nincs adat"
+    )
+    print(
+        "OpenAlex témakörök:",
+        ", ".join((record.get("topics") or [])[:3])
+        or "Nincs adat"
+    )
+    print(
+        "Crossref tárgyszavak:",
+        ", ".join((record.get("subjects") or [])[:3])
+        or "Nincs adat"
+    )
+    print(
+        "Absztrakt:",
+        "Van" if record.get("abstract") else "Nincs"
+    )
+
+
+def print_deduplication_summary(result):
+    records = result["records"]
+
+    print_header("SYNAPSE – DOI ALAPÚ ÖSSZEVONÁS")
+
+    print("Elfogadható OpenAlex rekord:", result["accepted_openalex"])
+    print("Elfogadható Crossref rekord:", result["accepted_crossref"])
+
+    print(
+        "Összes elfogadható rekord:",
+        result["accepted_openalex"] + result["accepted_crossref"],
+    )
+
+    print("DOI alapján összevont egyezések:", result["doi_matches"])
+    print("DOI-val rendelkező egyedi rekordok:", result["unique_doi_records"])
+    print("DOI nélküli rekordok:", result["doi_without_doi"])
+    print("Külön megtartott DOI nélküli rekordok:", result["without_doi_records"])
+    print("Végső egyedi publikációk:", len(records))
+
+    print_header("SYNAPSE – EGYSÉGES PUBLIKÁCIÓK MINTÁJA")
+
+    if not records:
+        print("Nem található elfogadható publikáció.")
+        return
+
+    for index, record in enumerate(
+        records[:DISPLAY_LIMIT],
+        start=1,
+    ):
+        print_unified_record(index, record)
 
 
 def main():
@@ -622,6 +830,8 @@ def main():
     print("Szöveges feltétel: the, and, of – mindegyik legalább 3x")
     print("Ismeretlen publikációtípus: automatikus kizárás")
     print("Kézi ellenőrzés: NINCS")
+    print("Egységes adatmodell: publication_model.py")
+    print("DOI-alapú deduplikáció: AKTÍV")
 
     try:
         openalex_records = request_openalex(start_date, end_date)
@@ -630,15 +840,30 @@ def main():
         openalex_classified = process_openalex(openalex_records)
         crossref_classified = process_crossref(crossref_records)
 
-        print_header("SYNAPSE – ÖSSZESÍTÉS")
+        deduplication_result = deduplicate_publications(
+            openalex_classified,
+            crossref_classified,
+        )
 
-        print("OpenAlex rekordok:", len(openalex_classified))
-        print("Crossref rekordok:", len(crossref_classified))
+        print_deduplication_summary(deduplication_result)
+
+        print_header("SYNAPSE – VÉGSŐ ÖSSZESÍTÉS")
+
+        print("OpenAlex lekért rekordok:", len(openalex_classified))
+        print("Crossref lekért rekordok:", len(crossref_classified))
+
         print(
             "Összes lekért rekord:",
             len(openalex_classified) + len(crossref_classified),
         )
+
+        print(
+            "Végső egyedi publikációk:",
+            len(deduplication_result["records"]),
+        )
+
         print("Supabase adatbázis módosítása: NEM")
+        print("Adatbázisba mentés: NINCS")
 
     except requests.exceptions.HTTPError as error:
         status_code = (
