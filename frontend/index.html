@@ -62,6 +62,7 @@
         <span class="section-count">01 — 09</span>
       </div>
       <div class="section-grid" id="section-grid"></div>
+      <div class="article-feed" id="article-feed" aria-live="polite"></div>
     </section>
 
     <section class="manifesto" id="about">
@@ -71,6 +72,10 @@
     </section>
   </main>
 
+  <dialog class="article-reader" id="article-reader" aria-labelledby="reader-title">
+    <div class="reader-top"><span class="eyebrow" id="reader-section">WORLD SHARDS</span><button class="reader-close" type="button" aria-label="Bezárás">×</button></div>
+    <h2 id="reader-title"></h2><p class="reader-summary" id="reader-summary"></p><div class="reader-divider"></div><div class="reader-body" id="reader-body"></div>
+  </dialog>
   <footer class="site-footer">
     <a class="wordmark footer-brand" href="#"><span class="mark">W<span>·</span>S</span><span class="wordmark-name">WORLD <b>SHARDS</b></span></a>
     <span>THE WORLD, IN FRAGMENTS. UNDERSTOOD TOGETHER.</span>
