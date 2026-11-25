@@ -198,6 +198,72 @@ def get_coordinates(page):
     }
 
 
+def backfill_world_explorer_images(supabase):
+    """Fill image_url for existing World Explorer records using Wikipedia pageimages."""
+    result = (
+        supabase.table("shard_content_items")
+        .select("id,title")
+        .eq("section_code", "world_explorer")
+        .is_("image_url", "null")
+        .limit(500)
+        .execute()
+    )
+    rows = result.data or []
+    if not rows:
+        logging.info("World Explorer image backfill: no missing images.")
+        return
+
+    updated = 0
+    for offset in range(0, len(rows), 50):
+        batch = rows[offset:offset + 50]
+        titles = [row["title"] for row in batch if row.get("title")]
+        if not titles:
+            continue
+
+        params = {
+            "action": "query",
+            "prop": "pageimages",
+            "piprop": "thumbnail",
+            "pithumbsize": 1600,
+            "titles": "|".join(titles),
+            "format": "json",
+            "formatversion": 2,
+        }
+        response = requests.get(
+            WIKIPEDIA_API,
+            params=params,
+            headers=HEADERS,
+            timeout=REQUEST_TIMEOUT,
+        )
+        response.raise_for_status()
+        data = response.json()
+        if "error" in data:
+            raise RuntimeError(
+                f"Wikipedia image API error: {data['error'].get('info', 'Unknown error')}"
+            )
+
+        image_by_title = {
+            page.get("title", "").casefold(): (page.get("thumbnail") or {}).get("source")
+            for page in data.get("query", {}).get("pages", [])
+        }
+
+        for row in batch:
+            image_url = image_by_title.get((row.get("title") or "").casefold())
+            if not image_url:
+                continue
+            supabase.table("shard_content_items").update({
+                "image_url": image_url
+            }).eq("id", row["id"]).execute()
+            updated += 1
+            logging.info("World Explorer image backfilled: %s", row["title"])
+
+    logging.info(
+        "World Explorer image backfill: %s/%s records updated.",
+        updated,
+        len(rows),
+    )
+
+
 def get_existing_content(supabase, source_url):
     result = (
         supabase.table("shard_content_items")
@@ -340,6 +406,13 @@ def main():
     logging.info("Version: %s", VERSION)
 
     supabase = get_supabase_client()
+
+    # Existing records are repaired before the daily collection cycle.
+    try:
+        backfill_world_explorer_images(supabase)
+    except Exception as error:
+        logging.exception("World Explorer image backfill failed: %s", error)
+        raise SystemExit(1)
 
     results = []
     errors = []
