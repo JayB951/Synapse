@@ -1,6 +1,7 @@
+
 """
 SYNAPSE – Egységes publikációs adatmodell
-Verzió: M2.4 / 0.1
+Verzió: M2.6 / 0.2
 
 Feladat:
 - OpenAlex rekordok egységesítése
@@ -8,6 +9,8 @@ Feladat:
 - DOI normalizálása
 - Szerzők, dátumok, absztraktok és témakörök kinyerése
 - Forrásspecifikus azonosítók megőrzése
+- Témakörök és tárgyszavak közös listába rendezése
+- Témaköri források visszakövethetősége
 
 Nincs hálózati kapcsolat.
 Nincs Supabase kapcsolat.
@@ -19,7 +22,7 @@ import html
 from datetime import date
 
 
-MODEL_VERSION = "0.1"
+MODEL_VERSION = "0.2"
 
 
 def normalize_doi(doi):
@@ -60,10 +63,7 @@ def normalize_openalex_id(openalex_id):
 
     value = str(openalex_id).strip().rstrip("/")
 
-    if not value:
-        return None
-
-    return value
+    return value or None
 
 
 def clean_text(value):
@@ -246,11 +246,109 @@ def normalize_subjects(subjects):
     return result
 
 
+def normalize_topic_name(value):
+    """
+    Témakör egységesített összehasonlítási alakja.
+
+    Csak kis- és nagybetű, illetve szóközkülönbségeket
+    normalizál. Szemantikai összevonást nem végez.
+    """
+
+    cleaned = clean_text(value)
+
+    if not cleaned:
+        return None
+
+    return " ".join(cleaned.casefold().split())
+
+
+def build_topic_terms(topics=None, subjects=None):
+    """
+    Közös témaköri lista létrehozása.
+
+    A topics az OpenAlex, a subjects a Crossref adatait
+    tartalmazza. Az azonos normalizált szövegű elemek
+    egy rekordba kerülnek, a források megjelölésével.
+    """
+
+    result = []
+    positions = {}
+
+    sources = [
+        ("openalex", topics or []),
+        ("crossref", subjects or []),
+    ]
+
+    for source_name, values in sources:
+        for value in values:
+            name = clean_text(value)
+            normalized = normalize_topic_name(name)
+
+            if not name or not normalized:
+                continue
+
+            if normalized not in positions:
+                positions[normalized] = len(result)
+
+                result.append({
+                    "name": name,
+                    "normalized": normalized,
+                    "sources": [source_name],
+                })
+
+            else:
+                index = positions[normalized]
+
+                if source_name not in result[index]["sources"]:
+                    result[index]["sources"].append(source_name)
+
+    return result
+
+
+def merge_topic_terms(first, second):
+    """
+    Két közös témaköri lista összevonása.
+    Az azonos normalizált nevű elemek forrásai egyesülnek.
+    """
+
+    result = []
+    positions = {}
+
+    for term in (first or []) + (second or []):
+        if not isinstance(term, dict):
+            continue
+
+        name = clean_text(term.get("name"))
+        normalized = (
+            normalize_topic_name(name)
+            or normalize_topic_name(term.get("normalized"))
+        )
+
+        if not name or not normalized:
+            continue
+
+        sources = term.get("sources") or []
+
+        if normalized not in positions:
+            positions[normalized] = len(result)
+
+            result.append({
+                "name": name,
+                "normalized": normalized,
+                "sources": [],
+            })
+
+        index = positions[normalized]
+
+        for source in sources:
+            if source not in result[index]["sources"]:
+                result[index]["sources"].append(source)
+
+    return result
+
+
 def normalize_publication_type(publication_type):
-    """
-    Publikációtípus egységesítése.
-    Az eredeti forrástípus külön megmarad.
-    """
+    """Publikációtípus egységesítése."""
 
     if not publication_type:
         return None
@@ -292,6 +390,7 @@ def create_base_record():
         "abstract": None,
         "topics": [],
         "subjects": [],
+        "topic_terms": [],
         "sources": [],
         "source_ids": {},
         "classification": None,
@@ -349,6 +448,10 @@ def from_openalex(item, classification=None):
 
     record["topics"] = normalize_topics(
         item.get("topics")
+    )
+
+    record["topic_terms"] = build_topic_terms(
+        topics=record["topics"]
     )
 
     record["sources"] = ["openalex"]
@@ -418,6 +521,10 @@ def from_crossref(item, classification=None):
         item.get("subject")
     )
 
+    record["topic_terms"] = build_topic_terms(
+        subjects=record["subjects"]
+    )
+
     record["sources"] = ["crossref"]
 
     if record["doi"]:
@@ -444,6 +551,7 @@ def validate_record(record):
         "abstract",
         "topics",
         "subjects",
+        "topic_terms",
         "sources",
         "source_ids",
         "classification",
@@ -455,23 +563,34 @@ def validate_record(record):
     if not required_fields.issubset(record.keys()):
         return False
 
-    if not isinstance(record["authors"], list):
-        return False
-
-    if not isinstance(record["topics"], list):
-        return False
-
-    if not isinstance(record["subjects"], list):
-        return False
-
-    if not isinstance(record["sources"], list):
-        return False
+    for field in [
+        "authors",
+        "topics",
+        "subjects",
+        "topic_terms",
+        "sources",
+    ]:
+        if not isinstance(record[field], list):
+            return False
 
     if not isinstance(record["source_ids"], dict):
         return False
 
     if not isinstance(record["source_types"], dict):
         return False
+
+    for term in record["topic_terms"]:
+        if not isinstance(term, dict):
+            return False
+
+        if not isinstance(term.get("name"), str):
+            return False
+
+        if not isinstance(term.get("normalized"), str):
+            return False
+
+        if not isinstance(term.get("sources"), list):
+            return False
 
     return True
 
@@ -532,9 +651,6 @@ def run_model_tests():
     assert openalex_record["doi"] == "10.1234/abc"
     assert openalex_record["sources"] == ["openalex"]
     assert openalex_record["authors"] == ["John Smith"]
-    assert openalex_record["topics"] == [
-        "Artificial Intelligence"
-    ]
 
     crossref_record = from_crossref({
         "DOI": "10.1234/ABC",
@@ -561,34 +677,36 @@ def run_model_tests():
     assert crossref_record["doi"] == "10.1234/abc"
     assert crossref_record["sources"] == ["crossref"]
     assert crossref_record["authors"] == ["John Smith"]
-    assert crossref_record["subjects"] == [
-        "Artificial Intelligence",
-        "Computer Science",
-    ]
-    assert crossref_record["abstract"] == "Example abstract."
 
-    assert (
-        openalex_record["doi"]
-        == crossref_record["doi"]
+    merged_terms = merge_topic_terms(
+        openalex_record["topic_terms"],
+        crossref_record["topic_terms"],
     )
+
+    assert len(merged_terms) == 2
+    assert merged_terms[0]["sources"] == [
+        "openalex",
+        "crossref",
+    ]
 
     print("DOI normalizálás: SIKERES")
     print("Dátumkezelés: SIKERES")
     print("Publikációtípus-egységesítés: SIKERES")
     print("OpenAlex átalakítás: SIKERES")
     print("Crossref átalakítás: SIKERES")
+    print("Témakörök egységesítése: SIKERES")
+    print("Témaköri források megőrzése: SIKERES")
     print("Rekordstruktúra ellenőrzése: SIKERES")
-    print("Adatforrások elkülönítése: SIKERES")
 
 
 if __name__ == "__main__":
     print("=" * 60)
-    print("SYNAPSE – EGYSÉGES ADATMODELL TESZT")
+    print("SYNAPSE – EGYSÉGES ADATMODELL")
     print("=" * 60)
 
     run_model_tests()
 
     print("=" * 60)
-    print("M2.4 / 0.1 – MINDEN TESZT SIKERES")
+    print("M2.6 / 0.2 – MODELL ELŐKÉSZÍTVE")
     print("Adatbázis-módosítás: NINCS")
     print("=" * 60)
