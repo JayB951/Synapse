@@ -1,0 +1,36 @@
+name: WORLD SHARDS - Music of the Day Collector
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  collect-music:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Repository letoltese
+        uses: actions/checkout@v4
+
+      - name: Python beallitasa
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Fuggosegek telepitese
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install --no-cache-dir -r requirements.txt
+
+      - name: Music Collector offline tesztek
+        run: |
+          python -m unittest test_music_collector.py -v
+
+      - name: WORLD SHARDS Music of the Day gyujtes
+        env:
+          SUPABASE_URL: \${{ secrets.SUPABASE_URL }}
+          SUPABASE_SECRET_KEY: \${{ secrets.SUPABASE_SECRET_KEY }}
+        run: |
+          python music_collector.py
