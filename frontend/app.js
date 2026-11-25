@@ -91,6 +91,7 @@ function feedbackLabel(vote) {
 function createFeedbackButton(itemId, className = "feedback-toggle") {
   const button = makeElement("button", className, feedbackLabel(feedbackVotes.get(itemId) || 0));
   button.type = "button";
+  button.dataset.feedbackItem = itemId;
   button.setAttribute("aria-label", "Cikk relevanciájának értékelése");
   button.setAttribute("aria-pressed", String(Boolean(feedbackVotes.get(itemId))));
   button.title = "Kattintással válthatsz: érdekes → nem releváns → nincs értékelés";
