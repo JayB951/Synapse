@@ -459,11 +459,19 @@ def build_record(section_code, page, search_query):
         "image_source": "Wikipedia page thumbnail",
     }
 
-    gallery_images = (
-        fetch_commons_gallery_images(title)
-        if section_code == "world_explorer"
-        else []
-    )
+    gallery_images = []
+    if section_code == "world_explorer":
+        try:
+            gallery_images = fetch_commons_gallery_images(title)
+        except Exception as exc:
+            # The Commons gallery is optional: a temporary API failure must
+            # never prevent saving the main Wikipedia article and lead image.
+            logger.warning(
+                "World Explorer gallery unavailable for '%s'; continuing "
+                "without additional images: %s",
+                title,
+                exc,
+            )
 
     return {
         "section_code": section_code,
