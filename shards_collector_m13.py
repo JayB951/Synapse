@@ -20,6 +20,7 @@ import os
 import re
 import html
 import logging
+import time
 from datetime import date
 from urllib.parse import quote
 
@@ -30,7 +31,10 @@ from supabase import create_client
 VERSION = "0.1.0"
 WIKIPEDIA_API = "https://en.wikipedia.org/w/api.php"
 REQUEST_TIMEOUT = 30
+MIN_REQUEST_INTERVAL = 3.0
+MAX_REQUEST_ATTEMPTS = 5
 ITEMS_PER_SECTION = 5
+LAST_WIKIMEDIA_REQUEST = 0.0
 
 HEADERS = {
     "User-Agent": "WorldShardsCollector/0.1.0 (content research project; contact via GitHub repository)"
@@ -121,6 +125,39 @@ def clean_text(value):
     return value.strip()
 
 
+def wikimedia_get_json(url, params):
+    """Throttle Wikimedia API calls and retry temporary rate-limit/server errors."""
+    global LAST_WIKIMEDIA_REQUEST
+
+    for attempt in range(MAX_REQUEST_ATTEMPTS):
+        elapsed = time.monotonic() - LAST_WIKIMEDIA_REQUEST
+        if elapsed < MIN_REQUEST_INTERVAL:
+            time.sleep(MIN_REQUEST_INTERVAL - elapsed)
+
+        response = requests.get(url, params=params, headers=HEADERS, timeout=REQUEST_TIMEOUT)
+        LAST_WIKIMEDIA_REQUEST = time.monotonic()
+
+        if response.status_code == 429 or response.status_code in (500, 502, 503, 504):
+            if attempt == MAX_REQUEST_ATTEMPTS - 1:
+                response.raise_for_status()
+            retry_after = response.headers.get("Retry-After")
+            try:
+                delay = max(1.0, float(retry_after)) if retry_after else 15.0 * (2 ** attempt)
+            except (TypeError, ValueError):
+                delay = 15.0 * (2 ** attempt)
+            logging.warning(
+                "Wikimedia API HTTP %s; retrying in %.0f seconds (%s/%s).",
+                response.status_code, delay, attempt + 1, MAX_REQUEST_ATTEMPTS,
+            )
+            time.sleep(delay)
+            continue
+
+        response.raise_for_status()
+        return response.json()
+
+    raise RuntimeError("Wikimedia API request failed after all retry attempts.")
+
+
 def get_daily_query(section_code):
     queries = SECTION_CONFIG[section_code]["queries"]
     day_number = date.today().toordinal()
@@ -145,15 +182,7 @@ def fetch_wikipedia_pages(search_query):
         "formatversion": 2,
     }
 
-    response = requests.get(
-        WIKIPEDIA_API,
-        params=params,
-        headers=HEADERS,
-        timeout=REQUEST_TIMEOUT,
-    )
-    response.raise_for_status()
-
-    data = response.json()
+    data = wikimedia_get_json(WIKIPEDIA_API, params)
 
     if "error" in data:
         raise RuntimeError(
@@ -228,14 +257,7 @@ def backfill_world_explorer_images(supabase):
             "format": "json",
             "formatversion": 2,
         }
-        response = requests.get(
-            WIKIPEDIA_API,
-            params=params,
-            headers=HEADERS,
-            timeout=REQUEST_TIMEOUT,
-        )
-        response.raise_for_status()
-        data = response.json()
+        data = wikimedia_get_json(WIKIPEDIA_API, params)
         if "error" in data:
             raise RuntimeError(
                 f"Wikipedia image API error: {data['error'].get('info', 'Unknown error')}"
@@ -290,14 +312,7 @@ def fetch_commons_gallery_images(place_title):
         "format": "json",
         "formatversion": 2,
     }
-    response = requests.get(
-        "https://commons.wikimedia.org/w/api.php",
-        params=params,
-        headers=HEADERS,
-        timeout=REQUEST_TIMEOUT,
-    )
-    response.raise_for_status()
-    data = response.json()
+    data = wikimedia_get_json("https://commons.wikimedia.org/w/api.php", params)
     if "error" in data:
         raise RuntimeError(
             f"Wikimedia Commons API error: {data['error'].get('info', 'Unknown error')}"
