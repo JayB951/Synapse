@@ -202,7 +202,7 @@ def backfill_world_explorer_images(supabase):
     """Fill image_url for existing World Explorer records using Wikipedia pageimages."""
     result = (
         supabase.table("shard_content_items")
-        .select("id,title")
+        .select("id,title,image_url,gallery_images")
         .eq("section_code", "world_explorer")
         .is_("image_url", "null")
         .limit(500)
@@ -249,19 +249,84 @@ def backfill_world_explorer_images(supabase):
 
         for row in batch:
             image_url = image_by_title.get((row.get("title") or "").casefold())
-            if not image_url:
-                continue
-            supabase.table("shard_content_items").update({
-                "image_url": image_url
-            }).eq("id", row["id"]).execute()
-            updated += 1
-            logging.info("World Explorer image backfilled: %s", row["title"])
+            gallery_images = row.get("gallery_images") or []
+            update_data = {}
+            if not row.get("image_url") and image_url:
+                update_data["image_url"] = image_url
+            if len(gallery_images) < 3:
+                try:
+                    gallery_images = fetch_commons_gallery_images(row["title"])
+                    if gallery_images:
+                        update_data["gallery_images"] = gallery_images
+                except Exception as error:
+                    logging.warning(
+                        "World Explorer gallery lookup failed for '%s': %s",
+                        row["title"], error,
+                    )
+            if update_data:
+                supabase.table("shard_content_items").update(
+                    update_data
+                ).eq("id", row["id"]).execute()
+                updated += 1
+                logging.info("World Explorer images backfilled: %s", row["title"])
 
     logging.info(
         "World Explorer image backfill: %s/%s records updated.",
         updated,
         len(rows),
     )
+
+
+def fetch_commons_gallery_images(place_title):
+    """Find up to three additional Wikimedia Commons photographs for a place."""
+    params = {
+        "action": "query",
+        "generator": "search",
+        "gsrsearch": f'"{place_title}"',
+        "gsrnamespace": 6,
+        "gsrlimit": 12,
+        "prop": "imageinfo",
+        "iiprop": "url|extmetadata",
+        "iiurlwidth": 1400,
+        "format": "json",
+        "formatversion": 2,
+    }
+    response = requests.get(
+        "https://commons.wikimedia.org/w/api.php",
+        params=params,
+        headers=HEADERS,
+        timeout=REQUEST_TIMEOUT,
+    )
+    response.raise_for_status()
+    data = response.json()
+    if "error" in data:
+        raise RuntimeError(
+            f"Wikimedia Commons API error: {data['error'].get('info', 'Unknown error')}"
+        )
+
+    gallery = []
+    seen_urls = set()
+    for page in data.get("query", {}).get("pages", []):
+        image_info = (page.get("imageinfo") or [{}])[0]
+        image_url = image_info.get("thumburl") or image_info.get("url")
+        if not image_url or image_url in seen_urls:
+            continue
+        metadata = image_info.get("extmetadata") or {}
+        license_name = (metadata.get("LicenseShortName") or {}).get("value", "")
+        description_url = image_info.get("descriptionurl", "")
+        caption = clean_text(
+            page.get("title", "").replace("File:", "").replace("_", " ")
+        ) or place_title
+        gallery.append({
+            "url": image_url,
+            "caption": caption,
+            "source_url": description_url,
+            "license": clean_text(license_name),
+        })
+        seen_urls.add(image_url)
+        if len(gallery) == 3:
+            break
+    return gallery
 
 
 def get_existing_content(supabase, source_url):
@@ -308,12 +373,19 @@ def build_record(section_code, page, search_query):
         "image_source": "Wikipedia page thumbnail",
     }
 
+    gallery_images = (
+        fetch_commons_gallery_images(title)
+        if section_code == "world_explorer"
+        else []
+    )
+
     return {
         "section_code": section_code,
         "title": title,
         "summary": summary,
         "body": extract,
         "image_url": (page.get("thumbnail") or {}).get("source") if section_code == "world_explorer" else None,
+        "gallery_images": gallery_images if section_code == "world_explorer" else None,
         "source_name": "Wikipedia",
         "source_url": source_url,
         "source_language": "en",
