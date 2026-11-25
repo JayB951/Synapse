@@ -1,33 +1,127 @@
+import os
+import sys
+import calendar
+import re
+import html
+from datetime import date
+from collections import Counter
 
-name: SYNAPSE - API Sources Test
+import requests
 
-on:
-  workflow_dispatch:
 
-permissions:
-  contents: read
+OPENALEX_URL = "https://api.openalex.org/works"
+CROSSREF_URL = "https://api.crossref.org/works"
 
-jobs:
-  test-sources:
-    runs-on: ubuntu-latest
+FETCH_LIMIT = 50
+DISPLAY_LIMIT = 10
+TIMEOUT_SECONDS = 30
 
-    steps:
-      - name: Repository letoltese
-        uses: actions/checkout@v4
+# Az OpenAlex eredeti angol nyelvi API-szűrője megmarad.
+# A szövegalapú tartalékellenőrzés a hiányzó/bizonytalan
+# nyelvi metaadatú, ténylegesen lekért rekordokra vonatkozik.
 
-      - name: Python beallitasa
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
+ACCEPTED_OPENALEX_TYPES = {
+    "article",
+    "book",
+    "book-chapter",
+    "dissertation",
+    "preprint",
+    "proceedings-article",
+    "conference-paper",
+    "report",
+}
 
-      - name: Fuggosegek telepitese
-        run: |
-          python -m pip install --upgrade pip
-          python -m pip install --no-cache-dir -r requirements.txt
+ACCEPTED_CROSSREF_TYPES = {
+    "journal-article",
+    "proceedings-article",
+    "book",
+    "book-chapter",
+    "posted-content",
+    "dissertation",
+    "report",
+    "monograph",
+    "edited-book",
+    "reference-entry",
+}
 
-      - name: OpenAlex es Crossref API teszt
-        env:
-          OPENALEX_API_KEY: ${{ secrets.OPENALEX_API_KEY }}
-          CROSSREF_MAILTO: ${{ secrets.CROSSREF_MAILTO }}
-        run: |
-          python test_sources.py
+EXCLUDED_TYPES = {
+    "dataset",
+    "software",
+    "component",
+    "paratext",
+    "editorial",
+    "journal-editorial",
+    "book-review",
+    "peer-review",
+    "journal-issue",
+    "journal-volume",
+    "proceedings",
+    "journal",
+    "book-series",
+    "study-registration",
+}
+
+REVIEW_TITLES = {
+    "index",
+    "chronology",
+    "contents",
+    "table of contents",
+    "foreword",
+    "preface",
+    "acknowledgements",
+    "acknowledgments",
+}
+
+EXCLUDED_TITLE_PREFIXES = (
+    "code for ",
+    "software for ",
+)
+
+LANGUAGE_WORDS = ("the", "and", "of")
+LANGUAGE_WORD_MINIMUM = 3
+
+
+def get_start_date():
+    """A mai naphoz képest 12 hónappal korábbi dátum."""
+    today = date.today()
+    year = today.year - 1
+    day = min(
+        today.day,
+        calendar.monthrange(year, today.month)[1]
+    )
+    return date(year, today.month, day)
+
+
+def print_header(title):
+    print()
+    print("=" * 70)
+    print(title)
+    print("=" * 70)
+
+
+def request_openalex(start_date, end_date):
+    api_key = os.getenv("OPENALEX_API_KEY")
+
+    if not api_key:
+        raise RuntimeError(
+            "Hiányzik az OPENALEX_API_KEY GitHub Secret."
+        )
+
+    params = {
+        "api_key": api_key,
+        "filter": (
+            f"from_publication_date:{start_date},"
+            f"to_publication_date:{end_date},"
+            "language:en"
+        ),
+        "per_page": FETCH_LIMIT,
+        "sort": "publication_date:desc",
+    }
+
+    response = requests.get(
+        OPENALEX_URL,
+        params=params,
+        timeout=TIMEOUT_SECONDS,
+    )
+    response.raise_for_status()
+    return response.json().get("results", [])
