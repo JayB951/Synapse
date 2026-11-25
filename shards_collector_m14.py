@@ -1,7 +1,7 @@
 
 """
 WORLD SHARDS - M1.4 Content Collector
-Version: 0.2.0
+Version: 0.3.0
 
 Sections:
 - unsolved
@@ -12,7 +12,8 @@ Sources:
 - xkcd JSON API
 - JokeAPI
 
-All records are stored as candidate records.
+JokeAPI content filtering: DISABLED
+All records are stored as candidates.
 """
 
 import os
@@ -26,7 +27,7 @@ import requests
 from supabase import create_client
 
 
-VERSION = "0.2.0"
+VERSION = "0.3.0"
 
 WIKIPEDIA_API = "https://en.wikipedia.org/w/api.php"
 XKCD_API = "https://xkcd.com/info.0.json"
@@ -40,7 +41,7 @@ JOKE_LIMIT = 5
 
 HEADERS = {
     "User-Agent": (
-        "WorldShardsCollector/0.2.0 "
+        "WorldShardsCollector/0.3.0 "
         "(content research project; contact via GitHub repository)"
     )
 }
@@ -68,10 +69,6 @@ UNSOLVED_KEYWORDS = [
     "remains unclear",
     "not known",
 ]
-
-JOKE_BLACKLIST = (
-    "nsfw,religious,political,racist,sexist,explicit"
-)
 
 
 # --------------------------------------------------
@@ -324,7 +321,6 @@ def build_xkcd_record(comic):
     transcript = clean_text(comic.get("transcript", ""))
 
     image_url = comic.get("img", "")
-
     source_url = f"https://xkcd.com/{comic_number}/"
 
     body_parts = [
@@ -410,16 +406,17 @@ def collect_xkcd(supabase):
 
 
 # --------------------------------------------------
-# CLOSING - JOKEAPI
+# CLOSING - JOKEAPI (NO FILTERING)
 # --------------------------------------------------
 
 def fetch_jokes():
     params = {
         "amount": JOKE_LIMIT,
-        "blacklistFlags": JOKE_BLACKLIST,
         "format": "json",
-        "safe-mode": "",
     }
+
+    # Intentionally no blacklistFlags or safe-mode.
+    # All JokeAPI categories and content flags are allowed.
 
     response = requests.get(
         JOKE_API,
@@ -450,7 +447,6 @@ def fetch_jokes():
 def build_joke_record(joke):
     category = clean_text(joke.get("category", "Any"))
     joke_id = joke.get("id")
-
     joke_type = joke.get("type", "single")
 
     if joke_type == "twopart":
@@ -499,14 +495,15 @@ def build_joke_record(joke):
             "category": category,
             "joke_type": joke_type,
             "flags": flags,
-            "safe_mode": True,
-            "blacklist_flags": JOKE_BLACKLIST,
+            "content_filtering": False,
         },
     }
 
 
 def collect_jokes(supabase):
-    logging.info("CLOSING: fetching jokes from JokeAPI.")
+    logging.info(
+        "CLOSING: fetching unfiltered jokes from JokeAPI."
+    )
 
     jokes = fetch_jokes()
 
