@@ -23,18 +23,18 @@ grant select, insert, update, delete on public.shard_article_feedback to anon;
 drop policy if exists "Anonymous readers can read feedback" on public.shard_article_feedback;
 create policy "Anonymous readers can read feedback"
     on public.shard_article_feedback for select to anon
-    using (true);
+    using (voter_token::text = coalesce(current_setting('request.headers', true)::json ->> 'x-reader-token', ''));
 
 drop policy if exists "Anonymous readers can add feedback" on public.shard_article_feedback;
 create policy "Anonymous readers can add feedback"
     on public.shard_article_feedback for insert to anon
-    with check (true);
+    with check (voter_token::text = coalesce(current_setting('request.headers', true)::json ->> 'x-reader-token', ''));
 
 drop policy if exists "Anonymous readers can update feedback" on public.shard_article_feedback;
 create policy "Anonymous readers can update feedback"
     on public.shard_article_feedback for update to anon
-    using (true)
-    with check (true);
+    using (voter_token::text = coalesce(current_setting('request.headers', true)::json ->> 'x-reader-token', ''))
+    with check (voter_token::text = coalesce(current_setting('request.headers', true)::json ->> 'x-reader-token', ''));
 
 drop policy if exists "Anonymous readers can remove feedback" on public.shard_article_feedback;
 create policy "Anonymous readers can remove feedback"
