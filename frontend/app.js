@@ -11,6 +11,7 @@ const sections = [
 ];
 
 const grid = document.querySelector("#section-grid");
+const feed = document.querySelector("#article-feed");
 const statusTitle = document.querySelector("#edition-status-title");
 const statusText = document.querySelector("#edition-status-text");
 const statusCode = document.querySelector("#edition-status-code");
@@ -18,25 +19,11 @@ const dateNode = document.querySelector("#edition-date");
 const headerDate = document.querySelector("#header-date");
 const yearNode = document.querySelector("#year");
 const countNode = document.querySelector("#edition-count");
-
-function renderSections(items = []) {
-  if (!grid) return;
-  const counts = Object.fromEntries(sections.map(([, code]) => [code, 0]));
-  items.forEach(item => {
-    if (Object.hasOwn(counts, item.section_code)) counts[item.section_code]++;
-  });
-  grid.innerHTML = sections.map(([number, code, title, description]) => {
-    const count = counts[code];
-    return `
-      <article class="section-card">
-        <span class="card-number">${number} / ${String(count).padStart(2, "0")}</span>
-        <span class="card-arrow" aria-hidden="true">↗</span>
-        <h3>${title}</h3>
-        <p>${description}</p>
-      </article>
-    `;
-  }).join("");
-}
+const reader = document.querySelector("#article-reader");
+const readerTitle = document.querySelector("#reader-title");
+const readerSummary = document.querySelector("#reader-summary");
+const readerBody = document.querySelector("#reader-body");
+const readerSection = document.querySelector("#reader-section");
 
 function showStatus(title, message, code = "SUPABASE · READ ONLY") {
   if (statusTitle) statusTitle.textContent = title;
@@ -52,26 +39,98 @@ function formatEditionDate(value) {
   }).format(new Date(value + "T12:00:00"));
 }
 
+function makeElement(tag, className, text) {
+  const node = document.createElement(tag);
+  if (className) node.className = className;
+  if (text !== undefined && text !== null) node.textContent = text;
+  return node;
+}
+
+function renderSections(items = []) {
+  if (!grid) return;
+  const counts = Object.fromEntries(sections.map(([, code]) => [code, 0]));
+  items.forEach(item => {
+    if (Object.hasOwn(counts, item.section_code)) counts[item.section_code]++;
+  });
+  grid.replaceChildren();
+  sections.forEach(([number, code, title, description]) => {
+    const card = makeElement("article", "section-card");
+    card.append(
+      makeElement("span", "card-number", number + " / " + String(counts[code]).padStart(2, "0")),
+      makeElement("span", "card-arrow", "↗"),
+      makeElement("h3", "", title),
+      makeElement("p", "", description)
+    );
+    grid.append(card);
+  });
+}
+
+function openArticle(item, sectionName) {
+  readerTitle.textContent = item.display_title || "Cím nélkül";
+  readerSummary.textContent = item.display_summary || "";
+  readerBody.textContent = item.display_body || "Ehhez az elemhez nem érhető el cikk szöveg.";
+  readerSection.textContent = sectionName;
+  if (typeof reader.showModal === "function") reader.showModal();
+  else reader.setAttribute("open", "");
+}
+
+function renderArticles(items = []) {
+  if (!feed) return;
+  feed.replaceChildren();
+
+  if (!items.length) {
+    feed.append(makeElement("p", "empty-feed", "A publikált kiadás tartalma itt jelenik majd meg."));
+    return;
+  }
+
+  sections.forEach(([number, code, title, description]) => {
+    const sectionItems = items.filter(item => item.section_code === code)
+      .sort((a, b) => (a.position || 0) - (b.position || 0));
+    if (!sectionItems.length) return;
+
+    const group = makeElement("section", "article-group");
+    group.id = "rovat-" + code;
+    const heading = makeElement("div", "article-group-heading");
+    const headingCopy = makeElement("div", "");
+    headingCopy.append(makeElement("span", "eyebrow", number + " · " + title));
+    headingCopy.append(makeElement("p", "group-description", description));
+    heading.append(headingCopy, makeElement("span", "group-total", String(sectionItems.length).padStart(2, "0")));
+    group.append(heading);
+
+    const cards = makeElement("div", "article-cards");
+    sectionItems.forEach((item, index) => {
+      const card = makeElement("article", "article-card");
+      const meta = makeElement("div", "article-meta");
+      meta.append(
+        makeElement("span", "", number + "." + String(index + 1).padStart(2, "0")),
+        makeElement("span", "", code === "closing" ? "ZÁRÓTARTALOM" : "WORLD SHARDS")
+      );
+      const titleNode = makeElement("h3", "", item.display_title || "Cím nélkül");
+      const summary = makeElement("p", "article-summary", item.display_summary || "");
+      const button = makeElement("button", "read-article", "Cikk olvasása  ↗");
+      button.type = "button";
+      button.addEventListener("click", () => openArticle(item, title));
+      card.append(meta, titleNode, summary, button);
+      cards.append(card);
+    });
+    group.append(cards);
+    feed.append(group);
+  });
+}
+
 async function loadPublishedEdition() {
   const config = window.WORLD_SHARDS_CONFIG || {};
   const supabaseUrl = (config.supabaseUrl || "").replace(/\/$/, "");
   const anonKey = config.supabaseAnonKey || "";
 
   if (!supabaseUrl || !anonKey || supabaseUrl.includes("IDE_") || anonKey.includes("IDE_")) {
-    showStatus(
-      "A Supabase-kapcsolat konfigurálásra vár",
-      "A frontend elkészült az olvasási kapcsolattal. A Supabase projekt URL-jét és nyilvános anon kulcsát még be kell állítani.",
-      "F1 · CONFIG REQUIRED"
-    );
+    showStatus("A Supabase-kapcsolat konfigurálásra vár", "A nyilvános adatkapcsolat beállítása hiányzik.", "F1 · CONFIG REQUIRED");
     renderSections();
+    renderArticles();
     return;
   }
 
-  const headers = {
-    apikey: anonKey,
-    Authorization: `Bearer ${anonKey}`,
-    Accept: "application/json"
-  };
+  const headers = { apikey: anonKey, Authorization: `Bearer ${anonKey}`, Accept: "application/json" };
 
   try {
     showStatus("Kapcsolódás a napi kiadáshoz", "A publikált kiadás ellenőrzése folyamatban…");
@@ -83,12 +142,9 @@ async function loadPublishedEdition() {
     const editions = await editionsResponse.json();
 
     if (!editions.length) {
-      showStatus(
-        "Jelenleg nincs publikált napi kiadás",
-        "A rendszer kapcsolata él. Amint egy kiadás published státuszt kap, itt automatikusan megjelenik. A piszkozatok nem nyilvánosak.",
-        "SUPABASE · CONNECTED"
-      );
+      showStatus("Jelenleg nincs publikált napi kiadás", "A rendszer kapcsolata él. Amint egy kiadás published státuszt kap, itt automatikusan megjelenik. A piszkozatok nem nyilvánosak.", "SUPABASE · CONNECTED");
       renderSections();
+      renderArticles();
       if (countNode) countNode.textContent = "— TARTALOM · 9 ROVAT";
       return;
     }
@@ -105,23 +161,23 @@ async function loadPublishedEdition() {
     if (dateNode) dateNode.textContent = formatted.toLocaleUpperCase("hu-HU");
     if (headerDate) headerDate.textContent = formatted.toLocaleUpperCase("hu-HU");
     if (countNode) countNode.textContent = `${items.length} TARTALOM · 9 ROVAT`;
-    showStatus(
-      edition.title || "A napi kiadás elérhető",
-      edition.introduction || "A mai kiadás betöltődött.",
-      `PUBLISHED · ${items.length} ITEMS`
-    );
+    showStatus(edition.title || "A napi kiadás elérhető", edition.introduction || "A mai kiadás betöltődött.", `PUBLISHED · ${items.length} ITEMS`);
     renderSections(items);
+    renderArticles(items);
   } catch (error) {
     console.error("WORLD SHARDS Supabase error:", error);
-    showStatus(
-      "A napi kiadás most nem tölthető be",
-      "A Supabase-kapcsolat vagy az anon olvasási jogosultság ellenőrzést igényel. A piszkozatok ettől függetlenül nem kerülnek nyilvánosságra.",
-      "SUPABASE · CONNECTION ERROR"
-    );
+    showStatus("A napi kiadás most nem tölthető be", "A Supabase-kapcsolat vagy az anon olvasási jogosultság ellenőrzést igényel. A piszkozatok ettől függetlenül nem kerülnek nyilvánosságra.", "SUPABASE · CONNECTION ERROR");
     renderSections();
+    renderArticles();
   }
 }
 
-const now = new Date();
-if (yearNode) yearNode.textContent = now.getFullYear();
+if (reader) {
+  reader.querySelector(".reader-close")?.addEventListener("click", () => reader.close());
+  reader.addEventListener("click", event => {
+    if (event.target === reader) reader.close();
+  });
+}
+
+if (yearNode) yearNode.textContent = new Date().getFullYear();
 loadPublishedEdition();
