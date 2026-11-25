@@ -217,15 +217,15 @@ def is_valid_battle_article(page):
     """Accept articles about a specific, named battle or siege, not books or general military topics."""
     title = clean_text(page.get("title", ""))
     extract = clean_text(page.get("extract", ""))
-    title_is_battle = re.search(r"\\b(battle|siege)\\b", title, re.IGNORECASE)
+    title_is_battle = re.search(r"\b(battle|siege)\\b", title, re.IGNORECASE)
     extract_describes_battle = re.search(
-        r"\\b(was a battle|was fought|battle took place|siege began|siege lasted|"
+        r"\b(was a battle|was fought|battle took place|siege began|siege lasted|"
         r"besieged|fought between|forces of|army of)\\b",
         extract,
         re.IGNORECASE,
     )
     excluded_title = re.search(
-        r"\\b(book|film|novel|video game|board game|album|song)\\b",
+        r"\b(book|film|novel|video game|board game|album|song)\\b",
         title,
         re.IGNORECASE,
     )
