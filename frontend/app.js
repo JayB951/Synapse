@@ -22,6 +22,7 @@ const countNode = document.querySelector("#edition-count");
 const reader = document.querySelector("#article-reader");
 const readerTitle = document.querySelector("#reader-title");
 const readerSummary = document.querySelector("#reader-summary");
+const readerImage = document.querySelector("#reader-image");
 const readerBody = document.querySelector("#reader-body");
 const readerSection = document.querySelector("#reader-section");
 const readerSource = document.querySelector("#reader-source");
@@ -70,6 +71,31 @@ function renderSections(items = []) {
     );
     grid.append(card);
   });
+}
+
+function getSourceRecord(item) {
+  return Array.isArray(item.shard_content_items)
+    ? item.shard_content_items[0]
+    : item.shard_content_items;
+}
+
+function makeArtworkImage(source, title, className) {
+  const imageUrl = source?.image_url;
+  if (!imageUrl) return null;
+
+  try {
+    const url = new URL(imageUrl);
+    if (url.protocol !== "https:" && url.protocol !== "http:") return null;
+
+    const image = makeElement("img", className);
+    image.src = url.href;
+    image.alt = title ? `A műalkotás: ${title}` : "A nap műalkotása";
+    image.loading = "lazy";
+    image.decoding = "async";
+    return image;
+  } catch (_) {
+    return null;
+  }
 }
 
 function getVoterToken() {
@@ -161,6 +187,14 @@ async function loadFeedbackVotes(items, headers, supabaseUrl) {
 function openArticle(item, sectionName) {
   readerTitle.textContent = item.display_title || "Cím nélkül";
   readerSummary.textContent = item.display_summary || "";
+  const source = getSourceRecord(item);
+  if (readerImage) {
+    readerImage.replaceChildren();
+    if (item.section_code === "art_of_the_day") {
+      const image = makeArtworkImage(source, item.display_title, "reader-artwork-image");
+      if (image) readerImage.append(image);
+    }
+  }
   readerBody.textContent = item.display_body || "Ehhez az elemhez nem érhető el cikk szöveg.";
   readerSection.textContent = sectionName;
   readerFeedbackItemId = item.id;
@@ -170,9 +204,6 @@ function openArticle(item, sectionName) {
   }
   if (readerSource) {
     readerSource.replaceChildren();
-    const source = Array.isArray(item.shard_content_items)
-      ? item.shard_content_items[0]
-      : item.shard_content_items;
     if (source && (source.source_name || source.source_url || source.source_published_at)) {
       const label = makeElement("span", "source-label", "EREDETI FORRÁS");
       readerSource.append(label);
@@ -239,6 +270,11 @@ function renderArticles(items = []) {
       button.addEventListener("click", () => openArticle(item, title));
       const feedback = createFeedbackButton(item.id);
       feedback.dataset.feedbackItem = item.id;
+      const source = getSourceRecord(item);
+      const artworkImage = code === "art_of_the_day"
+        ? makeArtworkImage(source, item.display_title, "article-artwork-image")
+        : null;
+      if (artworkImage) card.append(artworkImage);
       card.append(meta, titleNode, summary, feedback, button);
       cards.append(card);
     });
@@ -280,7 +316,7 @@ async function loadPublishedEdition() {
 
     const edition = editions[0];
     const itemsResponse = await fetch(
-      `${supabaseUrl}/rest/v1/shard_edition_items?select=id,section_code,position,display_title,display_summary,display_body,processing_status,shard_content_items(source_name,source_url,source_published_at)&edition_id=eq.${encodeURIComponent(edition.id)}&processing_status=eq.completed&order=position.asc`,
+      `${supabaseUrl}/rest/v1/shard_edition_items?select=id,section_code,position,display_title,display_summary,display_body,processing_status,shard_content_items(source_name,source_url,source_published_at,image_url)&edition_id=eq.${encodeURIComponent(edition.id)}&processing_status=eq.completed&order=position.asc`,
       { headers }
     );
     if (!itemsResponse.ok) throw new Error(`Tartalomlekérdezés: HTTP ${itemsResponse.status}`);
