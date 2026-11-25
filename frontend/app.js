@@ -148,6 +148,7 @@ async function loadFeedbackVotes(items, headers, supabaseUrl) {
   feedbackHeaders = headers;
   feedbackApiUrl = supabaseUrl;
   const token = getVoterToken();
+  feedbackHeaders = { ...headers, "x-reader-token": token };
   const response = await fetch(
     `${supabaseUrl}/rest/v1/shard_article_feedback?select=edition_item_id,vote&voter_token=eq.${encodeURIComponent(token)}`,
     { headers }
