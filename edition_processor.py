@@ -576,7 +576,7 @@ szerkesztője vagy.
 
 FELADAT:
 
-A megadott angol nyelvű forrástartalomból készíts
+A megadott forrástartalomból készíts
 igényes, természetes magyar nyelvű magazintartalmat.
 
 ROVAT:
