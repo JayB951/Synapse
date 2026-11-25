@@ -134,7 +134,9 @@ def fetch_wikipedia_pages(search_query):
         "gsrsearch": search_query,
         "gsrnamespace": 0,
         "gsrlimit": 12,
-        "prop": "extracts|info|coordinates",
+        "prop": "extracts|info|coordinates|pageimages",
+        "piprop": "thumbnail",
+        "pithumbsize": 1600,
         "exintro": 1,
         "explaintext": 1,
         "inprop": "url",
@@ -196,16 +198,16 @@ def get_coordinates(page):
     }
 
 
-def content_exists(supabase, source_url):
+def get_existing_content(supabase, source_url):
     result = (
         supabase.table("shard_content_items")
-        .select("id")
+        .select("id,image_url")
         .eq("source_url", source_url)
         .limit(1)
         .execute()
     )
 
-    return bool(result.data)
+    return result.data[0] if result.data else None
 
 
 def build_record(section_code, page, search_query):
@@ -236,6 +238,8 @@ def build_record(section_code, page, search_query):
         "wikipedia_page_id": page.get("pageid"),
         "wikipedia_title": title,
         "coordinates": get_coordinates(page),
+        "image_url": (page.get("thumbnail") or {}).get("source"),
+        "image_source": "Wikipedia page thumbnail",
     }
 
     return {
@@ -243,6 +247,7 @@ def build_record(section_code, page, search_query):
         "title": title,
         "summary": summary,
         "body": extract,
+        "image_url": (page.get("thumbnail") or {}).get("source") if section_code == "world_explorer" else None,
         "source_name": "Wikipedia",
         "source_url": source_url,
         "source_language": "en",
@@ -276,7 +281,31 @@ def collect_section(supabase, section_code):
 
         record = build_record(section_code, page, search_query)
 
-        if content_exists(supabase, record["source_url"]):
+        # A World Explorer-helyszín csak tényleges képpel kerülhet be.
+        if section_code == "world_explorer" and not record.get("image_url"):
+            skipped += 1
+            logging.info(
+                "World Explorer: '%s' kihagyva, mert nincs elérhető kép.",
+                record["title"],
+            )
+            continue
+
+        existing = get_existing_content(supabase, record["source_url"])
+
+        if existing:
+            # Korábban gyűjtött helyszínek képének utólagos pótlása.
+            if (
+                section_code == "world_explorer"
+                and not existing.get("image_url")
+                and record.get("image_url")
+            ):
+                supabase.table("shard_content_items").update({
+                    "image_url": record["image_url"]
+                }).eq("id", existing["id"]).execute()
+                logging.info(
+                    "World Explorer kép pótolva: '%s'",
+                    record["title"],
+                )
             skipped += 1
             continue
 
