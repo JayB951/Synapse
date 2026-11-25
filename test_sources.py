@@ -1,7 +1,8 @@
-
 import os
 import sys
 import calendar
+import re
+import html
 from datetime import date
 from collections import Counter
 
@@ -15,8 +16,10 @@ FETCH_LIMIT = 50
 DISPLAY_LIMIT = 10
 TIMEOUT_SECONDS = 30
 
+# Az OpenAlex eredeti angol nyelvi API-szűrője megmarad.
+# A szövegalapú tartalékellenőrzés a hiányzó/bizonytalan
+# nyelvi metaadatú, ténylegesen lekért rekordokra vonatkozik.
 
-# Elfogadott tudományos publikációtípusok
 ACCEPTED_OPENALEX_TYPES = {
     "article",
     "book",
@@ -41,7 +44,6 @@ ACCEPTED_CROSSREF_TYPES = {
     "reference-entry",
 }
 
-# Kizárandó rekordtípusok
 EXCLUDED_TYPES = {
     "dataset",
     "software",
@@ -59,8 +61,6 @@ EXCLUDED_TYPES = {
     "study-registration",
 }
 
-# Olyan általános címek, amelyek nem fogadhatók el
-# automatikusan, de kézi ellenőrzést érdemelnek.
 REVIEW_TITLES = {
     "index",
     "chronology",
@@ -72,11 +72,13 @@ REVIEW_TITLES = {
     "acknowledgments",
 }
 
-# Ezek a címek önálló kód- vagy szoftverrekordra utalnak.
 EXCLUDED_TITLE_PREFIXES = (
     "code for ",
     "software for ",
 )
+
+LANGUAGE_WORDS = ("the", "and", "of")
+LANGUAGE_WORD_MINIMUM = 3
 
 
 def get_start_date():
@@ -122,7 +124,6 @@ def request_openalex(start_date, end_date):
         timeout=TIMEOUT_SECONDS,
     )
     response.raise_for_status()
-
     return response.json().get("results", [])
 
 
@@ -156,29 +157,170 @@ def request_crossref(start_date, end_date):
         timeout=TIMEOUT_SECONDS,
     )
     response.raise_for_status()
-
     return response.json().get("message", {}).get("items", [])
+
+
+def reconstruct_openalex_abstract(inverted_index):
+    """Az OpenAlex pozícióalapú absztraktját normál szöveggé alakítja."""
+    if not isinstance(inverted_index, dict) or not inverted_index:
+        return ""
+
+    positioned_words = []
+
+    for word, positions in inverted_index.items():
+        for position in positions:
+            try:
+                positioned_words.append((int(position), word))
+            except (TypeError, ValueError):
+                continue
+
+    if not positioned_words:
+        return ""
+
+    max_position = max(position for position, _ in positioned_words)
+
+    # Hibás vagy rendellenesen nagy index ne foglalhasson túl sok memóriát.
+    if max_position > 20000:
+        return ""
+
+    words = [""] * (max_position + 1)
+
+    for position, word in positioned_words:
+        words[position] = word
+
+    return " ".join(word for word in words if word)
+
+
+def clean_abstract(abstract):
+    """HTML/XML jelölések és HTML-entitások eltávolítása."""
+    if not abstract:
+        return ""
+
+    text = html.unescape(str(abstract))
+    text = re.sub(r"<[^>]*>", " ", text)
+    text = re.sub(r"\s+", " ", text)
+    return text.strip()
+
+
+def get_language_metadata_status(language):
+    """
+    Visszatérési érték:
+    - 'english': a metaadat egyértelműen angol.
+    - 'non_english': a metaadat más nyelvet jelöl.
+    - 'unknown': hiányzó vagy nem eldönthető metaadat.
+    """
+    if language is None:
+        return "unknown"
+
+    normalized = str(language).strip().lower().replace("_", "-")
+
+    if not normalized or normalized in {
+        "und", "mul", "zxx", "unknown", "undetermined",
+        "not specified", "not available",
+    }:
+        return "unknown"
+
+    if normalized in {"en", "eng", "english"}:
+        return "english"
+
+    if normalized.startswith("en-"):
+        return "english"
+
+    return "non_english"
+
+
+def count_language_words(text):
+    """A három keresett szót különálló szóként számolja."""
+    normalized = (text or "").lower()
+    normalized = re.sub(r"[^\w\s]", " ", normalized)
+    words = normalized.split()
+    counts = Counter(words)
+
+    return {
+        word: counts[word]
+        for word in LANGUAGE_WORDS
+    }
+
+
+def check_language(language, title="", abstract=""):
+    """
+    Elsődlegesen a nyelvi metaadat dönt.
+    Hiányzó/bizonytalan metaadat esetén a cím + absztrakt
+    szövegében mindhárom kulcsszónak legalább háromszor
+    kell szerepelnie.
+    """
+    metadata_status = get_language_metadata_status(language)
+
+    if metadata_status == "english":
+        return "ANGOL – METAADAT ALAPJÁN", True
+
+    if metadata_status == "non_english":
+        return (
+            f"NEM ANGOL – METAADAT ALAPJÁN ({language})",
+            False,
+        )
+
+    combined_text = f"{title or ''} {abstract or ''}"
+    counts = count_language_words(combined_text)
+
+    accepted = all(
+        counts[word] >= LANGUAGE_WORD_MINIMUM
+        for word in LANGUAGE_WORDS
+    )
+
+    count_summary = ", ".join(
+        f"{word}={counts[word]}"
+        for word in LANGUAGE_WORDS
+    )
+
+    if accepted:
+        return (
+            f"ANGOL – SZÖVEG ALAPJÁN ({count_summary})",
+            True,
+        )
+
+    return (
+        f"NEM ANGOL – SZÖVEGES SZŰRÉS ({count_summary})",
+        False,
+    )
+
+
+def run_language_filter_tests():
+    """Gyors, hálózat nélküli ellenőrzés a nyelvi szabályokra."""
+    valid_text = "the and of " * 3
+
+    assert check_language("en", "Short title", "")[1] is True
+    assert check_language("fr", valid_text, "")[1] is False
+    assert check_language(None, valid_text, "")[1] is True
+    assert check_language("und", valid_text, "")[1] is True
+    assert check_language("unknown", valid_text, "")[1] is True
+    assert check_language(None, "theory android office " * 5, "")[1] is False
+    assert check_language(None, "the and of", "")[1] is False
+
+    reconstructed = reconstruct_openalex_abstract({
+        "the": [0, 3, 6],
+        "and": [1, 4, 7],
+        "of": [2, 5, 8],
+    })
+    assert reconstructed == valid_text.strip()
+
+    print("Nyelvi szűrő önellenőrzése: SIKERES")
 
 
 def classify_record(publication_type, accepted_types, title):
     """A rekord típusának és címének együttes értékelése."""
-
     normalized_title = (title or "").strip().lower()
     normalized_type = (publication_type or "").strip().lower()
 
-    # Értelmezhető cím kötelező.
     if not normalized_title:
         return "KIZÁRVA – HIÁNYZÓ CÍM"
 
-    # Kód- és szoftverrekordok kizárása.
     if normalized_title.startswith(EXCLUDED_TITLE_PREFIXES):
         return "KIZÁRVA – KÓD VAGY SZOFTVER"
 
-    # Általános címek kézi ellenőrzése.
     if normalized_title in REVIEW_TITLES:
         return "ELLENŐRZENDŐ – ÁLTALÁNOS CÍM"
 
-    # Publikációtípus ellenőrzése.
     if normalized_type in EXCLUDED_TYPES:
         return "KIZÁRVA – NEM KÍVÁNT TÍPUS"
 
@@ -188,23 +330,7 @@ def classify_record(publication_type, accepted_types, title):
     return "ELLENŐRZENDŐ – ISMERETLEN TÍPUS"
 
 
-def check_language(language):
-    """Nyelvi metaadat előzetes ellenőrzése."""
-
-    if not language:
-        return "HIÁNYZIK – NYELVFELISMERÉS SZÜKSÉGES"
-
-    normalized = str(language).lower().strip()
-
-    if normalized in {"en", "eng", "english"}:
-        return "ANGOL – METAADAT ALAPJÁN"
-
-    return f"NEM ANGOL VAGY NEM FELISMERT: {language}"
-
-
 def check_topics(topics):
-    """Témaköri adatok meglétének ellenőrzése."""
-
     if not topics:
         return "HIÁNYZIK – KÉSŐBBI TÉMAAZONOSÍTÁS SZÜKSÉGES"
 
@@ -215,10 +341,8 @@ def get_crossref_publication_date(item):
     """
     A rendelkezésre álló publikációs dátumok közül
     a legkorábbi érvényes dátum kiválasztása.
-
     A Crossref rekord létrehozási dátumát nem használjuk.
     """
-
     date_fields = [
         "published-online",
         "published-print",
@@ -243,10 +367,7 @@ def get_crossref_publication_date(item):
             month = int(parts[1]) if len(parts) > 1 else 1
             day = int(parts[2]) if len(parts) > 2 else 1
 
-            available_dates.append(
-                date(year, month, day)
-            )
-
+            available_dates.append(date(year, month, day))
         except (ValueError, TypeError, IndexError):
             continue
 
@@ -261,7 +382,7 @@ def print_record(index, record):
     print("Dátum:", record["date"] or "Nincs adat")
     print("Típus:", record["type"] or "Nincs adat")
     print("Besorolás:", record["classification"])
-    print("Nyelv:", check_language(record["language"]))
+    print("Nyelv:", record["language_status"])
     print("Témák:", check_topics(record["topics"]))
 
     print(
@@ -291,7 +412,7 @@ def print_summary(records, source_name):
     )
 
     print("Lekért rekordok:", len(records))
-    print("Elfogadható típus és cím:", counts["ELFOGADHATÓ"])
+    print("Elfogadható publikáció:", counts["ELFOGADHATÓ"])
     print("Kizárt rekord:", counts["KIZÁRVA"])
     print("Ellenőrzendő rekord:", counts["ELLENŐRZENDŐ"])
 
@@ -313,9 +434,7 @@ def print_summary(records, source_name):
         ):
             print_record(index, record)
 
-    print_header(
-        f"{source_name} – KIZÁRT REKORDOK"
-    )
+    print_header(f"{source_name} – KIZÁRT REKORDOK")
 
     excluded = [
         record for record in records
@@ -332,9 +451,7 @@ def print_summary(records, source_name):
                 f"| {record['classification']}"
             )
 
-    print_header(
-        f"{source_name} – ELLENŐRZENDŐ REKORDOK"
-    )
+    print_header(f"{source_name} – ELLENŐRZENDŐ REKORDOK")
 
     review = [
         record for record in records
@@ -342,7 +459,7 @@ def print_summary(records, source_name):
     ]
 
     if not review:
-        print("Nincs kézi ellenőrzést igénylő rekord.")
+        print("Nincs ellenőrzendő rekord.")
     else:
         for index, record in enumerate(review[:10], start=1):
             print(
@@ -350,6 +467,14 @@ def print_summary(records, source_name):
                 f"| Típus: {record['type']} "
                 f"| {record['classification']}"
             )
+
+
+def apply_language_decision(classification, language_status, is_english):
+    """A nyelvi kizárás minden publikációtípus-besorolást megelőz."""
+    if not is_english:
+        return "KIZÁRVA – NEM ANGOL"
+
+    return classification
 
 
 def process_openalex(records):
@@ -360,6 +485,9 @@ def process_openalex(records):
     for item in records:
         publication_type = item.get("type") or ""
         title = item.get("title") or ""
+        abstract_text = reconstruct_openalex_abstract(
+            item.get("abstract_inverted_index")
+        )
 
         topics = [
             topic.get("display_name", "")
@@ -373,10 +501,22 @@ def process_openalex(records):
             if authorship.get("author", {}).get("display_name")
         ]
 
-        classification = classify_record(
+        base_classification = classify_record(
             publication_type,
             ACCEPTED_OPENALEX_TYPES,
             title,
+        )
+
+        language_status, is_english = check_language(
+            item.get("language"),
+            title,
+            abstract_text,
+        )
+
+        classification = apply_language_decision(
+            base_classification,
+            language_status,
+            is_english,
         )
 
         classified.append({
@@ -384,9 +524,10 @@ def process_openalex(records):
             "date": item.get("publication_date"),
             "type": publication_type,
             "language": item.get("language"),
+            "language_status": language_status,
             "topics": topics,
             "authors": authors,
-            "abstract": bool(item.get("abstract_inverted_index")),
+            "abstract": abstract_text,
             "classification": classification,
         })
 
@@ -404,8 +545,8 @@ def process_crossref(records):
         title = titles[0] if titles else ""
 
         publication_type = item.get("type") or ""
-
         subjects = item.get("subject") or []
+        abstract_text = clean_abstract(item.get("abstract"))
 
         authors = []
 
@@ -421,10 +562,22 @@ def process_crossref(records):
             if name:
                 authors.append(name)
 
-        classification = classify_record(
+        base_classification = classify_record(
             publication_type,
             ACCEPTED_CROSSREF_TYPES,
             title,
+        )
+
+        language_status, is_english = check_language(
+            item.get("language"),
+            title,
+            abstract_text,
+        )
+
+        classification = apply_language_decision(
+            base_classification,
+            language_status,
+            is_english,
         )
 
         classified.append({
@@ -432,9 +585,10 @@ def process_crossref(records):
             "date": get_crossref_publication_date(item),
             "type": publication_type,
             "language": item.get("language"),
+            "language_status": language_status,
             "topics": subjects,
             "authors": authors,
-            "abstract": bool(item.get("abstract")),
+            "abstract": abstract_text,
             "classification": classification,
         })
 
@@ -445,6 +599,8 @@ def process_crossref(records):
 def main():
     print_header("SYNAPSE – ADATMINŐSÉGI TESZT")
 
+    run_language_filter_tests()
+
     start_date = get_start_date()
     end_date = date.today()
 
@@ -452,45 +608,34 @@ def main():
     print("Forrásonkénti lekérési limit:", FETCH_LIMIT)
     print("Megjelenített elfogadható rekordok:", DISPLAY_LIMIT)
     print("Adatbázisba mentés: NINCS")
+    print("OpenAlex language:en API-szűrés: MEGTARTVA")
+    print("Bizonytalan nyelvű rekord: szövegalapú szűrés")
+    print("Szöveges feltétel: the, and, of – mindegyik legalább 3x")
 
     try:
-        openalex_records = request_openalex(
-            start_date,
-            end_date,
-        )
+        openalex_records = request_openalex(start_date, end_date)
+        crossref_records = request_crossref(start_date, end_date)
 
-        crossref_records = request_crossref(
-            start_date,
-            end_date,
-        )
-
-        openalex_classified = process_openalex(
-            openalex_records
-        )
-
-        crossref_classified = process_crossref(
-            crossref_records
-        )
+        openalex_classified = process_openalex(openalex_records)
+        crossref_classified = process_crossref(crossref_records)
 
         print_header("SYNAPSE – ÖSSZESÍTÉS")
 
         print("OpenAlex rekordok:", len(openalex_classified))
         print("Crossref rekordok:", len(crossref_classified))
-
         print(
             "Összes lekért rekord:",
             len(openalex_classified) + len(crossref_classified),
         )
-
         print("Supabase adatbázis módosítása: NEM")
 
-        print(
-            "A nyelvi és témaköri hiányosságok "
-            "további feldolgozásra várnak."
-        )
-
     except requests.exceptions.HTTPError as error:
-        print("API HTTP HIBA:", error.response.status_code)
+        status_code = (
+            error.response.status_code
+            if error.response is not None
+            else "ismeretlen"
+        )
+        print("API HTTP HIBA:", status_code)
         print("Az API nem fogadta el a lekérdezést.")
         sys.exit(1)
 
