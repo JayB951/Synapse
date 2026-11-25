@@ -13,10 +13,10 @@ from supabase import create_client
 
 # ============================================================
 # WORLD SHARDS - EDITION PROCESSOR
-# Version: 0.3.0
+# Version: 0.4.0
 # ============================================================
 
-VERSION = "0.3.0"
+VERSION = "0.4.0"
 
 MODEL_NAME = "gemini-3.5-flash-lite"
 
@@ -26,10 +26,29 @@ GEMINI_URL = (
 )
 
 REQUEST_TIMEOUT = 60
-REQUEST_DELAY = 2
 
-MAX_OUTPUT_TOKENS = 1600
+# Teljes feldolgozási időkeret
+MAX_PROCESSING_MINUTES = 60
+
+# Két feldolgozási kör közötti várakozás
+ROUND_WAIT_SECONDS = 60
+
+# JSON-hiba esetén ennyi újragenerálás történhet
+JSON_RETRY_LIMIT = 2
+
+# Hálózati és API-hibák esetén alkalmazott várakozások
+RETRY_DELAYS = {
+    429: 180,
+    500: 60,
+    502: 60,
+    503: 90,
+    504: 60
+}
+
+MAX_OUTPUT_TOKENS = 4096
 MAX_SOURCE_LENGTH = 12000
+
+EXPECTED_ITEMS = 13
 
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_SECRET_KEY = os.getenv("SUPABASE_SECRET_KEY")
@@ -53,8 +72,11 @@ logger = logging.getLogger("world_shards_processor")
 # ============================================================
 
 def get_supabase_client():
+
     if not SUPABASE_URL:
-        raise RuntimeError("Hiányzó SUPABASE_URL környezeti változó.")
+        raise RuntimeError(
+            "Hiányzó SUPABASE_URL környezeti változó."
+        )
 
     if not SUPABASE_SECRET_KEY:
         raise RuntimeError(
@@ -68,10 +90,44 @@ def get_supabase_client():
 
 
 # ============================================================
+# TIME MANAGEMENT
+# ============================================================
+
+def remaining_time(deadline):
+
+    return max(
+        0,
+        deadline - time.monotonic()
+    )
+
+
+def wait_with_deadline(seconds, deadline):
+
+    available = remaining_time(deadline)
+
+    if available <= 0:
+        return False
+
+    wait_time = min(
+        seconds,
+        available
+    )
+
+    logger.info(
+        f"Várakozás: {int(wait_time)} másodperc."
+    )
+
+    time.sleep(wait_time)
+
+    return remaining_time(deadline) > 0
+
+
+# ============================================================
 # GEMINI API
 # ============================================================
 
 def call_gemini(prompt):
+
     if not GEMINI_API_KEY:
         raise RuntimeError(
             "Hiányzó GEMINI_API_KEY környezeti változó."
@@ -85,6 +141,7 @@ def call_gemini(prompt):
     payload = {
         "contents": [
             {
+                "role": "user",
                 "parts": [
                     {
                         "text": prompt
@@ -94,52 +151,115 @@ def call_gemini(prompt):
         ],
         "generationConfig": {
             "maxOutputTokens": MAX_OUTPUT_TOKENS,
-            "responseMimeType": "application/json"
+            "responseMimeType": "application/json",
+            "responseSchema": {
+                "type": "OBJECT",
+                "properties": {
+                    "title": {
+                        "type": "STRING"
+                    },
+                    "summary": {
+                        "type": "STRING"
+                    },
+                    "body": {
+                        "type": "STRING"
+                    }
+                },
+                "required": [
+                    "title",
+                    "summary",
+                    "body"
+                ],
+                "propertyOrdering": [
+                    "title",
+                    "summary",
+                    "body"
+                ]
+            }
         }
     }
 
-    response = requests.post(
-        GEMINI_URL,
-        headers=headers,
-        json=payload,
-        timeout=REQUEST_TIMEOUT
-    )
+    try:
+
+        response = requests.post(
+            GEMINI_URL,
+            headers=headers,
+            json=payload,
+            timeout=REQUEST_TIMEOUT
+        )
+
+    except requests.RequestException as error:
+
+        raise RuntimeError(
+            f"Gemini hálózati hiba: {error}"
+        )
 
     if response.status_code == 404:
+
         raise RuntimeError(
-            f"A Gemini modell nem található vagy nem érhető el: "
-            f"{MODEL_NAME}. API válasz: {response.text[:1000]}"
+            f"A Gemini modell nem található: {MODEL_NAME}. "
+            f"Válasz: {response.text[:1000]}"
         )
 
     if response.status_code == 429:
+
         raise RuntimeError(
-            "Gemini API kvótakorlát vagy túl sok kérés. "
-            f"API válasz: {response.text[:1000]}"
+            "Gemini API 429: kvótakorlát vagy túl sok kérés."
+        )
+
+    if response.status_code in RETRY_DELAYS:
+
+        raise RuntimeError(
+            f"Gemini API {response.status_code}: "
+            f"{response.text[:1000]}"
         )
 
     if response.status_code in (401, 403):
+
         raise RuntimeError(
             "Gemini API hitelesítési hiba. "
             "Ellenőrizd a GEMINI_API_KEY GitHub Secret értékét."
         )
 
     if response.status_code >= 400:
+
         raise RuntimeError(
             f"Gemini API hiba ({response.status_code}): "
             f"{response.text[:1500]}"
         )
 
     try:
+
         result = response.json()
 
-        candidates = result.get("candidates", [])
+        candidates = result.get(
+            "candidates",
+            []
+        )
 
         if not candidates:
+
             raise RuntimeError(
                 "A Gemini API nem adott vissza feldolgozható választ."
             )
 
-        parts = candidates[0].get("content", {}).get("parts", [])
+        candidate = candidates[0]
+
+        finish_reason = candidate.get(
+            "finishReason"
+        )
+
+        if finish_reason == "MAX_TOKENS":
+
+            raise RuntimeError(
+                "A Gemini válasza elérte a kimeneti tokenkorlátot."
+            )
+
+        parts = (
+            candidate
+            .get("content", {})
+            .get("parts", [])
+        )
 
         generated_text = "\n".join(
             part.get("text", "")
@@ -148,13 +268,15 @@ def call_gemini(prompt):
         ).strip()
 
         if not generated_text:
+
             raise RuntimeError(
-                "A Gemini API üres szöveges választ adott."
+                "A Gemini API üres választ adott."
             )
 
         return generated_text
 
     except (ValueError, KeyError, TypeError) as error:
+
         raise RuntimeError(
             f"A Gemini API válaszának feldolgozása sikertelen: {error}"
         )
@@ -165,22 +287,36 @@ def call_gemini(prompt):
 # ============================================================
 
 def clean_source_text(value):
+
     if value is None:
         return ""
 
     text = str(value)
+
     text = html.unescape(text)
-    text = re.sub(r"<[^>]+>", " ", text)
-    text = re.sub(r"\s+", " ", text)
+
+    text = re.sub(
+        r"<[^>]+>",
+        " ",
+        text
+    )
+
+    text = re.sub(
+        r"\s+",
+        " ",
+        text
+    )
 
     return text.strip()
 
 
 def clean_display_text(value):
+
     if value is None:
         return ""
 
     text = str(value)
+
     text = html.unescape(text)
 
     text = re.sub(
@@ -240,7 +376,7 @@ SECTION_STYLES = {
             "Művészeti alkotás bemutatása. "
             "Mutasd be az alkotót, a mű keletkezését, "
             "a technikát és az alkotás művészeti jelentőségét. "
-            "Legyen érdekes, közérthető és vizuálisan elképzelhető."
+            "Legyen érdekes és közérthető."
         )
     },
 
@@ -250,7 +386,7 @@ SECTION_STYLES = {
             "Filozófiai vagy gondolkodástörténeti téma. "
             "Mutasd be az alapgondolatot, annak hátterét, "
             "és azt, hogy miért érdekes ma is. "
-            "A szöveg gondolatébresztő legyen."
+            "A szöveg legyen gondolatébresztő."
         )
     },
 
@@ -261,7 +397,7 @@ SECTION_STYLES = {
             "Mutasd be a történelmi hátteret, a szereplőket, "
             "a stratégiai helyzetet, a történéseket "
             "és azok következményeit. "
-            "A katonai és történelmi pontosság fontos."
+            "A történelmi pontosság fontos."
         )
     },
 
@@ -312,7 +448,10 @@ SECTION_STYLES = {
 # SOURCE DATA
 # ============================================================
 
-def get_source_content(supabase, content_item_id):
+def get_source_content(
+    supabase,
+    content_item_id
+):
 
     response = (
         supabase
@@ -327,6 +466,7 @@ def get_source_content(supabase, content_item_id):
     )
 
     if not response.data:
+
         raise RuntimeError(
             f"A forrástartalom nem található: {content_item_id}"
         )
@@ -347,10 +487,13 @@ def build_source_text(source):
     ]
 
     for label, value in fields:
+
         cleaned = clean_source_text(value)
 
         if cleaned:
-            parts.append(f"{label}: {cleaned}")
+            parts.append(
+                f"{label}: {cleaned}"
+            )
 
     metadata = source.get("metadata") or {}
 
@@ -368,20 +511,26 @@ def build_source_text(source):
     ]
 
     for key in metadata_fields:
+
         value = metadata.get(key)
 
         if value:
+
             cleaned = clean_source_text(value)
 
             if cleaned:
-                parts.append(f"{key}: {cleaned}")
+                parts.append(
+                    f"{key}: {cleaned}"
+                )
 
     source_text = "\n\n".join(parts)
 
     if len(source_text) > MAX_SOURCE_LENGTH:
+
         source_text = source_text[:MAX_SOURCE_LENGTH]
 
     if not source_text.strip():
+
         raise RuntimeError(
             "A forrástartalom üres, nincs feldolgozható szöveg."
         )
@@ -393,7 +542,10 @@ def build_source_text(source):
 # PROMPT GENERATION
 # ============================================================
 
-def build_prompt(section_code, source):
+def build_prompt(
+    section_code,
+    source
+):
 
     section = SECTION_STYLES.get(
         section_code,
@@ -413,7 +565,7 @@ def build_prompt(section_code, source):
 
     source_url = source.get("source_url") or ""
 
-    prompt = f"""
+    return f"""
 Te a WORLD SHARDS nevű magyar nyelvű digitális magazin
 szerkesztője vagy.
 
@@ -457,8 +609,7 @@ KÖTELEZŐ SZABÁLYOK:
 
 KIMENET:
 
-Kizárólag érvényes JSON objektumot adj vissza,
-az alábbi három mezővel:
+Kizárólag a kért JSON-struktúrát add vissza:
 
 {{
   "title": "Magyar cím",
@@ -470,8 +621,6 @@ A body mezőben 3-5 értelmes bekezdést írj.
 A szöveg hossza igazodjon a forrás tartalmához.
 Ne használj Markdown kódblokkot a JSON körül.
 """
-
-    return prompt
 
 
 # ============================================================
@@ -496,29 +645,18 @@ def parse_generated_content(generated_text):
     )
 
     try:
+
         data = json.loads(text)
 
-    except json.JSONDecodeError:
+    except json.JSONDecodeError as error:
 
-        start = text.find("{")
-        end = text.rfind("}")
-
-        if start == -1 or end == -1 or end <= start:
-            raise RuntimeError(
-                "A Gemini válasza nem tartalmaz érvényes JSON objektumot."
-            )
-
-        try:
-            data = json.loads(
-                text[start:end + 1]
-            )
-
-        except json.JSONDecodeError as error:
-            raise RuntimeError(
-                f"A Gemini JSON válasza hibás: {error}"
-            )
+        raise RuntimeError(
+            "A Gemini JSON válasza hibás: "
+            f"{error}. Válasz eleje: {text[:500]}"
+        )
 
     if not isinstance(data, dict):
+
         raise RuntimeError(
             "A Gemini válasza nem JSON objektum."
         )
@@ -532,11 +670,13 @@ def parse_generated_content(generated_text):
     for field in required_fields:
 
         if field not in data:
+
             raise RuntimeError(
                 f"Hiányzó mező a Gemini válaszában: {field}"
             )
 
         if not isinstance(data[field], str):
+
             raise RuntimeError(
                 f"Hibás adattípus a Gemini válaszában: {field}"
             )
@@ -546,11 +686,69 @@ def parse_generated_content(generated_text):
         )
 
         if not data[field]:
+
             raise RuntimeError(
                 f"Üres mező a Gemini válaszában: {field}"
             )
 
     return data
+
+
+# ============================================================
+# GENERATION WITH JSON RETRIES
+# ============================================================
+
+def generate_content_with_retries(
+    section_code,
+    source
+):
+
+    prompt = build_prompt(
+        section_code,
+        source
+    )
+
+    last_error = None
+
+    for attempt in range(1, JSON_RETRY_LIMIT + 2):
+
+        logger.info(
+            f"Gemini generálás: {attempt}. próbálkozás."
+        )
+
+        generated_text = call_gemini(
+            prompt
+        )
+
+        try:
+
+            return parse_generated_content(
+                generated_text
+            )
+
+        except RuntimeError as error:
+
+            last_error = error
+
+            logger.warning(
+                f"Hibás Gemini-kimenet: {error}"
+            )
+
+            if attempt <= JSON_RETRY_LIMIT:
+
+                prompt += """
+
+FONTOS JAVÍTÁS:
+Az előző válaszod nem volt érvényes JSON.
+Most kizárólag érvényes JSON objektumot adj vissza,
+a title, summary és body mezőkkel.
+Ne írj semmilyen szöveget a JSON elé vagy mögé.
+"""
+
+    raise RuntimeError(
+        f"A Gemini többszöri próbálkozás után sem adott "
+        f"érvényes JSON-t: {last_error}"
+    )
 
 
 # ============================================================
@@ -583,6 +781,7 @@ def save_processed_content(
     )
 
     if response.data is not None and len(response.data) == 0:
+
         raise RuntimeError(
             f"A feldolgozott tartalom mentése nem sikerült: {item_id}"
         )
@@ -632,11 +831,35 @@ def get_latest_draft_edition(supabase):
     )
 
     if not response.data:
+
         raise RuntimeError(
             "Nem található feldolgozható draft kiadvány."
         )
 
     return response.data[0]
+
+
+def get_all_edition_items(
+    supabase,
+    edition_id
+):
+
+    response = (
+        supabase
+        .table("shard_edition_items")
+        .select(
+            "id,edition_id,content_item_id,"
+            "section_code,position,processing_status"
+        )
+        .eq("edition_id", edition_id)
+        .order(
+            "position",
+            desc=False
+        )
+        .execute()
+    )
+
+    return response.data or []
 
 
 def get_pending_items(
@@ -676,7 +899,9 @@ def process_item(
 ):
 
     item_id = item["id"]
+
     content_item_id = item["content_item_id"]
+
     section_code = item["section_code"]
 
     source = get_source_content(
@@ -684,17 +909,9 @@ def process_item(
         content_item_id
     )
 
-    prompt = build_prompt(
+    generated_content = generate_content_with_retries(
         section_code,
         source
-    )
-
-    generated_text = call_gemini(
-        prompt
-    )
-
-    generated_content = parse_generated_content(
-        generated_text
     )
 
     save_processed_content(
@@ -702,6 +919,310 @@ def process_item(
         item_id,
         generated_content
     )
+
+
+# ============================================================
+# EDITION STATUS
+# ============================================================
+
+def verify_edition_completion(
+    supabase,
+    edition_id
+):
+
+    items = get_all_edition_items(
+        supabase,
+        edition_id
+    )
+
+    total = len(items)
+
+    completed = sum(
+        1
+        for item in items
+        if item.get("processing_status") == "completed"
+    )
+
+    logger.info(
+        f"Kiadvány állapota: {completed}/{total} completed."
+    )
+
+    if total != EXPECTED_ITEMS:
+
+        logger.warning(
+            f"A kiadvány elemszáma nem {EXPECTED_ITEMS}, "
+            f"hanem {total}. A kiadvány nem tehető ready státuszba."
+        )
+
+        return False
+
+    if completed != EXPECTED_ITEMS:
+
+        return False
+
+    return True
+
+
+def mark_edition_ready(
+    supabase,
+    edition_id
+):
+
+    # Biztonsági ellenőrzés közvetlenül a státuszváltás előtt.
+    if not verify_edition_completion(
+        supabase,
+        edition_id
+    ):
+
+        raise RuntimeError(
+            "A kiadvány nem teljes. Nem állítható ready státuszra."
+        )
+
+    response = (
+        supabase
+        .table("shard_editions")
+        .update({
+            "status": "ready"
+        })
+        .eq("id", edition_id)
+        .eq("status", "draft")
+        .execute()
+    )
+
+    if response.data is not None and len(response.data) == 0:
+
+        raise RuntimeError(
+            "A kiadvány ready státuszra állítása nem sikerült."
+        )
+
+    logger.info(
+        "A kiadvány READY státuszt kapott."
+    )
+
+
+# ============================================================
+# PROCESSING LOOP
+# ============================================================
+
+def process_edition(
+    supabase,
+    edition
+):
+
+    edition_id = edition["id"]
+
+    deadline = (
+        time.monotonic()
+        + MAX_PROCESSING_MINUTES * 60
+    )
+
+    round_number = 0
+
+    logger.info(
+        f"Feldolgozási időkeret: {MAX_PROCESSING_MINUTES} perc."
+    )
+
+    while remaining_time(deadline) > 0:
+
+        round_number += 1
+
+        logger.info(
+            "========================================"
+        )
+
+        logger.info(
+            f"FELDOLGOZÁSI KÖR: {round_number}"
+        )
+
+        all_items = get_all_edition_items(
+            supabase,
+            edition_id
+        )
+
+        total = len(all_items)
+
+        completed = sum(
+            1
+            for item in all_items
+            if item.get("processing_status") == "completed"
+        )
+
+        logger.info(
+            f"Jelenlegi állapot: {completed}/{total} kész."
+        )
+
+        if total != EXPECTED_ITEMS:
+
+            raise RuntimeError(
+                f"A kiadványban {total} elem található, "
+                f"de {EXPECTED_ITEMS} elem szükséges. "
+                "A feldolgozás nem indul el."
+            )
+
+        if completed == EXPECTED_ITEMS:
+
+            logger.info(
+                "Mind a 13 tartalom elkészült."
+            )
+
+            mark_edition_ready(
+                supabase,
+                edition_id
+            )
+
+            return True
+
+        pending_items = get_pending_items(
+            supabase,
+            edition_id
+        )
+
+        if not pending_items:
+
+            logger.warning(
+                "Nincs feldolgozható pending vagy failed rekord, "
+                "de a kiadvány még nem teljes."
+            )
+
+        for item in pending_items:
+
+            if remaining_time(deadline) <= 0:
+                break
+
+            item_id = item["id"]
+
+            section_code = item["section_code"]
+
+            position = item["position"]
+
+            logger.info(
+                f"Feldolgozás: {section_code} / "
+                f"pozíció: {position}"
+            )
+
+            try:
+
+                process_item(
+                    supabase,
+                    item
+                )
+
+                logger.info(
+                    f"Sikeres feldolgozás: {section_code} "
+                    f"/ pozíció: {position}"
+                )
+
+            except Exception as error:
+
+                logger.exception(
+                    f"Feldolgozási hiba a(z) "
+                    f"{position}. elemnél: {error}"
+                )
+
+                try:
+
+                    mark_processing_failed(
+                        supabase,
+                        item_id
+                    )
+
+                except Exception:
+
+                    logger.exception(
+                        "A failed státusz mentése sem sikerült."
+                    )
+
+                error_text = str(error)
+
+                if "Gemini API 429" in error_text:
+
+                    wait_seconds = RETRY_DELAYS[429]
+
+                    logger.warning(
+                        "Gemini kvótakorlát. "
+                        "A következő kör előtt hosszabb várakozás következik."
+                    )
+
+                    if not wait_with_deadline(
+                        wait_seconds,
+                        deadline
+                    ):
+                        break
+
+                    # A kvótakorlát miatt a további rekordokat
+                    # ebben a körben már nem kérdezzük le.
+                    break
+
+                if any(
+                    f"Gemini API {status}" in error_text
+                    for status in RETRY_DELAYS
+                ):
+
+                    logger.warning(
+                        "Átmeneti Gemini API-hiba. "
+                        "A következő körben újrapróbáljuk."
+                    )
+
+            # A következő rekord előtt rövid szünet.
+            if remaining_time(deadline) > 0:
+                time.sleep(2)
+
+        # Minden kör végén újra lekérjük a státuszokat.
+        if verify_edition_completion(
+            supabase,
+            edition_id
+        ):
+
+            mark_edition_ready(
+                supabase,
+                edition_id
+            )
+
+            return True
+
+        if remaining_time(deadline) <= 0:
+            break
+
+        logger.info(
+            "A kiadvány még nem teljes. "
+            "A következő körben csak a hiányzó elemeket próbáljuk."
+        )
+
+        if not wait_with_deadline(
+            ROUND_WAIT_SECONDS,
+            deadline
+        ):
+            break
+
+    # ========================================================
+    # TIME LIMIT REACHED
+    # ========================================================
+
+    final_items = get_all_edition_items(
+        supabase,
+        edition_id
+    )
+
+    final_completed = sum(
+        1
+        for item in final_items
+        if item.get("processing_status") == "completed"
+    )
+
+    logger.warning(
+        "A 60 perces feldolgozási időkeret lejárt."
+    )
+
+    logger.warning(
+        f"Végső állapot: {final_completed}/{len(final_items)} kész."
+    )
+
+    logger.warning(
+        "A sikeresen feldolgozott rekordok mentve maradtak. "
+        "A következő futtatás csak a hiányzó elemeket dolgozza fel."
+    )
+
+    return False
 
 
 # ============================================================
@@ -718,13 +1239,16 @@ def main():
         f"Használt modell: {MODEL_NAME}"
     )
 
+    logger.info(
+        f"Maximális feldolgozási idő: "
+        f"{MAX_PROCESSING_MINUTES} perc."
+    )
+
     supabase = get_supabase_client()
 
     edition = get_latest_draft_edition(
         supabase
     )
-
-    edition_id = edition["id"]
 
     logger.info(
         "Feldolgozandó kiadvány: "
@@ -732,125 +1256,50 @@ def main():
         f"{edition.get('edition_date')}"
     )
 
-    items = get_pending_items(
+    result = process_edition(
         supabase,
-        edition_id
-    )
-
-    logger.info(
-        f"{len(items)} tartalom vár feldolgozásra."
-    )
-
-    if not items:
-        logger.info(
-            "Nincs feldolgozásra váró tartalom."
-        )
-        return
-
-    successful = 0
-    failed = 0
-    quota_limited = False
-
-    for item in items:
-
-        section_code = item["section_code"]
-        position = item["position"]
-        item_id = item["id"]
-
-        logger.info(
-            f"Feldolgozás: {section_code} / "
-            f"pozíció: {position}"
-        )
-
-        try:
-
-            process_item(
-                supabase,
-                item
-            )
-
-            successful += 1
-
-            logger.info(
-                f"Sikeres feldolgozás: {section_code} "
-                f"/ pozíció: {position}"
-            )
-
-        except Exception as error:
-
-            failed += 1
-
-            logger.exception(
-                f"Feldolgozási hiba a(z) "
-                f"{position}. elemnél."
-            )
-
-            try:
-
-                mark_processing_failed(
-                    supabase,
-                    item_id
-                )
-
-            except Exception:
-
-                logger.exception(
-                    "A hibás feldolgozás státuszának "
-                    "mentése sem sikerült."
-                )
-
-            if "kvótakorlát" in str(error).lower():
-                quota_limited = True
-
-                logger.warning(
-                    "Gemini kvótakorlát miatt a további "
-                    "feldolgozást leállítjuk."
-                )
-
-                break
-
-        if successful + failed < len(items):
-            time.sleep(REQUEST_DELAY)
-
-    logger.info(
-        "========================================"
-    )
-
-    logger.info(
-        "FELDOLGOZÁS BEFEJEZVE"
-    )
-
-    logger.info(
-        f"Sikeres: {successful}"
-    )
-
-    logger.info(
-        f"Hibás: {failed}"
-    )
-
-    logger.info(
-        f"Kvótakorlát: {quota_limited}"
-    )
-
-    logger.info(
-        f"Modell: {MODEL_NAME}"
+        edition
     )
 
     logger.info(
         "========================================"
     )
 
-    if failed > 0:
+    if result:
+
+        logger.info(
+            "WORLD SHARDS KIADVÁNY ELŐKÉSZÍTVE."
+        )
+
+        logger.info(
+            "Státusz: READY"
+        )
+
+        logger.info(
+            "Mind a 13 tartalom sikeresen feldolgozva."
+        )
+
+    else:
+
+        logger.error(
+            "A kiadvány nem készült el a megadott időkereten belül."
+        )
 
         raise RuntimeError(
-            "A feldolgozás részleges vagy hibás. "
-            "A sikeres elemek mentve maradtak."
+            "A 60 perces feldolgozási időkeret lejárt. "
+            "A sikeres rekordok megmaradtak; "
+            "a workflow újrafuttatásával folytatható."
         )
+
+    logger.info(
+        "========================================"
+    )
 
 
 if __name__ == "__main__":
 
     try:
+
         main()
 
     except Exception:
