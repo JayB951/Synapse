@@ -151,7 +151,7 @@ async function loadFeedbackVotes(items, headers, supabaseUrl) {
   feedbackHeaders = { ...headers, "x-reader-token": token };
   const response = await fetch(
     `${supabaseUrl}/rest/v1/shard_article_feedback?select=edition_item_id,vote&voter_token=eq.${encodeURIComponent(token)}`,
-    { headers }
+    { headers: feedbackHeaders }
   );
   if (!response.ok) throw new Error(`Feedback lekérdezés: HTTP ${response.status}`);
   const rows = await response.json();
@@ -290,7 +290,7 @@ async function loadPublishedEdition() {
       await loadFeedbackVotes(items, headers, supabaseUrl);
     } catch (feedbackError) {
       console.warn("WORLD SHARDS feedback is temporarily unavailable:", feedbackError);
-      feedbackHeaders = headers;
+      feedbackHeaders = { ...headers, "x-reader-token": getVoterToken() };
       feedbackApiUrl = supabaseUrl;
     }
 
