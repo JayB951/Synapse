@@ -24,6 +24,7 @@ const readerTitle = document.querySelector("#reader-title");
 const readerSummary = document.querySelector("#reader-summary");
 const readerBody = document.querySelector("#reader-body");
 const readerSection = document.querySelector("#reader-section");
+const readerSource = document.querySelector("#reader-source");
 
 function showStatus(title, message, code = "SUPABASE · READ ONLY") {
   if (statusTitle) statusTitle.textContent = title;
@@ -70,6 +71,35 @@ function openArticle(item, sectionName) {
   readerSummary.textContent = item.display_summary || "";
   readerBody.textContent = item.display_body || "Ehhez az elemhez nem érhető el cikk szöveg.";
   readerSection.textContent = sectionName;
+  if (readerSource) {
+    readerSource.replaceChildren();
+    const source = Array.isArray(item.shard_content_items)
+      ? item.shard_content_items[0]
+      : item.shard_content_items;
+    if (source && (source.source_name || source.source_url || source.source_published_at)) {
+      const label = makeElement("span", "source-label", "EREDETI FORRÁS");
+      readerSource.append(label);
+      if (source.source_name) readerSource.append(makeElement("span", "source-name", source.source_name));
+      if (source.source_published_at) {
+        const published = new Date(source.source_published_at);
+        if (!Number.isNaN(published.getTime())) {
+          readerSource.append(makeElement("span", "source-date", "Forrás dátuma: " + new Intl.DateTimeFormat("hu-HU", { year: "numeric", month: "long", day: "numeric" }).format(published)));
+        }
+      }
+      if (source.source_url) {
+        try {
+          const url = new URL(source.source_url);
+          if (url.protocol === "https:" || url.protocol === "http:") {
+            const link = makeElement("a", "source-link", "Eredeti forrás megnyitása ↗");
+            link.href = url.href;
+            link.target = "_blank";
+            link.rel = "noopener noreferrer";
+            readerSource.append(link);
+          }
+        } catch (_) {}
+      }
+    }
+  }
   if (typeof reader.showModal === "function") reader.showModal();
   else reader.setAttribute("open", "");
 }
@@ -151,7 +181,7 @@ async function loadPublishedEdition() {
 
     const edition = editions[0];
     const itemsResponse = await fetch(
-      `${supabaseUrl}/rest/v1/shard_edition_items?select=id,section_code,position,display_title,display_summary,display_body,processing_status&edition_id=eq.${encodeURIComponent(edition.id)}&processing_status=eq.completed&order=position.asc`,
+      `${supabaseUrl}/rest/v1/shard_edition_items?select=id,section_code,position,display_title,display_summary,display_body,processing_status,shard_content_items(source_name,source_url,source_published_at)&edition_id=eq.${encodeURIComponent(edition.id)}&processing_status=eq.completed&order=position.asc`,
       { headers }
     );
     if (!itemsResponse.ok) throw new Error(`Tartalomlekérdezés: HTTP ${itemsResponse.status}`);
