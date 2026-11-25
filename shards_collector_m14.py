@@ -378,11 +378,29 @@ def collect_xkcd(supabase):
     comic = fetch_xkcd_comic()
     record = build_xkcd_record(comic)
 
-    if content_exists_by_url(supabase, record["source_url"]):
-        logging.info(
-            "xkcd #%s already exists. Skipping.",
-            comic.get("num"),
-        )
+    existing = (
+        supabase.table("shard_content_items")
+        .select("id,image_url")
+        .eq("source_url", record["source_url"])
+        .limit(1)
+        .execute()
+    )
+
+    if existing.data:
+        existing_item = existing.data[0]
+        if record.get("image_url") and existing_item.get("image_url") != record["image_url"]:
+            (
+                supabase.table("shard_content_items")
+                .update({"image_url": record["image_url"]})
+                .eq("id", existing_item["id"])
+                .execute()
+            )
+            logging.info("xkcd #%s image URL updated.", comic.get("num"))
+        else:
+            logging.info(
+                "xkcd #%s already exists. Skipping.",
+                comic.get("num"),
+            )
 
         return {
             "source": "xkcd",
