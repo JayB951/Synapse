@@ -13,10 +13,10 @@ from supabase import create_client
 
 # ============================================================
 # WORLD SHARDS - EDITION PROCESSOR
-# Version: 0.4.0
+# Version: 0.4.1
 # ============================================================
 
-VERSION = "0.4.0"
+VERSION = "0.4.1"
 
 MODEL_NAME = "gemini-3.5-flash-lite"
 
@@ -27,16 +27,11 @@ GEMINI_URL = (
 
 REQUEST_TIMEOUT = 60
 
-# Teljes feldolgozási időkeret
 MAX_PROCESSING_MINUTES = 60
-
-# Két feldolgozási kör közötti várakozás
 ROUND_WAIT_SECONDS = 60
 
-# JSON-hiba esetén ennyi újragenerálás történhet
 JSON_RETRY_LIMIT = 2
 
-# Hálózati és API-hibák esetén alkalmazott várakozások
 RETRY_DELAYS = {
     429: 180,
     500: 60,
@@ -74,14 +69,10 @@ logger = logging.getLogger("world_shards_processor")
 def get_supabase_client():
 
     if not SUPABASE_URL:
-        raise RuntimeError(
-            "Hiányzó SUPABASE_URL környezeti változó."
-        )
+        raise RuntimeError("Hiányzó SUPABASE_URL.")
 
     if not SUPABASE_SECRET_KEY:
-        raise RuntimeError(
-            "Hiányzó SUPABASE_SECRET_KEY környezeti változó."
-        )
+        raise RuntimeError("Hiányzó SUPABASE_SECRET_KEY.")
 
     return create_client(
         SUPABASE_URL,
@@ -129,9 +120,7 @@ def wait_with_deadline(seconds, deadline):
 def call_gemini(prompt):
 
     if not GEMINI_API_KEY:
-        raise RuntimeError(
-            "Hiányzó GEMINI_API_KEY környezeti változó."
-        )
+        raise RuntimeError("Hiányzó GEMINI_API_KEY.")
 
     headers = {
         "Content-Type": "application/json",
@@ -245,9 +234,7 @@ def call_gemini(prompt):
 
         candidate = candidates[0]
 
-        finish_reason = candidate.get(
-            "finishReason"
-        )
+        finish_reason = candidate.get("finishReason")
 
         if finish_reason == "MAX_TOKENS":
 
@@ -291,9 +278,7 @@ def clean_source_text(value):
     if value is None:
         return ""
 
-    text = str(value)
-
-    text = html.unescape(text)
+    text = html.unescape(str(value))
 
     text = re.sub(
         r"<[^>]+>",
@@ -315,9 +300,7 @@ def clean_display_text(value):
     if value is None:
         return ""
 
-    text = str(value)
-
-    text = html.unescape(text)
+    text = html.unescape(str(value))
 
     text = re.sub(
         r"<br\s*/?>",
@@ -491,6 +474,7 @@ def build_source_text(source):
         cleaned = clean_source_text(value)
 
         if cleaned:
+
             parts.append(
                 f"{label}: {cleaned}"
             )
@@ -519,6 +503,7 @@ def build_source_text(source):
             cleaned = clean_source_text(value)
 
             if cleaned:
+
                 parts.append(
                     f"{key}: {cleaned}"
                 )
@@ -772,7 +757,7 @@ def save_processed_content(
         "model_name": MODEL_NAME
     }
 
-    response = (
+    (
         supabase
         .table("shard_edition_items")
         .update(update_data)
@@ -780,11 +765,46 @@ def save_processed_content(
         .execute()
     )
 
-    if response.data is not None and len(response.data) == 0:
+    # Visszaellenőrzés: csak a ténylegesen mentett
+    # rekord tekinthető completed állapotúnak.
+
+    response = (
+        supabase
+        .table("shard_edition_items")
+        .select(
+            "processing_status,display_title,"
+            "display_summary,display_body"
+        )
+        .eq("id", item_id)
+        .limit(1)
+        .execute()
+    )
+
+    if not response.data:
 
         raise RuntimeError(
-            f"A feldolgozott tartalom mentése nem sikerült: {item_id}"
+            f"A mentett rekord nem található: {item_id}"
         )
+
+    saved = response.data[0]
+
+    if saved.get("processing_status") != "completed":
+
+        raise RuntimeError(
+            f"A rekord státusza nem completed: {item_id}"
+        )
+
+    for field in [
+        "display_title",
+        "display_summary",
+        "display_body"
+    ]:
+
+        if not saved.get(field):
+
+            raise RuntimeError(
+                f"A mentett rekord mezője üres: {field}"
+            )
 
 
 def mark_processing_failed(
@@ -792,18 +812,16 @@ def mark_processing_failed(
     item_id
 ):
 
-    update_data = {
-        "processing_status": "failed",
-        "processed_at": datetime.now(
-            timezone.utc
-        ).isoformat(),
-        "model_name": MODEL_NAME
-    }
-
     (
         supabase
         .table("shard_edition_items")
-        .update(update_data)
+        .update({
+            "processing_status": "failed",
+            "processed_at": datetime.now(
+                timezone.utc
+            ).isoformat(),
+            "model_name": MODEL_NAME
+        })
         .eq("id", item_id)
         .execute()
     )
@@ -849,7 +867,8 @@ def get_all_edition_items(
         .table("shard_edition_items")
         .select(
             "id,edition_id,content_item_id,"
-            "section_code,position,processing_status"
+            "section_code,position,processing_status,"
+            "display_title,display_summary,display_body"
         )
         .eq("edition_id", edition_id)
         .order(
@@ -890,40 +909,18 @@ def get_pending_items(
 
 
 # ============================================================
-# ITEM PROCESSING
+# COMPLETION VALIDATION
 # ============================================================
 
-def process_item(
-    supabase,
-    item
-):
+def is_item_completed(item):
 
-    item_id = item["id"]
-
-    content_item_id = item["content_item_id"]
-
-    section_code = item["section_code"]
-
-    source = get_source_content(
-        supabase,
-        content_item_id
+    return (
+        item.get("processing_status") == "completed"
+        and bool(item.get("display_title"))
+        and bool(item.get("display_summary"))
+        and bool(item.get("display_body"))
     )
 
-    generated_content = generate_content_with_retries(
-        section_code,
-        source
-    )
-
-    save_processed_content(
-        supabase,
-        item_id,
-        generated_content
-    )
-
-
-# ============================================================
-# EDITION STATUS
-# ============================================================
 
 def verify_edition_completion(
     supabase,
@@ -940,63 +937,50 @@ def verify_edition_completion(
     completed = sum(
         1
         for item in items
-        if item.get("processing_status") == "completed"
+        if is_item_completed(item)
     )
 
     logger.info(
-        f"Kiadvány állapota: {completed}/{total} completed."
+        f"Kiadvány állapota: {completed}/{total} kész."
     )
 
     if total != EXPECTED_ITEMS:
 
         logger.warning(
-            f"A kiadvány elemszáma nem {EXPECTED_ITEMS}, "
-            f"hanem {total}. A kiadvány nem tehető ready státuszba."
+            f"A kiadvány elemszáma {total}, "
+            f"nem {EXPECTED_ITEMS}."
         )
 
         return False
 
-    if completed != EXPECTED_ITEMS:
-
-        return False
-
-    return True
+    return completed == EXPECTED_ITEMS
 
 
-def mark_edition_ready(
+# ============================================================
+# ITEM PROCESSING
+# ============================================================
+
+def process_item(
     supabase,
-    edition_id
+    item
 ):
 
-    # Biztonsági ellenőrzés közvetlenül a státuszváltás előtt.
-    if not verify_edition_completion(
+    item_id = item["id"]
+
+    source = get_source_content(
         supabase,
-        edition_id
-    ):
-
-        raise RuntimeError(
-            "A kiadvány nem teljes. Nem állítható ready státuszra."
-        )
-
-    response = (
-        supabase
-        .table("shard_editions")
-        .update({
-            "status": "ready"
-        })
-        .eq("id", edition_id)
-        .eq("status", "draft")
-        .execute()
+        item["content_item_id"]
     )
 
-    if response.data is not None and len(response.data) == 0:
+    generated_content = generate_content_with_retries(
+        item["section_code"],
+        source
+    )
 
-        raise RuntimeError(
-            "A kiadvány ready státuszra állítása nem sikerült."
-        )
-
-    logger.info(
-        "A kiadvány READY státuszt kapott."
+    save_processed_content(
+        supabase,
+        item_id,
+        generated_content
     )
 
 
@@ -1044,7 +1028,7 @@ def process_edition(
         completed = sum(
             1
             for item in all_items
-            if item.get("processing_status") == "completed"
+            if is_item_completed(item)
         )
 
         logger.info(
@@ -1055,7 +1039,7 @@ def process_edition(
 
             raise RuntimeError(
                 f"A kiadványban {total} elem található, "
-                f"de {EXPECTED_ITEMS} elem szükséges. "
+                f"de {EXPECTED_ITEMS} szükséges. "
                 "A feldolgozás nem indul el."
             )
 
@@ -1065,9 +1049,8 @@ def process_edition(
                 "Mind a 13 tartalom elkészült."
             )
 
-            mark_edition_ready(
-                supabase,
-                edition_id
+            logger.info(
+                "A kiadvány teljes. A státusz változatlanul draft marad."
             )
 
             return True
@@ -1080,7 +1063,7 @@ def process_edition(
         if not pending_items:
 
             logger.warning(
-                "Nincs feldolgozható pending vagy failed rekord, "
+                "Nincs pending vagy failed rekord, "
                 "de a kiadvány még nem teljes."
             )
 
@@ -1136,21 +1119,17 @@ def process_edition(
 
                 if "Gemini API 429" in error_text:
 
-                    wait_seconds = RETRY_DELAYS[429]
-
                     logger.warning(
                         "Gemini kvótakorlát. "
-                        "A következő kör előtt hosszabb várakozás következik."
+                        "Hosszabb várakozás következik."
                     )
 
                     if not wait_with_deadline(
-                        wait_seconds,
+                        RETRY_DELAYS[429],
                         deadline
                     ):
                         break
 
-                    # A kvótakorlát miatt a további rekordokat
-                    # ebben a körben már nem kérdezzük le.
                     break
 
                 if any(
@@ -1163,19 +1142,20 @@ def process_edition(
                         "A következő körben újrapróbáljuk."
                     )
 
-            # A következő rekord előtt rövid szünet.
             if remaining_time(deadline) > 0:
                 time.sleep(2)
 
-        # Minden kör végén újra lekérjük a státuszokat.
         if verify_edition_completion(
             supabase,
             edition_id
         ):
 
-            mark_edition_ready(
-                supabase,
-                edition_id
+            logger.info(
+                "Mind a 13 tartalom elkészült."
+            )
+
+            logger.info(
+                "A kiadvány teljes. A státusz változatlanul draft marad."
             )
 
             return True
@@ -1206,7 +1186,7 @@ def process_edition(
     final_completed = sum(
         1
         for item in final_items
-        if item.get("processing_status") == "completed"
+        if is_item_completed(item)
     )
 
     logger.warning(
@@ -1268,15 +1248,19 @@ def main():
     if result:
 
         logger.info(
-            "WORLD SHARDS KIADVÁNY ELŐKÉSZÍTVE."
+            "WORLD SHARDS KIADVÁNY TELJES."
         )
 
         logger.info(
-            "Státusz: READY"
+            "Státusz: draft (változatlan)."
         )
 
         logger.info(
             "Mind a 13 tartalom sikeresen feldolgozva."
+        )
+
+        logger.info(
+            "A kiadvány készen áll a következő feldolgozási lépésre."
         )
 
     else:
