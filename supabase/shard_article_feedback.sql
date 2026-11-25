@@ -40,3 +40,18 @@ drop policy if exists "Anonymous readers can remove feedback" on public.shard_ar
 create policy "Anonymous readers can remove feedback"
     on public.shard_article_feedback for delete to anon
     using (voter_token::text = coalesce(current_setting('request.headers', true)::json ->> 'x-reader-token', ''));
+
+ 
+-- Visszajelzési riport: cikkenként pozitív és negatív jelzések.
+-- Futtasd külön a Supabase SQL Editorban, ha meg akarod nézni az eredményeket.
+--
+-- select
+--     sei.section_code,
+--     sei.display_title,
+--     count(*) filter (where f.vote = 1) as positive_votes,
+--     count(*) filter (where f.vote = -1) as negative_votes,
+--     count(*) as total_votes
+-- from public.shard_article_feedback f
+-- join public.shard_edition_items sei on sei.id = f.edition_item_id
+-- group by sei.id, sei.section_code, sei.display_title
+-- order by total_votes desc, positive_votes desc;
