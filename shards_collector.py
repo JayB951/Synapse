@@ -290,6 +290,7 @@ def collect_art(client):
             "section_code": "art_of_the_day",
             "title": title,
             "summary": " ".join(summary_parts) or None,
+            "image_url": image_url,
             "source_name": "Art Institute of Chicago",
             "source_url": source_url,
             "source_language": "en",
