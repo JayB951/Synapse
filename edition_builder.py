@@ -147,7 +147,7 @@ def select_edition_items(supabase, edition_date):
 def get_existing_edition(supabase, edition_date):
     response = (
         supabase.table("shard_editions")
-        .select("id,status")
+        .select("id,status,metadata")
         .eq("edition_date", edition_date)
         .limit(1)
         .execute()
@@ -157,6 +157,147 @@ def get_existing_edition(supabase, edition_date):
         return response.data[0]
 
     return None
+
+
+def add_music_to_existing_edition(supabase, edition, edition_date):
+    """
+    Egyszeri, idempotens visszatöltés: a mai 13 elemű draft kiadványhoz
+    hozzáadja a mai Music of the Day rekordot a záróelemek elé.
+    """
+    edition_id = edition["id"]
+
+    response = (
+        supabase.table("shard_edition_items")
+        .select("id,section_code,position,content_item_id")
+        .eq("edition_id", edition_id)
+        .order("position")
+        .execute()
+    )
+    existing_items = response.data or []
+
+    music_links = [
+        item for item in existing_items
+        if item.get("section_code") == "music_of_the_day"
+    ]
+
+    if music_links:
+        logger.info("A mai kiadványban már szerepel a Music of the Day.")
+        return
+
+    if edition.get("status") != "draft":
+        raise RuntimeError(
+            "A mai kiadvány nem draft státuszú; automatikus módosítás leállítva."
+        )
+
+    if len(existing_items) != EXPECTED_ITEMS - 1:
+        raise RuntimeError(
+            f"A meglévő kiadvány {len(existing_items)} elemet tartalmaz; "
+            f"a biztonságos visszatöltéshez pontosan {EXPECTED_ITEMS - 1} szükséges."
+        )
+
+    closing_items = [
+        item for item in existing_items
+        if item.get("section_code") == "closing"
+    ]
+    if len(closing_items) != CLOSING_LIMIT:
+        raise RuntimeError(
+            "A két záróelem nem azonosítható egyértelműen; "
+            "a kiadványt nem módosítottam."
+        )
+
+    music_candidates = get_candidates(
+        supabase,
+        "music_of_the_day",
+        limit=10,
+        edition_date=edition_date,
+    )
+    if not music_candidates:
+        raise RuntimeError(
+            "Nem található mai Music of the Day jelölt; a kiadvány változatlan maradt."
+        )
+
+    music_item = music_candidates[0]
+    insert_position = min(item["position"] for item in closing_items)
+
+    # A pozíciókat hátulról előre toljuk, így nem ütköznek a még
+    # el nem mozdított rekordokkal akkor sem, ha egyedi pozíciókorlát van.
+    shifted = []
+    try:
+        for item in sorted(
+            [row for row in existing_items if row["position"] >= insert_position],
+            key=lambda row: row["position"],
+            reverse=True,
+        ):
+            new_position = item["position"] + 1
+            (
+                supabase.table("shard_edition_items")
+                .update({"position": new_position})
+                .eq("id", item["id"])
+                .execute()
+            )
+            shifted.append((item["id"], item["position"]))
+
+        (
+            supabase.table("shard_edition_items")
+            .insert({
+                "edition_id": edition_id,
+                "content_item_id": music_item["id"],
+                "section_code": "music_of_the_day",
+                "position": insert_position,
+                "editor_note": "A napi kiadvány utólagos, automatikus kiegészítése.",
+                "processing_status": "pending",
+            })
+            .execute()
+        )
+    except Exception:
+        # Hiba esetén visszaállítjuk az eltolásokat, ha az új rekord
+        # még nem került be.
+        check = (
+            supabase.table("shard_edition_items")
+            .select("id")
+            .eq("edition_id", edition_id)
+            .eq("content_item_id", music_item["id"])
+            .limit(1)
+            .execute()
+        )
+        if not check.data:
+            for item_id, old_position in sorted(
+                shifted, key=lambda pair: pair[1]
+            ):
+                (
+                    supabase.table("shard_edition_items")
+                    .update({"position": old_position})
+                    .eq("id", item_id)
+                    .execute()
+                )
+        raise
+
+    (
+        supabase.table("shard_content_items")
+        .update({"status": "selected"})
+        .eq("id", music_item["id"])
+        .execute()
+    )
+
+    metadata = edition.get("metadata") or {}
+    if not isinstance(metadata, dict):
+        metadata = {}
+    metadata.update({
+        "planned_item_count": EXPECTED_ITEMS,
+        "music_backfill": True,
+    })
+    (
+        supabase.table("shard_editions")
+        .update({"metadata": metadata})
+        .eq("id", edition_id)
+        .execute()
+    )
+
+    logger.info(
+        "Music of the Day hozzáadva a mai kiadványhoz: %s (pozíció: %s).",
+        music_item.get("title"),
+        insert_position,
+    )
 
 
 def create_edition(supabase, edition_date):
@@ -247,10 +388,14 @@ def main():
 
     if existing:
         logger.info(
-            "A mai kiadvány már létezik (%s, státusz: %s). "
-            "Nem készül második példány.",
+            "A mai kiadvány már létezik (%s, státusz: %s).",
             existing["id"],
             existing["status"],
+        )
+        add_music_to_existing_edition(
+            supabase,
+            existing,
+            edition_date,
         )
         return
 
