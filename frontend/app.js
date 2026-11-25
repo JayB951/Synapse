@@ -79,7 +79,7 @@ function getSourceRecord(item) {
     : item.shard_content_items;
 }
 
-function makeArtworkImage(source, title, className) {
+function makeSectionImage(source, title, className, altPrefix) {
   const imageUrl = source?.image_url;
   if (!imageUrl) return null;
 
@@ -89,7 +89,7 @@ function makeArtworkImage(source, title, className) {
 
     const image = makeElement("img", className);
     image.src = url.href;
-    image.alt = title ? `A műalkotás: ${title}` : "A nap műalkotása";
+    image.alt = title ? `${altPrefix}: ${title}` : altPrefix;
     image.loading = "lazy";
     image.decoding = "async";
     return image;
@@ -191,7 +191,10 @@ function openArticle(item, sectionName) {
   if (readerImage) {
     readerImage.replaceChildren();
     if (item.section_code === "art_of_the_day") {
-      const image = makeArtworkImage(source, item.display_title, "reader-artwork-image");
+      const image = makeSectionImage(source, item.display_title, "reader-artwork-image", "A műalkotás");
+      if (image) readerImage.append(image);
+    } else if (item.section_code === "world_explorer") {
+      const image = makeSectionImage(source, item.display_title, "reader-place-image", "A bemutatott helyszín");
       if (image) readerImage.append(image);
     }
   }
@@ -271,10 +274,13 @@ function renderArticles(items = []) {
       const feedback = createFeedbackButton(item.id);
       feedback.dataset.feedbackItem = item.id;
       const source = getSourceRecord(item);
-      const artworkImage = code === "art_of_the_day"
-        ? makeArtworkImage(source, item.display_title, "article-artwork-image")
-        : null;
-      if (artworkImage) card.append(artworkImage);
+      let sectionImage = null;
+      if (code === "art_of_the_day") {
+        sectionImage = makeSectionImage(source, item.display_title, "article-artwork-image", "A műalkotás");
+      } else if (code === "world_explorer") {
+        sectionImage = makeSectionImage(source, item.display_title, "article-place-image", "A bemutatott helyszín");
+      }
+      if (sectionImage) card.append(sectionImage);
       card.append(meta, titleNode, summary, feedback, button);
       cards.append(card);
     });
