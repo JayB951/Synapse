@@ -18,3 +18,11 @@
 .feedback-toggle:disabled{opacity:.55;cursor:wait}
 .reader-feedback{margin-top:24px}
 .reader-feedback .feedback-toggle{margin-bottom:0}
+
+
+/* M2.1 – Art of the Day: a műalkotás képe a rovat kötelező vizuális eleme */
+.article-artwork-image{display:block;width:100%;max-height:340px;object-fit:contain;object-position:center;background:#0a1018;margin:0 0 22px;border:1px solid var(--line)}
+.reader-image:empty{display:none}
+.reader-artwork-image{display:block;width:100%;max-height:520px;object-fit:contain;object-position:center;background:#0a1018}
+.reader-image:not(:empty){margin-top:24px}
+@media(max-width:760px){.article-artwork-image{max-height:280px}.reader-artwork-image{max-height:360px}}
