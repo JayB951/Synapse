@@ -204,7 +204,6 @@ def backfill_world_explorer_images(supabase):
         supabase.table("shard_content_items")
         .select("id,title,image_url,gallery_images")
         .eq("section_code", "world_explorer")
-        .is_("image_url", "null")
         .limit(500)
         .execute()
     )
@@ -385,7 +384,7 @@ def build_record(section_code, page, search_query):
         "summary": summary,
         "body": extract,
         "image_url": (page.get("thumbnail") or {}).get("source") if section_code == "world_explorer" else None,
-        "gallery_images": gallery_images if section_code == "world_explorer" else None,
+        "gallery_images": gallery_images if section_code == "world_explorer" else [],
         "source_name": "Wikipedia",
         "source_url": source_url,
         "source_language": "en",
