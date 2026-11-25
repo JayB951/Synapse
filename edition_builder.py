@@ -49,12 +49,19 @@ def get_supabase_client():
     return create_client(url, key)
 
 
-def get_candidates(supabase, section_code, limit=100):
-    response = (
+def get_candidates(supabase, section_code, limit=100, edition_date=None):
+    query = (
         supabase.table("shard_content_items")
         .select(CONTENT_FIELDS)
         .eq("section_code", section_code)
         .eq("status", "candidate")
+    )
+
+    if edition_date:
+        query = query.contains("metadata", {"edition_date": edition_date})
+
+    response = (
+        query
         .order("relevance_score", desc=True)
         .order("collected_at", desc=True)
         .limit(limit)
@@ -114,13 +121,12 @@ def select_edition_items(supabase, edition_date):
             supabase,
             section_code,
             limit=limit,
+            edition_date=(
+                edition_date
+                if section_code == "music_of_the_day"
+                else None
+            ),
         )
-
-        if section_code == "music_of_the_day":
-            candidates = [
-                item for item in candidates
-                if (item.get("metadata") or {}).get("edition_date") == edition_date
-            ]
 
         chosen = candidates[:limit]
         selected_items.extend(chosen)
