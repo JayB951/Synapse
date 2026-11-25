@@ -164,6 +164,58 @@ async function loadFeedbackVotes(items, headers, supabaseUrl) {
   rows.forEach(row => feedbackVotes.set(row.edition_item_id, row.vote));
 }
 
+function renderArticleBody(container, body, galleryImages = []) {
+  container.replaceChildren();
+  const paragraphs = String(body || "")
+    .split(/\n\s*\n/)
+    .map(value => value.trim())
+    .filter(Boolean);
+
+  if (!paragraphs.length) {
+    container.textContent = "Ehhez az elemhez nem érhető el cikk szöveg.";
+    return;
+  }
+
+  const images = Array.isArray(galleryImages)
+    ? galleryImages.filter(image => image && typeof image.url === "string").slice(0, 3)
+    : [];
+  const imagePositions = new Map();
+
+  images.forEach((image, index) => {
+    const position = Math.min(
+      paragraphs.length - 1,
+      Math.max(0, Math.floor(((index + 1) * paragraphs.length) / (images.length + 1)))
+    );
+    if (!imagePositions.has(position)) imagePositions.set(position, []);
+    imagePositions.get(position).push(image);
+  });
+
+  paragraphs.forEach((paragraph, index) => {
+    container.append(makeElement("p", "reader-paragraph", paragraph));
+    const imagesHere = imagePositions.get(index) || [];
+    imagesHere.forEach(imageData => {
+      try {
+        const url = new URL(imageData.url);
+        if (url.protocol !== "https:" && url.protocol !== "http:") return;
+        const figure = makeElement("figure", "reader-inline-figure");
+        const image = makeElement("img", "reader-inline-image");
+        image.src = url.href;
+        image.alt = imageData.caption || "A bemutatott helyszín részlete";
+        image.loading = "lazy";
+        image.decoding = "async";
+        figure.append(image);
+        if (imageData.caption) {
+          figure.append(makeElement("figcaption", "reader-image-caption", imageData.caption));
+        }
+        if (imageData.license) {
+          figure.append(makeElement("span", "reader-image-license", imageData.license));
+        }
+        container.append(figure);
+      } catch (_) {}
+    });
+  });
+}
+
 function openArticle(item, sectionName) {
   readerTitle.textContent = item.display_title || "Cím nélkül";
   readerSummary.textContent = item.display_summary || "";
@@ -178,7 +230,7 @@ function openArticle(item, sectionName) {
       if (image) readerImage.append(image);
     }
   }
-  readerBody.textContent = item.display_body || "Ehhez az elemhez nem érhető el cikk szöveg.";
+  renderArticleBody(readerBody, item.display_body, item.section_code === "world_explorer" ? source?.gallery_images : []);
   readerSection.textContent = sectionName;
   readerFeedbackItemId = item.id;
   readerFeedbackSectionName = sectionName;
@@ -300,7 +352,7 @@ async function loadPublishedEdition() {
 
     const edition = editions[0];
     const itemsResponse = await fetch(
-      `${supabaseUrl}/rest/v1/shard_edition_items?select=id,section_code,position,display_title,display_summary,display_body,processing_status,shard_content_items(source_name,source_url,source_published_at,image_url)&edition_id=eq.${encodeURIComponent(edition.id)}&processing_status=eq.completed&order=position.asc`,
+      `${supabaseUrl}/rest/v1/shard_edition_items?select=id,section_code,position,display_title,display_summary,display_body,processing_status,shard_content_items(source_name,source_url,source_published_at,image_url,gallery_images)&edition_id=eq.${encodeURIComponent(edition.id)}&processing_status=eq.completed&order=position.asc`,
       { headers }
     );
     if (!itemsResponse.ok) throw new Error(`Tartalomlekérdezés: HTTP ${itemsResponse.status}`);
