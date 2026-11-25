@@ -10,6 +10,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
+  <script src="config.js" defer></script>
   <script src="app.js" defer></script>
 </head>
 <body>
@@ -36,7 +37,7 @@
         <div class="hero-meta">
           <span id="edition-date">A MAI KIADÁS</span>
           <span class="meta-divider"></span>
-          <span>14 TARTALOM · 9 ROVAT</span>
+          <span id="edition-count">— TARTALOM · 9 ROVAT</span>
         </div>
       </div>
       <div class="hero-art" aria-hidden="true">
@@ -51,8 +52,8 @@
 
     <section class="edition-status" aria-live="polite">
       <div class="status-mark"><span></span></div>
-      <div><strong>A napi kiadás előkészítés alatt</strong><p>A magazin felülete épül. Hamarosan itt jelennek meg a Supabase-ben tárolt napi tartalmak.</p></div>
-      <span class="status-code">FRONTEND · M0</span>
+      <div><strong id="edition-status-title">A napi kiadás ellenőrzése</strong><p id="edition-status-text">Kapcsolódás a tartalom-adatbázishoz…</p></div>
+      <span class="status-code" id="edition-status-code">SUPABASE · READ ONLY</span>
     </section>
 
     <section class="section-index" id="sections">
