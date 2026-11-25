@@ -376,11 +376,22 @@ SECTION_STYLES = {
     "battlefield": {
         "name": "Battlefield",
         "description": (
-            "Hadtörténelmi vagy katonai téma. "
-            "Mutasd be a történelmi hátteret, a szereplőket, "
-            "a stratégiai helyzetet, a történéseket "
-            "és azok következményeit. "
-            "A történelmi pontosság fontos."
+            "Kizárólag egy konkrét, valós történelmi csatát vagy ostromot "
+            "mutass be hadtörténeti elemzésként. A cikk ne legyen könyv-, "
+            "film- vagy játékajánló, és ne általános hadtörténeti áttekintés. "
+            "Építsd fel az elemzést a következő szempontok mentén: "
+            "1. történelmi háttér és a hadjárat célja; "
+            "2. a szemben álló felek, vezetők és erőviszonyok; "
+            "3. a hadműveleti terv, a terep és a stratégiai helyzet; "
+            "4. a csata fő szakaszai időrendben; "
+            "5. a fordulópont és annak katonai oka; "
+            "6. az eredmény, a veszteségek csak akkor, ha a forrás közli, "
+            "valamint a közvetlen és hosszabb távú következmények; "
+            "7. a csata hadtörténeti jelentősége és levonható stratégiai tanulsága. "
+            "Ne találj ki csapatlétszámot, veszteséget, idézetet vagy taktikai részletet. "
+            "Ha a forrás valamelyik szempontról nem ad megbízható adatot, "
+            "hagyd ki vagy jelezd a bizonytalanságot. "
+            "A szöveg legyen elemző, közérthető és konkrét, ne puszta eseményfelsorolás."
         )
     },
 
