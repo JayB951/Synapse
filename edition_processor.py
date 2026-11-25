@@ -43,7 +43,7 @@ RETRY_DELAYS = {
 MAX_OUTPUT_TOKENS = 4096
 MAX_SOURCE_LENGTH = 12000
 
-EXPECTED_ITEMS = 13
+EXPECTED_ITEMS = 14
 
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_SECRET_KEY = os.getenv("SUPABASE_SECRET_KEY")
@@ -414,6 +414,21 @@ SECTION_STYLES = {
         )
     },
 
+    "music_of_the_day": {
+        "name": "A nap zenéje",
+        "description": (
+            "Mutasd be a kiválasztott zeneszámot igényes, rövid zenei ajánlóként. "
+            "Azonosítsd az előadót, a számot és – ha rendelkezésre áll – az albumot, "
+            "a megjelenés évét és a műfajt. "
+            "Magyarázd el a napi kiadvány egyik témájához fűződő kapcsolatát "
+            "a megadott kapcsolódó tartalom alapján. "
+            "A zenei jellemzőkről csak akkor állíts konkrétumot, ha azt a forrásadat "
+            "alátámasztja; ne találj ki dalszöveget, háttértörténetet vagy tényeket. "
+            "A szöveg legyen magyar, hangulatos, de informatív, és ösztönözzön "
+            "a dal meghallgatására."
+        )
+    },
+
     "closing": {
         "name": "Closing",
         "description": (
@@ -483,6 +498,11 @@ def build_source_text(source):
 
     metadata_fields = [
         "artist",
+        "artist_name",
+        "album_name",
+        "release_date",
+        "genre",
+        "related_content_title",
         "date",
         "medium",
         "description",
@@ -556,7 +576,7 @@ szerkesztője vagy.
 
 FELADAT:
 
-A megadott angol nyelvű forrástartalomból készíts
+A megadott forrástartalomból készíts
 igényes, természetes magyar nyelvű magazintartalmat.
 
 ROVAT:
@@ -1046,7 +1066,7 @@ def process_edition(
         if completed == EXPECTED_ITEMS:
 
             logger.info(
-                "Mind a 13 tartalom elkészült."
+                "Mind a 14 tartalom elkészült."
             )
 
             logger.info(
@@ -1151,7 +1171,7 @@ def process_edition(
         ):
 
             logger.info(
-                "Mind a 13 tartalom elkészült."
+                "Mind a 14 tartalom elkészült."
             )
 
             logger.info(
@@ -1256,7 +1276,7 @@ def main():
         )
 
         logger.info(
-            "Mind a 13 tartalom sikeresen feldolgozva."
+            "Mind a 14 tartalom sikeresen feldolgozva."
         )
 
         logger.info(
