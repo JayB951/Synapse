@@ -317,6 +317,59 @@ def backfill_world_explorer_images(supabase):
     )
 
 
+def backfill_battlefield_images(supabase):
+    """Populate lead images for existing Battlefield source records."""
+    result = (
+        supabase.table("shard_content_items")
+        .select("id,title,image_url")
+        .eq("section_code", "battlefield")
+        .limit(500)
+        .execute()
+    )
+    rows = result.data or []
+    if not rows:
+        logging.info("Battlefield image backfill: no records found.")
+        return
+
+    updated = 0
+    for offset in range(0, len(rows), 50):
+        batch = rows[offset:offset + 50]
+        titles = [row["title"] for row in batch if row.get("title")]
+        if not titles:
+            continue
+
+        params = {
+            "action": "query",
+            "prop": "pageimages",
+            "piprop": "thumbnail",
+            "pithumbsize": 1600,
+            "titles": "|".join(titles),
+            "format": "json",
+            "formatversion": 2,
+        }
+        data = wikimedia_get_json(WIKIPEDIA_API, params)
+        if "error" in data:
+            raise RuntimeError(
+                f"Wikipedia image API error: {data['error'].get('info', 'Unknown error')}"
+            )
+
+        image_by_title = {
+            page.get("title", "").casefold(): (page.get("thumbnail") or {}).get("source")
+            for page in data.get("query", {}).get("pages", [])
+        }
+
+        for row in batch:
+            image_url = image_by_title.get((row.get("title") or "").casefold())
+            if image_url and not row.get("image_url"):
+                supabase.table("shard_content_items").update(
+                    {"image_url": image_url}
+                ).eq("id", row["id"]).execute()
+                updated += 1
+                logging.info("Battlefield image backfilled: %s", row["title"])
+
+    logging.info("Battlefield image backfill: %s/%s records updated.", updated, len(rows))
+
+
 def fetch_commons_gallery_images(place_title):
     """Find up to three additional Wikimedia Commons photographs for a place."""
     params = {
@@ -417,7 +470,7 @@ def build_record(section_code, page, search_query):
         "title": title,
         "summary": summary,
         "body": extract,
-        "image_url": (page.get("thumbnail") or {}).get("source") if section_code == "world_explorer" else None,
+        "image_url": (page.get("thumbnail") or {}).get("source") if section_code in ("world_explorer", "battlefield") else None,
         "gallery_images": gallery_images if section_code == "world_explorer" else [],
         "source_name": "Wikipedia",
         "source_url": source_url,
@@ -461,11 +514,11 @@ def collect_section(supabase, section_code):
         record = build_record(section_code, page, search_query)
 
         # A World Explorer-helyszín csak tényleges képpel kerülhet be.
-        if section_code == "world_explorer" and not record.get("image_url"):
+        if section_code in ("world_explorer", "battlefield") and not record.get("image_url"):
             skipped += 1
             logging.info(
-                "World Explorer: '%s' kihagyva, mert nincs elérhető kép.",
-                record["title"],
+                "%s: '%s' kihagyva, mert nincs elérhető kép.",
+                config["name"], record["title"],
             )
             continue
 
@@ -474,7 +527,7 @@ def collect_section(supabase, section_code):
         if existing:
             # Korábban gyűjtött helyszínek képének utólagos pótlása.
             if (
-                section_code == "world_explorer"
+                section_code in ("world_explorer", "battlefield")
                 and not existing.get("image_url")
                 and record.get("image_url")
             ):
@@ -482,8 +535,8 @@ def collect_section(supabase, section_code):
                     "image_url": record["image_url"]
                 }).eq("id", existing["id"]).execute()
                 logging.info(
-                    "World Explorer kép pótolva: '%s'",
-                    record["title"],
+                    "%s kép pótolva: '%s'",
+                    config["name"], record["title"],
                 )
             skipped += 1
             continue
@@ -523,6 +576,7 @@ def main():
     # Existing records are repaired before the daily collection cycle.
     try:
         backfill_world_explorer_images(supabase)
+        backfill_battlefield_images(supabase)
     except Exception as error:
         logging.exception("World Explorer image backfill failed: %s", error)
         raise SystemExit(1)
