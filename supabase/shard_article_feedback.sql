@@ -39,4 +39,4 @@ create policy "Anonymous readers can update feedback"
 drop policy if exists "Anonymous readers can remove feedback" on public.shard_article_feedback;
 create policy "Anonymous readers can remove feedback"
     on public.shard_article_feedback for delete to anon
-    using (true);
+    using (voter_token::text = coalesce(current_setting('request.headers', true)::json ->> 'x-reader-token', ''));
