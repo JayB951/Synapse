@@ -25,6 +25,12 @@ const readerSummary = document.querySelector("#reader-summary");
 const readerBody = document.querySelector("#reader-body");
 const readerSection = document.querySelector("#reader-section");
 const readerSource = document.querySelector("#reader-source");
+const readerFeedback = document.querySelector("#reader-feedback");
+const feedbackVotes = new Map();
+let feedbackHeaders = null;
+let feedbackApiUrl = "";
+let readerFeedbackItemId = null;
+let readerFeedbackSectionName = "";
 
 function showStatus(title, message, code = "SUPABASE · READ ONLY") {
   if (statusTitle) statusTitle.textContent = title;
@@ -66,11 +72,100 @@ function renderSections(items = []) {
   });
 }
 
+function getVoterToken() {
+  const storageKey = "world-shards-reader-token";
+  let token = localStorage.getItem(storageKey);
+  if (!token) {
+    token = crypto.randomUUID();
+    localStorage.setItem(storageKey, token);
+  }
+  return token;
+}
+
+function feedbackLabel(vote) {
+  if (vote === 1) return "👍 Érdekes";
+  if (vote === -1) return "👎 Nem releváns";
+  return "♡ Visszajelzés";
+}
+
+function createFeedbackButton(itemId, className = "feedback-toggle") {
+  const button = makeElement("button", className, feedbackLabel(feedbackVotes.get(itemId) || 0));
+  button.type = "button";
+  button.setAttribute("aria-label", "Cikk relevanciájának értékelése");
+  button.setAttribute("aria-pressed", String(Boolean(feedbackVotes.get(itemId))));
+  button.title = "Kattintással válthatsz: érdekes → nem releváns → nincs értékelés";
+  button.addEventListener("click", () => saveFeedback(itemId, button));
+  return button;
+}
+
+async function saveFeedback(itemId, button) {
+  if (!feedbackHeaders || !feedbackApiUrl) return;
+  const current = feedbackVotes.get(itemId) || 0;
+  const next = current === 0 ? 1 : current === 1 ? -1 : 0;
+  button.disabled = true;
+  try {
+    const voterToken = getVoterToken();
+    const endpoint = `${feedbackApiUrl}/rest/v1/shard_article_feedback`;
+    if (next === 0) {
+      const response = await fetch(
+        `${endpoint}?edition_item_id=eq.${encodeURIComponent(itemId)}&voter_token=eq.${encodeURIComponent(voterToken)}`,
+        { method: "DELETE", headers: feedbackHeaders }
+      );
+      if (!response.ok) throw new Error(`Feedback törlése: HTTP ${response.status}`);
+      feedbackVotes.delete(itemId);
+    } else {
+      const response = await fetch(`${endpoint}?on_conflict=edition_item_id,voter_token`, {
+        method: "POST",
+        headers: { ...feedbackHeaders, "Content-Type": "application/json", Prefer: "resolution=merge-duplicates,return=minimal" },
+        body: JSON.stringify({ edition_item_id: itemId, voter_token: voterToken, vote: next, updated_at: new Date().toISOString() })
+      });
+      if (!response.ok) throw new Error(`Feedback mentése: HTTP ${response.status}`);
+      feedbackVotes.set(itemId, next);
+    }
+    syncFeedbackButtons(itemId);
+  } catch (error) {
+    console.error("WORLD SHARDS feedback error:", error);
+    button.textContent = "Nem sikerült menteni";
+  } finally {
+    button.disabled = false;
+  }
+}
+
+function syncFeedbackButtons(itemId) {
+  const vote = feedbackVotes.get(itemId) || 0;
+  document.querySelectorAll("[data-feedback-item]").forEach(button => {
+    if (button.dataset.feedbackItem !== itemId) return;
+    button.textContent = feedbackLabel(vote);
+    button.setAttribute("aria-pressed", String(Boolean(vote)));
+    button.classList.toggle("is-positive", vote === 1);
+    button.classList.toggle("is-negative", vote === -1);
+  });
+}
+
+async function loadFeedbackVotes(items, headers, supabaseUrl) {
+  feedbackVotes.clear();
+  feedbackHeaders = headers;
+  feedbackApiUrl = supabaseUrl;
+  const token = getVoterToken();
+  const response = await fetch(
+    `${supabaseUrl}/rest/v1/shard_article_feedback?select=edition_item_id,vote&voter_token=eq.${encodeURIComponent(token)}`,
+    { headers }
+  );
+  if (!response.ok) throw new Error(`Feedback lekérdezés: HTTP ${response.status}`);
+  const rows = await response.json();
+  rows.forEach(row => feedbackVotes.set(row.edition_item_id, row.vote));
+}
+
 function openArticle(item, sectionName) {
   readerTitle.textContent = item.display_title || "Cím nélkül";
   readerSummary.textContent = item.display_summary || "";
   readerBody.textContent = item.display_body || "Ehhez az elemhez nem érhető el cikk szöveg.";
   readerSection.textContent = sectionName;
+  readerFeedbackItemId = item.id;
+  readerFeedbackSectionName = sectionName;
+  if (readerFeedback) {
+    readerFeedback.replaceChildren(createFeedbackButton(item.id, "feedback-toggle reader-feedback-toggle"));
+  }
   if (readerSource) {
     readerSource.replaceChildren();
     const source = Array.isArray(item.shard_content_items)
@@ -140,7 +235,9 @@ function renderArticles(items = []) {
       const button = makeElement("button", "read-article", "Cikk olvasása  ↗");
       button.type = "button";
       button.addEventListener("click", () => openArticle(item, title));
-      card.append(meta, titleNode, summary, button);
+      const feedback = createFeedbackButton(item.id);
+      feedback.dataset.feedbackItem = item.id;
+      card.append(meta, titleNode, summary, feedback, button);
       cards.append(card);
     });
     group.append(cards);
@@ -186,6 +283,14 @@ async function loadPublishedEdition() {
     );
     if (!itemsResponse.ok) throw new Error(`Tartalomlekérdezés: HTTP ${itemsResponse.status}`);
     const items = await itemsResponse.json();
+
+    try {
+      await loadFeedbackVotes(items, headers, supabaseUrl);
+    } catch (feedbackError) {
+      console.warn("WORLD SHARDS feedback is temporarily unavailable:", feedbackError);
+      feedbackHeaders = headers;
+      feedbackApiUrl = supabaseUrl;
+    }
 
     const formatted = formatEditionDate(edition.edition_date);
     if (dateNode) dateNode.textContent = formatted.toLocaleUpperCase("hu-HU");
