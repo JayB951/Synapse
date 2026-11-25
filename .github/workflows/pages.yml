@@ -38,6 +38,9 @@ jobs:
         with:
           path: "./frontend"
 
+      - name: Wait for Pages artifact indexing
+        run: sleep 20
+
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v5
