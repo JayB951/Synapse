@@ -22,6 +22,7 @@ SECTION_LIMITS = {
 }
 
 CLOSING_LIMIT = 2
+EXPECTED_ITEMS = sum(SECTION_LIMITS.values()) + CLOSING_LIMIT
 
 CONTENT_FIELDS = (
     "id,section_code,title,summary,body,source_name,source_url,"
@@ -105,7 +106,7 @@ def select_closing_items(supabase):
     return selected
 
 
-def select_edition_items(supabase):
+def select_edition_items(supabase, edition_date):
     selected_items = []
 
     for section_code, limit in SECTION_LIMITS.items():
@@ -114,6 +115,12 @@ def select_edition_items(supabase):
             section_code,
             limit=limit,
         )
+
+        if section_code == "music_of_the_day":
+            candidates = [
+                item for item in candidates
+                if (item.get("metadata") or {}).get("edition_date") == edition_date
+            ]
 
         chosen = candidates[:limit]
         selected_items.extend(chosen)
@@ -161,7 +168,7 @@ def create_edition(supabase, edition_date):
         "metadata": {
             "builder_version": VERSION,
             "selection_method": "automatic",
-            "planned_item_count": 14,
+            "planned_item_count": EXPECTED_ITEMS,
         },
     }
 
@@ -241,12 +248,14 @@ def main():
         )
         return
 
-    selected_items = select_edition_items(supabase)
+    selected_items = select_edition_items(supabase, edition_date)
 
-    if not selected_items:
+    if len(selected_items) != EXPECTED_ITEMS:
         raise RuntimeError(
-            "Egyetlen tartalom sem választható ki. "
-            "A napi kiadvány nem jött létre."
+            f"A napi kiadványhoz {EXPECTED_ITEMS} elem szükséges, "
+            f"de csak {len(selected_items)} választható ki. "
+            "Ellenőrizd, hogy a napi Music of the Day gyűjtés lefutott-e, "
+            "és minden rovatban van-e jelölt. A kiadvány nem jött létre."
         )
 
     edition = create_edition(supabase, edition_date)
