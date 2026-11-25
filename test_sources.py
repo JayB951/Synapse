@@ -1,1126 +1,1025 @@
 
 """
-SYNAPSE – Egységes publikációs adatmodell
-Verzió: M2.7.2.1 / 0.3
+SYNAPSE – Adatforrások tesztelése és publikációk egységesítése
+Verzió: M2.7.3 / 0.4
 
-Feladat:
-- OpenAlex rekordok egységesítése
-- Crossref rekordok egységesítése
-- DOI normalizálása
-- Szerzők és szerzőazonosítók kinyerése
-- Dátumok és publikációs év kezelése
-- Folyóirat, kiadó és URL kinyerése
-- Absztraktok és témakörök kinyerése
-- Forrásspecifikus azonosítók megőrzése
-- Eredeti témaköri adatok megőrzése
-- Témakörök és tárgyszavak közös listába rendezése
-- Témaköri források visszakövethetősége
+Adatforrások:
+- OpenAlex
+- Crossref
 
-Nincs hálózati kapcsolat.
-Nincs Supabase kapcsolat.
-Nincs adatbázisba írás.
+Feladatok:
+- Publikációk lekérése
+- Dátumszűrés
+- Angol nyelv ellenőrzése
+- Publikációtípus ellenőrzése
+- Egységes adatmodell előállítása
+- DOI-alapú duplikációkezelés
+- Strukturált szerzői adatok megőrzése
+- Forrásspecifikus metaadatok megőrzése
+- Egységesített rekordok megjelenítése
+
+Fontos:
+- Nincs Supabase-kapcsolat.
+- Nincs adatbázisba írás.
+- Nincs adatbázis-módosítás.
 """
 
+import os
+import sys
 import re
-import html
-from datetime import date
+import calendar
+from datetime import date, timedelta
+from collections import Counter
 
-
-MODEL_VERSION = "0.3"
+import requests
+import publication_model as model
 
 
 # ============================================================
-# ALAPVETŐ NORMALIZÁLÁS
+# BEÁLLÍTÁSOK
 # ============================================================
 
-def normalize_doi(doi):
-    """DOI egységesítése."""
+OPENALEX_API_URL = "https://api.openalex.org/works"
+CROSSREF_API_URL = "https://api.crossref.org/works"
 
-    if not doi:
+RECORD_LIMIT = 50
+DISPLAY_LIMIT = 10
+
+REQUEST_TIMEOUT = 30
+
+END_DATE = date.today()
+START_DATE = END_DATE - timedelta(days=365)
+
+OPENALEX_API_KEY = os.getenv("OPENALEX_API_KEY")
+CROSSREF_MAILTO = os.getenv("CROSSREF_MAILTO")
+
+USER_AGENT = (
+    "SYNAPSE/0.4 "
+    "(scientific publication collection and research project)"
+)
+
+
+# ============================================================
+# PUBLIKÁCIÓTÍPUSOK
+# ============================================================
+
+# Csak ismert, értelmezhető publikációtípusokat fogadunk el.
+# Az ismeretlen típus automatikusan kizárásra kerül.
+
+ACCEPTED_PUBLICATION_TYPES = {
+    "article",
+    "journal-article",
+    "proceedings-article",
+    "book",
+    "book-chapter",
+    "book-section",
+    "book-part",
+    "dissertation",
+    "thesis",
+    "preprint",
+    "posted-content",
+    "report",
+    "report-series",
+    "monograph",
+    "edited-book",
+    "reference-entry",
+    "review",
+    "peer-review",
+    "standard",
+}
+
+
+# ============================================================
+# SEGÉDFÜGGVÉNYEK
+# ============================================================
+
+def print_section(title):
+    print()
+    print("=" * 70)
+    print(title)
+    print("=" * 70)
+
+
+def clean_string(value):
+    """Szöveg alapvető tisztítása."""
+
+    if value is None:
         return None
 
-    value = str(doi).strip()
-
-    value = re.sub(
-        r"^https?://(dx\.)?doi\.org/",
-        "",
-        value,
-        flags=re.IGNORECASE,
-    )
-
-    value = re.sub(
-        r"^doi:\s*",
-        "",
-        value,
-        flags=re.IGNORECASE,
-    )
-
-    value = value.strip().lower()
-
-    if not value or not value.startswith("10."):
-        return None
-
-    return value
-
-
-def normalize_openalex_id(openalex_id):
-    """OpenAlex azonosító egységesítése."""
-
-    if not openalex_id:
-        return None
-
-    value = str(openalex_id).strip().rstrip("/")
+    value = str(value).strip()
 
     return value or None
 
 
-def normalize_orcid(orcid):
-    """ORCID azonosító egységesítése."""
+def get_record_date(record):
+    """Publikációs dátum kinyerése a modellből."""
 
-    if not orcid:
-        return None
+    publication_date = record.get("publication_date")
 
-    value = str(orcid).strip()
-
-    value = re.sub(
-        r"^https?://orcid\.org/",
-        "",
-        value,
-        flags=re.IGNORECASE,
-    )
-
-    value = value.strip()
-
-    return value or None
-
-
-def clean_text(value):
-    """HTML és felesleges szóközök eltávolítása."""
-
-    if not value:
-        return None
-
-    text = html.unescape(str(value))
-    text = re.sub(r"<[^>]*>", " ", text)
-    text = re.sub(r"\s+", " ", text)
-
-    return text.strip() or None
-
-
-# ============================================================
-# SZERZŐK
-# ============================================================
-
-def normalize_authors(authors):
-    """
-    Egyszerű szerzőnévlista normalizálása.
-
-    Kompatibilitási okból a korábbi authors mező
-    továbbra is szöveges névlistát tartalmaz.
-    """
-
-    if not isinstance(authors, list):
-        return []
-
-    result = []
-
-    for author in authors:
-        if isinstance(author, str):
-            name = clean_text(author)
-
-        elif isinstance(author, dict):
-            name = clean_text(
-                author.get("name")
-                or author.get("display_name")
-            )
-
-        else:
-            name = None
-
-        if name and name not in result:
-            result.append(name)
-
-    return result
-
-
-def normalize_author_records(authors):
-    """
-    Strukturált szerzői rekordok normalizálása.
-
-    A sorrend megmarad.
-    Az azonos nevű szerzőket itt nem vonjuk össze,
-    mert azonos nevű kutatók külön személyek is lehetnek.
-    """
-
-    if not isinstance(authors, list):
-        return []
-
-    result = []
-
-    for position, author in enumerate(authors, start=1):
-        if not isinstance(author, dict):
-            continue
-
-        name = clean_text(
-            author.get("name")
-            or author.get("display_name")
-        )
-
-        if not name:
-            continue
-
-        orcid = normalize_orcid(
-            author.get("orcid")
-        )
-
-        openalex_id = normalize_openalex_id(
-            author.get("openalex_id")
-            or author.get("id")
-        )
-
-        result.append({
-            "name": name,
-            "orcid": orcid,
-            "openalex_id": openalex_id,
-            "position": position,
-        })
-
-    return result
-
-
-# ============================================================
-# DÁTUMOK
-# ============================================================
-
-def normalize_date(value):
-    """Dátum ellenőrzése és ISO-formátumra alakítása."""
-
-    if not value:
+    if not publication_date:
         return None
 
     try:
-        parsed = date.fromisoformat(str(value)[:10])
-        return parsed.isoformat()
+        return date.fromisoformat(
+            str(publication_date)[:10]
+        )
 
     except (ValueError, TypeError):
         return None
 
 
-def get_publication_year(publication_date):
-    """Publikációs év meghatározása a publikációs dátumból."""
+def is_within_date_range(record):
+    """Publikáció dátumának ellenőrzése."""
 
-    normalized = normalize_date(publication_date)
+    publication_date = get_record_date(record)
 
-    if not normalized:
-        return None
+    if not publication_date:
+        return False
 
-    return int(normalized[:4])
+    return START_DATE <= publication_date <= END_DATE
 
 
-def get_crossref_date(item):
-    """Crossref publikációs dátumának kinyerése."""
+def is_accepted_publication_type(record):
+    """Publikációtípus ellenőrzése."""
 
-    date_fields = [
-        "published-online",
-        "published-print",
-        "published",
-        "posted",
+    publication_type = record.get("publication_type")
+
+    if not publication_type:
+        return False
+
+    return (
+        str(publication_type).strip().lower()
+        in ACCEPTED_PUBLICATION_TYPES
+    )
+
+
+# ============================================================
+# NYELVELLENŐRZÉS
+# ============================================================
+
+def reconstruct_text(record):
+    """A cím és absztrakt egyesítése a nyelvi ellenőrzéshez."""
+
+    title = clean_string(record.get("title"))
+    abstract = clean_string(record.get("abstract"))
+
+    return " ".join(
+        value for value in [title, abstract] if value
+    )
+
+
+def is_english_by_text(record):
+    """
+    Szabályalapú angol nyelvi ellenőrzés.
+
+    A cím és az absztrakt együttes szövegében
+    a következő szavak mindegyikének legalább
+    háromszor kell szerepelnie:
+
+    - the
+    - and
+    - of
+
+    A vizsgálat különálló szavakat számol.
+    """
+
+    text = reconstruct_text(record)
+
+    if not text:
+        return False
+
+    words = re.findall(
+        r"\b[a-z]+\b",
+        text.lower()
+    )
+
+    word_counts = Counter(words)
+
+    required_words = [
+        "the",
+        "and",
+        "of",
     ]
 
-    available_dates = []
+    return all(
+        word_counts[word] >= 3
+        for word in required_words
+    )
 
-    for field in date_fields:
-        date_parts = (
-            item.get(field, {}).get("date-parts") or []
+
+def is_english(record):
+    """
+    Nyelvi ellenőrzés.
+
+    Ha a forrás egyértelműen megadja a nyelvet:
+    - angol: elfogadás
+    - nem angol: kizárás
+
+    Ha a nyelv nem ismert:
+    - cím + absztrakt szövegalapú ellenőrzése.
+    """
+
+    language = clean_string(
+        record.get("language")
+    )
+
+    if language:
+        normalized_language = language.lower()
+
+        if normalized_language in {
+            "en",
+            "eng",
+            "english",
+        }:
+            return True
+
+        return False
+
+    return is_english_by_text(record)
+
+
+# ============================================================
+# OPENALEX LEKÉRDEZÉS
+# ============================================================
+
+def fetch_openalex():
+    """Legfeljebb 50 OpenAlex rekord lekérése."""
+
+    params = {
+        "filter": (
+            f"from_publication_date:{START_DATE.isoformat()},"
+            f"to_publication_date:{END_DATE.isoformat()},"
+            "language:en"
+        ),
+        "per-page": RECORD_LIMIT,
+        "sort": "publication_date:desc",
+    }
+
+    if OPENALEX_API_KEY:
+        params["api_key"] = OPENALEX_API_KEY
+
+    headers = {
+        "User-Agent": USER_AGENT,
+    }
+
+    print_section("OPENALEX LEKÉRDEZÉS")
+
+    print(
+        f"Időszak: {START_DATE} – {END_DATE}"
+    )
+    print(
+        f"Rekordlimit: {RECORD_LIMIT}"
+    )
+
+    try:
+        response = requests.get(
+            OPENALEX_API_URL,
+            params=params,
+            headers=headers,
+            timeout=REQUEST_TIMEOUT,
         )
 
-        if not date_parts or not date_parts[0]:
-            continue
+        response.raise_for_status()
 
-        parts = date_parts[0]
+        data = response.json()
 
+        records = data.get("results", [])
+
+        print(
+            f"OpenAlex által visszaadott rekordok: "
+            f"{len(records)}"
+        )
+
+        return records
+
+    except requests.RequestException as error:
+        print(
+            f"OPENALEX API HIBA: {error}"
+        )
+
+        return []
+
+    except ValueError as error:
+        print(
+            f"OPENALEX JSON HIBA: {error}"
+        )
+
+        return []
+
+
+# ============================================================
+# CROSSREF LEKÉRDEZÉS
+# ============================================================
+
+def fetch_crossref():
+    """Legfeljebb 50 Crossref rekord lekérése."""
+
+    params = {
+        "filter": (
+            f"from-pub-date:{START_DATE.isoformat()},"
+            f"until-pub-date:{END_DATE.isoformat()}"
+        ),
+        "rows": RECORD_LIMIT,
+        "sort": "published",
+        "order": "desc",
+    }
+
+    if CROSSREF_MAILTO:
+        params["mailto"] = CROSSREF_MAILTO
+
+    headers = {
+        "User-Agent": USER_AGENT,
+    }
+
+    print_section("CROSSREF LEKÉRDEZÉS")
+
+    print(
+        f"Időszak: {START_DATE} – {END_DATE}"
+    )
+    print(
+        f"Rekordlimit: {RECORD_LIMIT}"
+    )
+
+    try:
+        response = requests.get(
+            CROSSREF_API_URL,
+            params=params,
+            headers=headers,
+            timeout=REQUEST_TIMEOUT,
+        )
+
+        response.raise_for_status()
+
+        data = response.json()
+
+        message = data.get("message", {})
+
+        records = message.get("items", [])
+
+        print(
+            f"Crossref által visszaadott rekordok: "
+            f"{len(records)}"
+        )
+
+        return records
+
+    except requests.RequestException as error:
+        print(
+            f"CROSSREF API HIBA: {error}"
+        )
+
+        return []
+
+    except ValueError as error:
+        print(
+            f"CROSSREF JSON HIBA: {error}"
+        )
+
+        return []
+
+
+# ============================================================
+# REKORDOK FELDOLGOZÁSA
+# ============================================================
+
+def process_records(records, source_name, converter):
+    """
+    Forrásrekordok feldolgozása.
+
+    Sorrend:
+    1. Átalakítás egységes modellre.
+    2. Dátumellenőrzés.
+    3. Nyelvellenőrzés.
+    4. Publikációtípus ellenőrzése.
+    5. Cím meglétének ellenőrzése.
+    """
+
+    accepted = []
+
+    rejected_reasons = Counter()
+
+    print_section(
+        f"{source_name.upper()} REKORDOK FELDOLGOZÁSA"
+    )
+
+    for item in records:
         try:
-            year = int(parts[0])
-            month = int(parts[1]) if len(parts) > 1 else 1
-            day = int(parts[2]) if len(parts) > 2 else 1
+            record = converter(item)
 
-            available_dates.append(
-                date(year, month, day)
+        except Exception as error:
+            rejected_reasons["modellhiba"] += 1
+
+            print(
+                f"Modellhiba ({source_name}): {error}"
             )
 
-        except (ValueError, TypeError, IndexError):
             continue
 
-    if not available_dates:
-        return None
-
-    return min(available_dates).isoformat()
-
-
-# ============================================================
-# ABSZTRAKT
-# ============================================================
-
-def reconstruct_abstract(inverted_index):
-    """OpenAlex pozícióalapú absztrakt visszaállítása."""
-
-    if not isinstance(inverted_index, dict):
-        return None
-
-    positioned_words = []
-
-    for word, positions in inverted_index.items():
-        if not isinstance(positions, list):
+        if not record.get("title"):
+            rejected_reasons["hiányzó cím"] += 1
             continue
 
-        for position in positions:
-            try:
-                positioned_words.append(
-                    (int(position), word)
-                )
-            except (ValueError, TypeError):
-                continue
+        if not is_within_date_range(record):
+            rejected_reasons["dátumszűrés"] += 1
+            continue
 
-    if not positioned_words:
-        return None
+        if not is_english(record):
+            rejected_reasons["nem angol nyelv"] += 1
+            continue
 
-    max_position = max(
-        position for position, _ in positioned_words
+        if not is_accepted_publication_type(record):
+            rejected_reasons["ismeretlen publikációtípus"] += 1
+            continue
+
+        if not model.validate_record(record):
+            rejected_reasons["hibás modellrekord"] += 1
+            continue
+
+        accepted.append(record)
+
+    print(
+        f"Lekért rekordok: {len(records)}"
     )
 
-    if max_position > 20000:
-        return None
-
-    words = [""] * (max_position + 1)
-
-    for position, word in positioned_words:
-        words[position] = str(word)
-
-    result = " ".join(
-        word for word in words if word
+    print(
+        f"Elfogadott rekordok: {len(accepted)}"
     )
 
-    return clean_text(result)
+    print(
+        f"Kizárt rekordok: "
+        f"{sum(rejected_reasons.values())}"
+    )
+
+    if rejected_reasons:
+        print()
+        print("Kizárási okok:")
+
+        for reason, count in rejected_reasons.items():
+            print(
+                f"  - {reason}: {count}"
+            )
+
+    return accepted, rejected_reasons
+
+
+def process_openalex(records):
+    """OpenAlex rekordok feldolgozása."""
+
+    return process_records(
+        records,
+        "OpenAlex",
+        model.from_openalex,
+    )
+
+
+def process_crossref(records):
+    """Crossref rekordok feldolgozása."""
+
+    return process_records(
+        records,
+        "Crossref",
+        model.from_crossref,
+    )
 
 
 # ============================================================
-# TÉMAKÖRÖK
+# LISTÁK ÖSSZEFŰZÉSE
 # ============================================================
 
-def normalize_topics(topics):
-    """OpenAlex témakörök kinyerése."""
-
-    if not isinstance(topics, list):
-        return []
+def merge_unique_values(first, second):
+    """Két lista egyedi elemeinek stabil sorrendű összevonása."""
 
     result = []
 
-    for topic in topics:
-        if isinstance(topic, str):
-            name = clean_text(topic)
+    for value in (first or []) + (second or []):
+        if value is None:
+            continue
 
-        elif isinstance(topic, dict):
-            name = clean_text(
-                topic.get("display_name")
-                or topic.get("name")
-            )
-
-        else:
-            name = None
-
-        if name and name not in result:
-            result.append(name)
-
-    return result
-
-
-def normalize_subjects(subjects):
-    """Crossref tárgyszavak kinyerése."""
-
-    if not isinstance(subjects, list):
-        return []
-
-    result = []
-
-    for subject in subjects:
-        value = clean_text(subject)
-
-        if value and value not in result:
+        if value not in result:
             result.append(value)
 
     return result
 
 
-def normalize_topic_name(value):
+# ============================================================
+# PUBLIKÁCIÓS REKORDOK ÖSSZEVONÁSA
+# ============================================================
+
+def merge_publication_records(first, second):
     """
-    Témakör egységesített összehasonlítási alakja.
+    Két azonos DOI-jú publikáció összevonása.
 
-    Csak kis- és nagybetű, illetve szóközkülönbségeket
-    normalizál. Szemantikai összevonást nem végez.
-    """
+    Az első rekord szolgál alapként.
+    A második rekordból hiányzó bibliográfiai adatok
+    kiegészítésre kerülnek.
 
-    cleaned = clean_text(value)
-
-    if not cleaned:
-        return None
-
-    return " ".join(cleaned.casefold().split())
-
-
-def build_topic_terms(topics=None, subjects=None):
-    """
-    Közös témaköri lista létrehozása.
-
-    A topics az OpenAlex, a subjects a Crossref adatait
-    tartalmazza. Az azonos normalizált szövegű elemek
-    egy rekordba kerülnek, a források megjelölésével.
+    A forrásadatokat és az eredeti metaadatokat megőrizzük.
     """
 
-    result = []
-    positions = {}
+    merged = dict(first)
 
-    sources = [
-        ("openalex", topics or []),
-        ("crossref", subjects or []),
-    ]
+    # --------------------------------------------------------
+    # Egyszerű mezők
+    # --------------------------------------------------------
 
-    for source_name, values in sources:
-        for value in values:
-            name = clean_text(value)
-            normalized = normalize_topic_name(name)
-
-            if not name or not normalized:
-                continue
-
-            if normalized not in positions:
-                positions[normalized] = len(result)
-
-                result.append({
-                    "name": name,
-                    "normalized": normalized,
-                    "sources": [source_name],
-                })
-
-            else:
-                index = positions[normalized]
-
-                if source_name not in result[index]["sources"]:
-                    result[index]["sources"].append(source_name)
-
-    return result
-
-
-def merge_topic_terms(first, second):
-    """
-    Két közös témaköri lista összevonása.
-
-    Az azonos normalizált nevű elemek forrásai egyesülnek.
-    """
-
-    result = []
-    positions = {}
-
-    for term in (first or []) + (second or []):
-        if not isinstance(term, dict):
-            continue
-
-        name = clean_text(term.get("name"))
-
-        normalized = (
-            normalize_topic_name(name)
-            or normalize_topic_name(term.get("normalized"))
-        )
-
-        if not name or not normalized:
-            continue
-
-        sources = term.get("sources") or []
-
-        if normalized not in positions:
-            positions[normalized] = len(result)
-
-            result.append({
-                "name": name,
-                "normalized": normalized,
-                "sources": [],
-            })
-
-        index = positions[normalized]
-
-        for source in sources:
-            if source not in result[index]["sources"]:
-                result[index]["sources"].append(source)
-
-    return result
-
-
-# ============================================================
-# PUBLIKÁCIÓTÍPUS
-# ============================================================
-
-def normalize_publication_type(publication_type):
-    """Publikációtípus egységesítése."""
-
-    if not publication_type:
-        return None
-
-    value = str(publication_type).strip().lower()
-
-    type_mapping = {
-        "article": "journal-article",
-        "journal-article": "journal-article",
-        "conference-paper": "proceedings-article",
-        "proceedings-article": "proceedings-article",
-        "book-chapter": "book-chapter",
-        "book": "book",
-        "dissertation": "dissertation",
-        "preprint": "preprint",
-        "posted-content": "posted-content",
-        "report": "report",
-        "monograph": "monograph",
-        "edited-book": "edited-book",
-        "reference-entry": "reference-entry",
-    }
-
-    return type_mapping.get(value, value)
-
-
-# ============================================================
-# FORRÁSSPECIFIKUS BIBLIOGRÁFIAI ADATOK
-# ============================================================
-
-def get_openalex_source(item):
-    """OpenAlex folyóirat- és kiadói adatok kinyerése."""
-
-    primary_location = item.get("primary_location") or {}
-    source = primary_location.get("source") or {}
-
-    journal = clean_text(
-        source.get("display_name")
-    )
-
-    publisher = clean_text(
-        source.get("host_organization_name")
-    )
-
-    url = clean_text(
-        primary_location.get("landing_page_url")
-    )
-
-    if not url:
-        url = clean_text(item.get("doi"))
-
-    return {
-        "journal": journal,
-        "publisher": publisher,
-        "url": url,
-    }
-
-
-def get_crossref_source(item):
-    """Crossref folyóirat- és kiadói adatok kinyerése."""
-
-    container_titles = item.get("container-title") or []
-
-    journal = clean_text(
-        container_titles[0] if container_titles else None
-    )
-
-    publisher = clean_text(
-        item.get("publisher")
-    )
-
-    url = clean_text(
-        item.get("URL")
-    )
-
-    return {
-        "journal": journal,
-        "publisher": publisher,
-        "url": url,
-    }
-
-
-# ============================================================
-# ALAPREKORD
-# ============================================================
-
-def create_base_record():
-    """Üres, egységes publikációs rekord."""
-
-    return {
-        "model_version": MODEL_VERSION,
-
-        "doi": None,
-        "openalex_id": None,
-
-        "title": None,
-        "authors": [],
-        "author_records": [],
-
-        "publication_date": None,
-        "publication_year": None,
-        "publication_type": None,
-
-        "source_types": {},
-
-        "language": None,
-        "abstract": None,
-
-        "journal": None,
-        "publisher": None,
-        "url": None,
-
-        "topics": [],
-        "subjects": [],
-        "topic_terms": [],
-
-        "sources": [],
-        "source_ids": {},
-        "source_metadata": {},
-
-        "classification": None,
-    }
-
-
-# ============================================================
-# OPENALEX ÁTALAKÍTÁS
-# ============================================================
-
-def from_openalex(item, classification=None):
-    """OpenAlex rekord átalakítása közös adatmodellre."""
-
-    record = create_base_record()
-
-    if not isinstance(item, dict):
-        raise TypeError(
-            "Az OpenAlex rekordnak szótárnak kell lennie."
-        )
-
-    record["doi"] = normalize_doi(
-        item.get("doi")
-    )
-
-    record["openalex_id"] = normalize_openalex_id(
-        item.get("id")
-    )
-
-    record["title"] = clean_text(
-        item.get("title")
-    )
-
-    author_records = []
-
-    for authorship in item.get("authorships") or []:
-        author = authorship.get("author") or {}
-
-        author_records.append({
-            "name": author.get("display_name"),
-            "orcid": author.get("orcid"),
-            "openalex_id": author.get("id"),
-        })
-
-    record["author_records"] = normalize_author_records(
-        author_records
-    )
-
-    record["authors"] = [
-        author["name"]
-        for author in record["author_records"]
-    ]
-
-    record["publication_date"] = normalize_date(
-        item.get("publication_date")
-    )
-
-    record["publication_year"] = get_publication_year(
-        record["publication_date"]
-    )
-
-    original_type = item.get("type")
-
-    record["publication_type"] = normalize_publication_type(
-        original_type
-    )
-
-    if original_type:
-        record["source_types"]["openalex"] = original_type
-
-    record["language"] = clean_text(
-        item.get("language")
-    )
-
-    record["abstract"] = reconstruct_abstract(
-        item.get("abstract_inverted_index")
-    )
-
-    record["topics"] = normalize_topics(
-        item.get("topics")
-    )
-
-    record["topic_terms"] = build_topic_terms(
-        topics=record["topics"]
-    )
-
-    source_data = get_openalex_source(item)
-
-    record["journal"] = source_data["journal"]
-    record["publisher"] = source_data["publisher"]
-    record["url"] = source_data["url"]
-
-    record["sources"] = ["openalex"]
-
-    if record["openalex_id"]:
-        record["source_ids"]["openalex"] = (
-            record["openalex_id"]
-        )
-
-    record["source_metadata"]["openalex"] = {
-        "topics": item.get("topics") or [],
-        "type": original_type,
-        "primary_location": item.get("primary_location"),
-    }
-
-    record["classification"] = classification
-
-    return record
-
-
-# ============================================================
-# CROSSREF ÁTALAKÍTÁS
-# ============================================================
-
-def from_crossref(item, classification=None):
-    """Crossref rekord átalakítása közös adatmodellre."""
-
-    record = create_base_record()
-
-    if not isinstance(item, dict):
-        raise TypeError(
-            "A Crossref rekordnak szótárnak kell lennie."
-        )
-
-    record["doi"] = normalize_doi(
-        item.get("DOI")
-    )
-
-    titles = item.get("title") or []
-
-    record["title"] = clean_text(
-        titles[0] if titles else None
-    )
-
-    author_records = []
-
-    for author in item.get("author") or []:
-        name = " ".join(
-            part for part in [
-                author.get("given", ""),
-                author.get("family", ""),
-            ]
-            if part
-        )
-
-        author_records.append({
-            "name": name,
-            "orcid": author.get("ORCID"),
-            "openalex_id": None,
-        })
-
-    record["author_records"] = normalize_author_records(
-        author_records
-    )
-
-    record["authors"] = [
-        author["name"]
-        for author in record["author_records"]
-    ]
-
-    record["publication_date"] = get_crossref_date(item)
-
-    record["publication_year"] = get_publication_year(
-        record["publication_date"]
-    )
-
-    original_type = item.get("type")
-
-    record["publication_type"] = normalize_publication_type(
-        original_type
-    )
-
-    if original_type:
-        record["source_types"]["crossref"] = original_type
-
-    record["language"] = clean_text(
-        item.get("language")
-    )
-
-    record["abstract"] = clean_text(
-        item.get("abstract")
-    )
-
-    record["subjects"] = normalize_subjects(
-        item.get("subject")
-    )
-
-    record["topic_terms"] = build_topic_terms(
-        subjects=record["subjects"]
-    )
-
-    source_data = get_crossref_source(item)
-
-    record["journal"] = source_data["journal"]
-    record["publisher"] = source_data["publisher"]
-    record["url"] = source_data["url"]
-
-    record["sources"] = ["crossref"]
-
-    if record["doi"]:
-        record["source_ids"]["crossref"] = record["doi"]
-
-    record["source_metadata"]["crossref"] = {
-        "subjects": item.get("subject") or [],
-        "type": original_type,
-        "container_title": item.get("container-title") or [],
-    }
-
-    record["classification"] = classification
-
-    return record
-
-
-# ============================================================
-# REKORDEGYESÍTÉSHEZ SEGÉDFÜGGVÉNYEK
-# ============================================================
-
-def merge_author_records(first, second):
-    """
-    Két szerzőlista összevonása.
-
-    ORCID alapján történik az egyezés, ha mindkét rekord
-    rendelkezik ORCID-dal. Egyébként a név és az elérhető
-    OpenAlex-azonosító alapján próbálunk egyezést találni.
-
-    Az eredeti sorrendet az első lista határozza meg.
-    """
-
-    result = []
-    positions = {}
-
-    for author in (first or []) + (second or []):
-        if not isinstance(author, dict):
-            continue
-
-        name = clean_text(author.get("name"))
-
-        if not name:
-            continue
-
-        orcid = normalize_orcid(
-            author.get("orcid")
-        )
-
-        openalex_id = normalize_openalex_id(
-            author.get("openalex_id")
-        )
-
-        if orcid:
-            key = ("orcid", orcid.casefold())
-        elif openalex_id:
-            key = ("openalex", openalex_id.casefold())
-        else:
-            key = ("name", name.casefold())
-
-        if key not in positions:
-            positions[key] = len(result)
-
-            result.append({
-                "name": name,
-                "orcid": orcid,
-                "openalex_id": openalex_id,
-                "position": len(result) + 1,
-            })
-
-        else:
-            index = positions[key]
-
-            if not result[index].get("orcid") and orcid:
-                result[index]["orcid"] = orcid
-
-            if (
-                not result[index].get("openalex_id")
-                and openalex_id
-            ):
-                result[index]["openalex_id"] = openalex_id
-
-    return result
-
-
-# ============================================================
-# REKORDVALIDÁCIÓ
-# ============================================================
-
-def validate_record(record):
-    """Az egységes rekord alapvető szerkezeti ellenőrzése."""
-
-    required_fields = {
-        "model_version",
-        "doi",
-        "openalex_id",
+    simple_fields = [
         "title",
-        "authors",
-        "author_records",
         "publication_date",
         "publication_year",
         "publication_type",
-        "source_types",
         "language",
         "abstract",
         "journal",
         "publisher",
         "url",
-        "topics",
-        "subjects",
-        "topic_terms",
-        "sources",
-        "source_ids",
-        "source_metadata",
         "classification",
-    }
-
-    if not isinstance(record, dict):
-        return False
-
-    if not required_fields.issubset(record.keys()):
-        return False
-
-    for field in [
-        "authors",
-        "author_records",
-        "topics",
-        "subjects",
-        "topic_terms",
-        "sources",
-    ]:
-        if not isinstance(record[field], list):
-            return False
-
-    for field in [
-        "source_ids",
-        "source_types",
-        "source_metadata",
-    ]:
-        if not isinstance(record[field], dict):
-            return False
-
-    for author in record["author_records"]:
-        if not isinstance(author, dict):
-            return False
-
-        if not isinstance(author.get("name"), str):
-            return False
-
-        if not isinstance(author.get("position"), int):
-            return False
-
-    for term in record["topic_terms"]:
-        if not isinstance(term, dict):
-            return False
-
-        if not isinstance(term.get("name"), str):
-            return False
-
-        if not isinstance(term.get("normalized"), str):
-            return False
-
-        if not isinstance(term.get("sources"), list):
-            return False
-
-    if record["publication_date"]:
-        if normalize_date(record["publication_date"]) is None:
-            return False
-
-    if record["publication_year"] is not None:
-        if not isinstance(record["publication_year"], int):
-            return False
-
-    return True
-
-
-# ============================================================
-# MODELLTESZTEK
-# ============================================================
-
-def run_model_tests():
-    """Hálózat nélküli önellenőrzés."""
-
-    assert normalize_doi(
-        "https://doi.org/10.1234/ABC"
-    ) == "10.1234/abc"
-
-    assert normalize_doi(
-        "doi:10.1234/ABC"
-    ) == "10.1234/abc"
-
-    assert normalize_doi("invalid") is None
-
-    assert normalize_openalex_id(
-        "https://openalex.org/W123456/"
-    ) == "https://openalex.org/W123456"
-
-    assert normalize_orcid(
-        "https://orcid.org/0000-0000-0000-0000"
-    ) == "0000-0000-0000-0000"
-
-    assert normalize_date(
-        "2026-11-25"
-    ) == "2026-11-25"
-
-    assert normalize_date(
-        "hibás dátum"
-    ) is None
-
-    assert get_publication_year(
-        "2026-11-25"
-    ) == 2026
-
-    assert normalize_publication_type(
-        "article"
-    ) == "journal-article"
-
-    openalex_record = from_openalex({
-        "id": "https://openalex.org/W123456",
-        "doi": "https://doi.org/10.1234/ABC",
-        "title": "Example Research Article",
-        "publication_date": "2026-11-25",
-        "type": "article",
-        "language": "en",
-        "authorships": [
-            {
-                "author": {
-                    "display_name": "John Smith",
-                    "orcid": "https://orcid.org/0000-0000-0000-0000",
-                    "id": "https://openalex.org/A123456",
-                }
-            }
-        ],
-        "topics": [
-            {
-                "display_name": "Artificial Intelligence"
-            }
-        ],
-        "primary_location": {
-            "landing_page_url": "https://example.org/article",
-            "source": {
-                "display_name": "Example Journal",
-                "host_organization_name": "Example Publisher",
-            },
-        },
-        "abstract_inverted_index": {
-            "The": [0],
-            "research": [1],
-            "is": [2],
-            "important": [3],
-        },
-    })
-
-    assert validate_record(openalex_record)
-    assert openalex_record["doi"] == "10.1234/abc"
-    assert openalex_record["sources"] == ["openalex"]
-    assert openalex_record["authors"] == ["John Smith"]
-    assert openalex_record["author_records"][0]["orcid"] == (
-        "0000-0000-0000-0000"
-    )
-    assert openalex_record["publication_year"] == 2026
-    assert openalex_record["journal"] == "Example Journal"
-    assert openalex_record["publisher"] == "Example Publisher"
-
-    crossref_record = from_crossref({
-        "DOI": "10.1234/ABC",
-        "title": ["Example Research Article"],
-        "type": "journal-article",
-        "language": "en",
-        "published-online": {
-            "date-parts": [[2026, 11, 25]]
-        },
-        "author": [
-            {
-                "given": "John",
-                "family": "Smith",
-                "ORCID": "https://orcid.org/0000-0000-0000-0000",
-            }
-        ],
-        "subject": [
-            "Artificial Intelligence",
-            "Computer Science",
-        ],
-        "container-title": ["Example Journal"],
-        "publisher": "Example Publisher",
-        "URL": "https://doi.org/10.1234/ABC",
-        "abstract": "<jats:p>Example abstract.</jats:p>",
-    })
-
-    assert validate_record(crossref_record)
-    assert crossref_record["doi"] == "10.1234/abc"
-    assert crossref_record["sources"] == ["crossref"]
-    assert crossref_record["authors"] == ["John Smith"]
-    assert crossref_record["author_records"][0]["orcid"] == (
-        "0000-0000-0000-0000"
-    )
-    assert crossref_record["journal"] == "Example Journal"
-    assert crossref_record["publisher"] == "Example Publisher"
-
-    merged_terms = merge_topic_terms(
-        openalex_record["topic_terms"],
-        crossref_record["topic_terms"],
-    )
-
-    assert len(merged_terms) == 2
-    assert merged_terms[0]["sources"] == [
-        "openalex",
-        "crossref",
+        "openalex_id",
     ]
 
-    merged_authors = merge_author_records(
-        openalex_record["author_records"],
-        crossref_record["author_records"],
+    for field in simple_fields:
+        if not merged.get(field) and second.get(field):
+            merged[field] = second[field]
+
+    # --------------------------------------------------------
+    # Strukturált szerzők
+    # --------------------------------------------------------
+
+    merged["author_records"] = model.merge_author_records(
+        first.get("author_records", []),
+        second.get("author_records", []),
     )
 
-    assert len(merged_authors) == 1
-    assert merged_authors[0]["orcid"] == (
-        "0000-0000-0000-0000"
+    # A szerzőneveket a strukturált adatokból építjük újra.
+    # Név szerinti deduplikáció nincs.
+    merged["authors"] = model.author_names_from_records(
+        merged["author_records"]
     )
 
-    print("DOI normalizálás: SIKERES")
-    print("OpenAlex azonosító normalizálása: SIKERES")
-    print("ORCID normalizálása: SIKERES")
-    print("Dátumkezelés: SIKERES")
-    print("Publikációs év meghatározása: SIKERES")
-    print("Publikációtípus-egységesítés: SIKERES")
-    print("OpenAlex átalakítás: SIKERES")
-    print("Crossref átalakítás: SIKERES")
-    print("Strukturált szerzői adatok: SIKERES")
-    print("Szerzői azonosítók megőrzése: SIKERES")
-    print("Szerzők összevonása: SIKERES")
-    print("Folyóirat és kiadó kinyerése: SIKERES")
-    print("Témakörök egységesítése: SIKERES")
-    print("Témaköri források megőrzése: SIKERES")
-    print("Rekordstruktúra ellenőrzése: SIKERES")
+    # --------------------------------------------------------
+    # Témakörök és tárgyszavak
+    # --------------------------------------------------------
+
+    merged["topics"] = merge_unique_values(
+        first.get("topics", []),
+        second.get("topics", []),
+    )
+
+    merged["subjects"] = merge_unique_values(
+        first.get("subjects", []),
+        second.get("subjects", []),
+    )
+
+    merged["topic_terms"] = model.merge_topic_terms(
+        first.get("topic_terms", []),
+        second.get("topic_terms", []),
+    )
+
+    # --------------------------------------------------------
+    # Források
+    # --------------------------------------------------------
+
+    merged["sources"] = merge_unique_values(
+        first.get("sources", []),
+        second.get("sources", []),
+    )
+
+    # --------------------------------------------------------
+    # Forrástípusok
+    # --------------------------------------------------------
+
+    merged["source_types"] = dict(
+        first.get("source_types") or {}
+    )
+
+    merged["source_types"].update(
+        second.get("source_types") or {}
+    )
+
+    # --------------------------------------------------------
+    # Forrásazonosítók
+    # --------------------------------------------------------
+
+    merged["source_ids"] = dict(
+        first.get("source_ids") or {}
+    )
+
+    merged["source_ids"].update(
+        second.get("source_ids") or {}
+    )
+
+    # --------------------------------------------------------
+    # Forrásmetaadatok
+    # --------------------------------------------------------
+
+    merged["source_metadata"] = dict(
+        first.get("source_metadata") or {}
+    )
+
+    for source_name, metadata in (
+        second.get("source_metadata") or {}
+    ).items():
+
+        if source_name not in merged["source_metadata"]:
+            merged["source_metadata"][source_name] = metadata
+
+        elif isinstance(metadata, dict):
+            existing = merged["source_metadata"][source_name]
+
+            if isinstance(existing, dict):
+                combined = dict(existing)
+                combined.update(metadata)
+
+                merged["source_metadata"][source_name] = combined
+
+    return merged
 
 
 # ============================================================
-# FUTTATÁS
+# DOI ALAPÚ DEDUPLIKÁCIÓ
 # ============================================================
+
+def deduplicate_records(records):
+    """
+    Publikációk deduplikálása DOI alapján.
+
+    DOI-val rendelkező rekordok:
+    - azonos DOI esetén összevonásra kerülnek.
+
+    DOI nélküli rekordok:
+    - külön rekordként maradnak meg.
+    """
+
+    unique_records = []
+    doi_positions = {}
+
+    duplicate_count = 0
+
+    for record in records:
+        doi = model.normalize_doi(
+            record.get("doi")
+        )
+
+        if not doi:
+            unique_records.append(record)
+            continue
+
+        if doi not in doi_positions:
+            doi_positions[doi] = len(unique_records)
+            unique_records.append(record)
+
+        else:
+            position = doi_positions[doi]
+
+            unique_records[position] = (
+                merge_publication_records(
+                    unique_records[position],
+                    record,
+                )
+            )
+
+            duplicate_count += 1
+
+    return unique_records, duplicate_count
+
+
+# ============================================================
+# EGYSÉGES REKORD MEGJELENÍTÉSE
+# ============================================================
+
+def print_unified_record(record, index):
+    """Egy egységes publikációs rekord megjelenítése."""
+
+    print()
+    print("-" * 70)
+
+    print(
+        f"REKORD #{index}"
+    )
+
+    print(
+        f"Cím: {record.get('title')}"
+    )
+
+    print(
+        f"DOI: {record.get('doi') or 'Nincs'}"
+    )
+
+    print(
+        f"OpenAlex ID: "
+        f"{record.get('openalex_id') or 'Nincs'}"
+    )
+
+    print(
+        f"Dátum: "
+        f"{record.get('publication_date') or 'Nincs'}"
+    )
+
+    print(
+        f"Publikációs év: "
+        f"{record.get('publication_year') or 'Nincs'}"
+    )
+
+    print(
+        f"Típus: "
+        f"{record.get('publication_type') or 'Nincs'}"
+    )
+
+    print(
+        f"Nyelv: "
+        f"{record.get('language') or 'Nincs'}"
+    )
+
+    print(
+        f"Folyóirat: "
+        f"{record.get('journal') or 'Nincs'}"
+    )
+
+    print(
+        f"Kiadó: "
+        f"{record.get('publisher') or 'Nincs'}"
+    )
+
+    print(
+        f"URL: "
+        f"{record.get('url') or 'Nincs'}"
+    )
+
+    print(
+        f"Források: "
+        f"{', '.join(record.get('sources') or []) or 'Nincs'}"
+    )
+
+    print(
+        f"Forrásazonosítók: "
+        f"{record.get('source_ids') or {}}"
+    )
+
+    print(
+        f"Szerzők száma: "
+        f"{len(record.get('author_records') or [])}"
+    )
+
+    for author in record.get("author_records") or []:
+        print(
+            "  - "
+            f"{author.get('position')}. "
+            f"{author.get('name')} "
+            f"| ORCID: {author.get('orcid') or '-'} "
+            f"| OpenAlex ID: "
+            f"{author.get('openalex_id') or '-'}"
+        )
+
+    print(
+        f"Témakörök: "
+        f"{', '.join(record.get('topics') or []) or 'Nincs'}"
+    )
+
+    print(
+        f"Tárgyszavak: "
+        f"{', '.join(record.get('subjects') or []) or 'Nincs'}"
+    )
+
+    print(
+        f"Egységesített témakörök: "
+        f"{len(record.get('topic_terms') or [])}"
+    )
+
+    print(
+        f"Forrástípusok: "
+        f"{record.get('source_types') or {}}"
+    )
+
+    print(
+        f"Forrásmetaadatok: "
+        f"{list((record.get('source_metadata') or {}).keys())}"
+    )
+
+    abstract = record.get("abstract")
+
+    if abstract:
+        print(
+            f"Absztrakt: {abstract[:500]}"
+        )
+
+        if len(abstract) > 500:
+            print("...")
+    else:
+        print("Absztrakt: Nincs")
+
+
+# ============================================================
+# ÖSSZESÍTÉS
+# ============================================================
+
+def print_summary(
+    openalex_records,
+    crossref_records,
+    unified_records,
+    duplicate_count,
+):
+    """A teszt eredményének összesítése."""
+
+    print_section("ÖSSZESÍTETT EREDMÉNY")
+
+    total_downloaded = (
+        len(openalex_records)
+        + len(crossref_records)
+    )
+
+    total_accepted = (
+        len(openalex_records)
+        + len(crossref_records)
+    )
+
+    print(
+        f"OpenAlex elfogadott rekordok: "
+        f"{len(openalex_records)}"
+    )
+
+    print(
+        f"Crossref elfogadott rekordok: "
+        f"{len(crossref_records)}"
+    )
+
+    print(
+        f"Összes elfogadott rekord: "
+        f"{total_accepted}"
+    )
+
+    print(
+        f"DOI alapján összevont duplikációk: "
+        f"{duplicate_count}"
+    )
+
+    print(
+        f"Egységes rekordok száma: "
+        f"{len(unified_records)}"
+    )
+
+    print(
+        f"Rekordok csökkenése deduplikáció után: "
+        f"{total_downloaded - len(unified_records)}"
+    )
+
+    print()
+    print("Adatbázisba írás: NINCS")
+    print("Supabase-kapcsolat: NINCS")
+    print("Adatbázis-módosítás: NINCS")
+
+
+# ============================================================
+# FŐPROGRAM
+# ============================================================
+
+def main():
+    """A teljes adatforrás-teszt végrehajtása."""
+
+    print_section(
+        "SYNAPSE – ADATFORRÁSOK ÉS REKORDÖSSZEVONÁS"
+    )
+
+    print(
+        "Verzió: M2.7.3 / 0.4"
+    )
+
+    print(
+        f"Gyűjtési időszak: {START_DATE} – {END_DATE}"
+    )
+
+    print(
+        f"Forrásonkénti limit: {RECORD_LIMIT}"
+    )
+
+    print(
+        f"Megjelenített rekordok maximuma: {DISPLAY_LIMIT}"
+    )
+
+    print(
+        "Adatbázisba mentés: NINCS"
+    )
+
+    # --------------------------------------------------------
+    # 1. Lekérdezés
+    # --------------------------------------------------------
+
+    openalex_raw = fetch_openalex()
+    crossref_raw = fetch_crossref()
+
+    if not openalex_raw and not crossref_raw:
+        print()
+        print(
+            "HIBA: Egyik adatforrásból sem érkezett rekord."
+        )
+
+        sys.exit(1)
+
+    # --------------------------------------------------------
+    # 2. Feldolgozás
+    # --------------------------------------------------------
+
+    openalex_records, openalex_rejected = (
+        process_openalex(openalex_raw)
+    )
+
+    crossref_records, crossref_rejected = (
+        process_crossref(crossref_raw)
+    )
+
+    # --------------------------------------------------------
+    # 3. Közös lista
+    # --------------------------------------------------------
+
+    all_records = (
+        openalex_records
+        + crossref_records
+    )
+
+    # --------------------------------------------------------
+    # 4. DOI-alapú deduplikáció
+    # --------------------------------------------------------
+
+    unified_records, duplicate_count = (
+        deduplicate_records(all_records)
+    )
+
+    # --------------------------------------------------------
+    # 5. Modellvalidáció
+    # --------------------------------------------------------
+
+    invalid_records = []
+
+    for record in unified_records:
+        if not model.validate_record(record):
+            invalid_records.append(record)
+
+    if invalid_records:
+        print_section("MODELLVALIDÁCIÓS HIBA")
+
+        print(
+            f"Hibás rekordok száma: {len(invalid_records)}"
+        )
+
+        sys.exit(1)
+
+    # --------------------------------------------------------
+    # 6. Összesítés
+    # --------------------------------------------------------
+
+    print_summary(
+        openalex_records,
+        crossref_records,
+        unified_records,
+        duplicate_count,
+    )
+
+    # --------------------------------------------------------
+    # 7. Rekordok megjelenítése
+    # --------------------------------------------------------
+
+    print_section(
+        f"EGYSÉGESÍTETT REKORDOK – ELSŐ {DISPLAY_LIMIT}"
+    )
+
+    for index, record in enumerate(
+        unified_records[:DISPLAY_LIMIT],
+        start=1,
+    ):
+        print_unified_record(record, index)
+
+    # --------------------------------------------------------
+    # 8. Végállapot
+    # --------------------------------------------------------
+
+    print_section("TESZT BEFEJEZVE")
+
+    print(
+        "OpenAlex feldolgozás: KÉSZ"
+    )
+
+    print(
+        "Crossref feldolgozás: KÉSZ"
+    )
+
+    print(
+        "DOI-alapú deduplikáció: KÉSZ"
+    )
+
+    print(
+        "Strukturált szerzők kezelése: KÉSZ"
+    )
+
+    print(
+        "Forrásmetaadatok megőrzése: KÉSZ"
+    )
+
+    print(
+        "Egységes modell validációja: SIKERES"
+    )
+
+    print(
+        "Supabase-írás: NEM TÖRTÉNT"
+    )
+
 
 if __name__ == "__main__":
-    print("=" * 60)
-    print("SYNAPSE – EGYSÉGES ADATMODELL")
-    print("=" * 60)
-
-    run_model_tests()
-
-    print("=" * 60)
-    print("M2.7.2.1 / 0.3 – MODELL ELŐKÉSZÍTVE")
-    print("Adatbázis-módosítás: NINCS")
-    print("Hálózati kapcsolat: NINCS")
-    print("=" * 60)
+    main()
