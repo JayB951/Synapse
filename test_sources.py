@@ -61,7 +61,7 @@ EXCLUDED_TYPES = {
     "study-registration",
 }
 
-REVIEW_TITLES = {
+EXCLUDED_GENERIC_TITLES = {
     "index",
     "chronology",
     "contents",
@@ -318,8 +318,8 @@ def classify_record(publication_type, accepted_types, title):
     if normalized_title.startswith(EXCLUDED_TITLE_PREFIXES):
         return "KIZÁRVA – KÓD VAGY SZOFTVER"
 
-    if normalized_title in REVIEW_TITLES:
-        return "ELLENŐRZENDŐ – ÁLTALÁNOS CÍM"
+    if normalized_title in EXCLUDED_GENERIC_TITLES:
+        return "KIZÁRVA – ÁLTALÁNOS CÍM"
 
     if normalized_type in EXCLUDED_TYPES:
         return "KIZÁRVA – NEM KÍVÁNT TÍPUS"
@@ -327,7 +327,32 @@ def classify_record(publication_type, accepted_types, title):
     if normalized_type in accepted_types:
         return "ELFOGADHATÓ"
 
-    return "ELLENŐRZENDŐ – ISMERETLEN TÍPUS"
+    return "KIZÁRVA – ISMERETLEN PUBLIKÁCIÓTÍPUS"
+
+
+
+def run_classification_filter_tests():
+    """A publikációtípus-szűrő automatikus tesztjei."""
+    assert classify_record(
+        "article", ACCEPTED_OPENALEX_TYPES, "Research article"
+    ) == "ELFOGADHATÓ"
+    assert classify_record(
+        "journal-article", ACCEPTED_CROSSREF_TYPES, "Research article"
+    ) == "ELFOGADHATÓ"
+    assert classify_record(
+        "other", ACCEPTED_OPENALEX_TYPES, "French title"
+    ) == "KIZÁRVA – ISMERETLEN PUBLIKÁCIÓTÍPUS"
+    assert classify_record(
+        "", ACCEPTED_CROSSREF_TYPES, "Untyped record"
+    ) == "KIZÁRVA – ISMERETLEN PUBLIKÁCIÓTÍPUS"
+    assert classify_record(
+        "dataset", ACCEPTED_OPENALEX_TYPES, "Dataset record"
+    ) == "KIZÁRVA – NEM KÍVÁNT TÍPUS"
+    assert classify_record(
+        "book-chapter", ACCEPTED_CROSSREF_TYPES, "Preface"
+    ) == "KIZÁRVA – ÁLTALÁNOS CÍM"
+
+    print("Publikációtípus-szűrő önellenőrzése: SIKERES")
 
 
 def check_topics(topics):
@@ -413,8 +438,7 @@ def print_summary(records, source_name):
 
     print("Lekért rekordok:", len(records))
     print("Elfogadható publikáció:", counts["ELFOGADHATÓ"])
-    print("Kizárt rekord:", counts["KIZÁRVA"])
-    print("Ellenőrzendő rekord:", counts["ELLENŐRZENDŐ"])
+    print("Automatikusan kizárt rekord:", counts["KIZÁRVA"])
 
     print_header(
         f"{source_name} – ELFOGADHATÓ PUBLIKÁCIÓK MINTÁJA"
@@ -451,22 +475,6 @@ def print_summary(records, source_name):
                 f"| {record['classification']}"
             )
 
-    print_header(f"{source_name} – ELLENŐRZENDŐ REKORDOK")
-
-    review = [
-        record for record in records
-        if record["classification"].startswith("ELLENŐRZENDŐ")
-    ]
-
-    if not review:
-        print("Nincs ellenőrzendő rekord.")
-    else:
-        for index, record in enumerate(review[:10], start=1):
-            print(
-                f"{index}. {record['title']} "
-                f"| Típus: {record['type']} "
-                f"| {record['classification']}"
-            )
 
 
 def apply_language_decision(classification, language_status, is_english):
@@ -600,6 +608,7 @@ def main():
     print_header("SYNAPSE – ADATMINŐSÉGI TESZT")
 
     run_language_filter_tests()
+    run_classification_filter_tests()
 
     start_date = get_start_date()
     end_date = date.today()
@@ -611,6 +620,8 @@ def main():
     print("OpenAlex language:en API-szűrés: MEGTARTVA")
     print("Bizonytalan nyelvű rekord: szövegalapú szűrés")
     print("Szöveges feltétel: the, and, of – mindegyik legalább 3x")
+    print("Ismeretlen publikációtípus: automatikus kizárás")
+    print("Kézi ellenőrzés: NINCS")
 
     try:
         openalex_records = request_openalex(start_date, end_date)
