@@ -39,3 +39,9 @@
 .reader-inline-image{display:block;width:100%;max-height:430px;object-fit:cover;object-position:center;background:#0a1018;border:1px solid var(--line)}
 .reader-image-caption{display:block;margin-top:9px;color:#b8c3cf;font:12px/1.5 'DM Sans',sans-serif}
 .reader-image-license{display:block;margin-top:4px;color:#718093;font:9px 'DM Mono',monospace;letter-spacing:.4px}
+
+
+/* Battlefield lead image */
+.article-battle-image{display:block;width:100%;height:260px;object-fit:cover;object-position:center;background:#0a1018;margin:0 0 22px;border:1px solid var(--line)}
+.reader-battle-image{display:block;width:100%;max-height:520px;object-fit:contain;object-position:center;background:#0a1018}
+@media(max-width:760px){.article-battle-image{height:220px}.reader-battle-image{max-height:360px}}
