@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="hu">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#090d14">
+  <meta name="description" content="WORLD SHARDS – napi válogatás a világ tudományából, kultúrájából és történeteiből.">
+  <title>WORLD SHARDS — A világ rétegei</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <div class="page-noise" aria-hidden="true"></div>
+  <header class="site-header">
+    <a class="wordmark" href="#" aria-label="WORLD SHARDS főoldal">
+      <span class="mark">W<span>·</span>S</span>
+      <span class="wordmark-name">WORLD <b>SHARDS</b></span>
+    </a>
+    <nav class="main-nav" aria-label="Fő navigáció">
+      <a class="active" href="#today">Mai kiadás</a>
+      <a href="#sections">Rovatok</a>
+      <a href="#about">A projektről</a>
+    </nav>
+    <div class="header-date" id="header-date">DAILY EDITION</div>
+  </header>
+
+  <main>
+    <section class="hero" id="today">
+      <div class="hero-copy">
+        <div class="eyebrow"><span class="live-dot"></span> DAILY INTELLIGENCE · HUNGARIAN EDITION</div>
+        <h1>A világ több,<br>mint <em>amit látunk.</em></h1>
+        <p class="hero-intro">Tudomány, művészet, történelem, gondolatok és felfedezések — egyetlen gondosan összeállított napi kiadásban.</p>
+        <div class="hero-meta">
+          <span id="edition-date">A MAI KIADÁS</span>
+          <span class="meta-divider"></span>
+          <span>14 TARTALOM · 9 ROVAT</span>
+        </div>
+      </div>
+      <div class="hero-art" aria-hidden="true">
+        <div class="orbit orbit-one"></div><div class="orbit orbit-two"></div>
+        <div class="orb-core"><span>W</span></div>
+        <div class="orb-label label-top">KNOWLEDGE</div>
+        <div class="orb-label label-bottom">WITHOUT BORDERS</div>
+        <div class="orb-cross cross-a"></div><div class="orb-cross cross-b"></div>
+      </div>
+      <div class="hero-bottomline"><span>EXPLORE THE UNSEEN</span><span>VOL. 01 / DAILY JOURNAL</span></div>
+    </section>
+
+    <section class="edition-status" aria-live="polite">
+      <div class="status-mark"><span></span></div>
+      <div><strong>A napi kiadás előkészítés alatt</strong><p>A magazin felülete épül. Hamarosan itt jelennek meg a Supabase-ben tárolt napi tartalmak.</p></div>
+      <span class="status-code">FRONTEND · M0</span>
+    </section>
+
+    <section class="section-index" id="sections">
+      <div class="section-heading">
+        <div><div class="eyebrow">THE DAILY JOURNAL</div><h2>Fedezd fel a <em>rovatokat.</em></h2></div>
+        <span class="section-count">01 — 09</span>
+      </div>
+      <div class="section-grid" id="section-grid"></div>
+    </section>
+
+    <section class="manifesto" id="about">
+      <div class="eyebrow">A WORLD SHARDS FILOZÓFIÁJA</div>
+      <p>Nem a zajt gyűjtjük.<br><em>Az összefüggéseket keressük.</em></p>
+      <span class="manifesto-foot">SCIENCE · CULTURE · HISTORY · IDEAS</span>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <a class="wordmark footer-brand" href="#"><span class="mark">W<span>·</span>S</span><span class="wordmark-name">WORLD <b>SHARDS</b></span></a>
+    <span>THE WORLD, IN FRAGMENTS. UNDERSTOOD TOGETHER.</span>
+    <span>© <span id="year"></span> WORLD SHARDS</span>
+  </footer>
+</body>
+</html>
