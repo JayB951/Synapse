@@ -501,7 +501,7 @@ def main():
 
     supabase = get_supabase_client()
 
-    edition_date = datetime.now(TIMEZONE).date().isoformat()
+    edition_date = os.getenv("EDITION_DATE") or datetime.now(TIMEZONE).date().isoformat()
 
     # A workflow a GITHUB_OUTPUT-on keresztül jelzi, ha a mai
     # kiadás már publikált; ilyenkor a feldolgozás és az e-mail is kimarad.
