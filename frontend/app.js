@@ -476,6 +476,8 @@ function renderAgoraBody(container, body) {
 }
 
 function getAgoraContentType(item) {
+  if (item?.editor_note === "MAGYAR AGORA") return "agora_hungary";
+  if (item?.editor_note === "WORLD AGORA") return "agora_world";
   const source = getRelatedContent(item);
   const metadata = source?.metadata && typeof source.metadata === "object" ? source.metadata : {};
   if (metadata.content_type === "agora_hungary" || metadata.content_type === "agora_world") {
@@ -640,7 +642,7 @@ async function loadEdition(edition) {
     // PostgREST's nested relationship expansion, which can fail independently
     // of the edition table and leave the page showing only the AGORA shell.
     const itemsResponse = await fetch(
-      `${supabaseUrl}/rest/v1/shard_edition_items?select=id,content_item_id,section_code,position,display_title,display_summary,display_body,processing_status&edition_id=eq.${encodeURIComponent(edition.id)}&processing_status=eq.completed&order=position.asc`,
+      `${supabaseUrl}/rest/v1/shard_edition_items?select=id,content_item_id,section_code,editor_note,position,display_title,display_summary,display_body,processing_status&edition_id=eq.${encodeURIComponent(edition.id)}&processing_status=eq.completed&order=position.asc`,
       { headers }
     );
     if (!itemsResponse.ok) throw new Error(`Tartalomlekérdezés: HTTP ${itemsResponse.status}`);
@@ -653,12 +655,19 @@ async function loadEdition(edition) {
         `${supabaseUrl}/rest/v1/shard_content_items?select=id,source_name,source_url,source_published_at,image_url,gallery_images,metadata&id=${encodeURIComponent(sourceFilter)}`,
         { headers }
       );
-      if (!sourceResponse.ok) throw new Error(`Forrástartalom-lekérdezés: HTTP ${sourceResponse.status}`);
-      const sources = await sourceResponse.json();
-      const sourceById = new Map(sources.map(source => [source.id, source]));
-      items.forEach(item => {
-        item.shard_content_items = sourceById.get(item.content_item_id) || null;
-      });
+      if (sourceResponse.ok) {
+        const sources = await sourceResponse.json();
+        const sourceById = new Map(sources.map(source => [source.id, source]));
+        items.forEach(item => {
+          item.shard_content_items = sourceById.get(item.content_item_id) || null;
+        });
+      } else {
+        // Edition rows already contain the display text and editor_note.
+        // Source metadata only enriches images and citations; it must not
+        // prevent the actual published articles from appearing.
+        console.warn("WORLD SHARDS source metadata unavailable:", sourceResponse.status);
+        items.forEach(item => { item.shard_content_items = null; });
+      }
     }
 
     try {
