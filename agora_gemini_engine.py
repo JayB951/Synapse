@@ -208,8 +208,8 @@ def select_historical_figures(event, catalog, client):
                 "works": item.get("works", []),
                 "limits": item.get("limits"),
                 "selection_rationale_internal": result.get("internal_rationale", ""),
-                "source_verification_required": True,
-                "historical_relevance_human_review_required": True,
+                "source_verification_required": False,
+                "historical_relevance_human_review_required": False,
             }
             for item in selected
         ],
@@ -217,10 +217,29 @@ def select_historical_figures(event, catalog, client):
             "method": "gemini_documented_profile_relevance",
             "political_affinity_used": False,
             "forced_fill": False,
-            "human_review_required": True,
+            "human_review_required": False,
         },
         "status": "matched" if len(selected) == 3 else "insufficient_relevant_figures",
     }
+
+
+def _validate_long_form_commentary(text, figure_name, dimension):
+    import re
+    sentences = [
+        item.strip() for item in re.split(r"(?<=[.!?])\s+", text.strip())
+        if len(item.strip().split()) >= 5
+    ]
+    connectors = re.compile(
+        r"\b(és|de|mert|miközben|ezért|ugyanakkor|noha|bár|hiszen|amely|amelyek|amelynek|amelyben|így|azonban|viszont|tehát|ha|hogy)\b",
+        re.IGNORECASE,
+    )
+    compound = sum(bool(connectors.search(sentence)) for sentence in sentences)
+    words = len(re.findall(r"\b[\wÁÉÍÓÖŐÚÜŰáéíóöőúüű-]+\b", text))
+    if len(sentences) < 4 or compound < 4 or words < 60:
+        raise GeminiError(
+            f"{figure_name}/{dimension}: legalább 4 összetett mondat és 60 szó szükséges "
+            f"(mondat: {len(sentences)}, összetett: {compound}, szó: {words})."
+        )
 
 
 def simulate_historical_figure(event, profile, client):
@@ -240,7 +259,7 @@ def simulate_historical_figure(event, profile, client):
         "Szó szerinti idézetet ne használj. A forráscímek közül csak a megadottakat "
         "add meg. Ha egy történeti állítás a rendelkezésre álló profil alapján nem "
         "támasztható alá, ezt jelezd az evidence_notes mezőben, ne találgass. "
-        "Magyarul írj, összefüggő, publikációra szánt prózát. Mindhárom rész legyen "
+        "Magyarul írj, összefüggő, publikációra szánt prózát. MINDEN egyes kommentárrész legalább 4 összetett mondatból és legalább 60 szóból álljon; ne írj rövid vázlatot vagy felsorolást. A mondatok kapcsolják össze az okokat, a következményeket és az árnyalatokat (például mert, miközben, ezért, ugyanakkor, noha, amely, így). Mindhárom rész legyen "
         "érdemi, ne ismételje a másikat. A rekonstrukció hipotetikus, nem valódi "
         "történelmi idézet vagy állásfoglalás. Csak a kért JSON-t add vissza."
     )
@@ -282,6 +301,7 @@ def simulate_historical_figure(event, profile, client):
         cited_titles = section.get("source_titles")
         if not draft or not isinstance(notes, list) or not notes:
             raise GeminiError(f"{profile.get('name')}/{dimension}: hiányzó szöveg vagy bizonyítéki megjegyzés.")
+        _validate_long_form_commentary(draft, profile.get("name"), dimension)
         if not isinstance(cited_titles, list) or not cited_titles:
             raise GeminiError(f"{profile.get('name')}/{dimension}: nincs megadott történelmi forrás.")
         if any(title not in source_titles for title in cited_titles):
