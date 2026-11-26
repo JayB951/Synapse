@@ -635,12 +635,30 @@ async function loadEdition(edition) {
     activeEditionId = edition.id;
     renderArchive(publishedEditions);
     showStatus("A kiadás betöltése", `${formatEditionDate(edition.edition_date)} – a tartalom betöltése folyamatban…`);
+    // Load edition rows and source records separately. This avoids relying on
+    // PostgREST's nested relationship expansion, which can fail independently
+    // of the edition table and leave the page showing only the AGORA shell.
     const itemsResponse = await fetch(
-      `${supabaseUrl}/rest/v1/shard_edition_items?select=id,section_code,position,display_title,display_summary,display_body,processing_status,shard_content_items(source_name,source_url,source_published_at,image_url,gallery_images,metadata)&edition_id=eq.${encodeURIComponent(edition.id)}&processing_status=eq.completed&order=position.asc`,
+      `${supabaseUrl}/rest/v1/shard_edition_items?select=id,content_item_id,section_code,position,display_title,display_summary,display_body,processing_status&edition_id=eq.${encodeURIComponent(edition.id)}&processing_status=eq.completed&order=position.asc`,
       { headers }
     );
     if (!itemsResponse.ok) throw new Error(`Tartalomlekérdezés: HTTP ${itemsResponse.status}`);
     const items = await itemsResponse.json();
+
+    const sourceIds = [...new Set(items.map(item => item.content_item_id).filter(Boolean))];
+    if (sourceIds.length) {
+      const sourceFilter = `in.(${sourceIds.join(",")})`;
+      const sourceResponse = await fetch(
+        `${supabaseUrl}/rest/v1/shard_content_items?select=id,source_name,source_url,source_published_at,image_url,gallery_images,metadata&id=${encodeURIComponent(sourceFilter)}`,
+        { headers }
+      );
+      if (!sourceResponse.ok) throw new Error(`Forrástartalom-lekérdezés: HTTP ${sourceResponse.status}`);
+      const sources = await sourceResponse.json();
+      const sourceById = new Map(sources.map(source => [source.id, source]));
+      items.forEach(item => {
+        item.shard_content_items = sourceById.get(item.content_item_id) || null;
+      });
+    }
 
     try {
       await loadArticleRatings(items, headers, supabaseUrl);
@@ -661,8 +679,10 @@ async function loadEdition(edition) {
     document.querySelector("#edition")?.scrollIntoView({ behavior: "smooth", block: "start" });
   } catch (error) {
     console.error("WORLD SHARDS edition error:", error);
-    showStatus("A kiválasztott kiadás most nem tölthető be", "Ellenőrizd a kapcsolatot, majd próbáld újra.", "EDITION · LOAD ERROR");
+    showStatus("A kiválasztott kiadás most nem tölthető be", "A kiadás vagy a hozzá tartozó forrástartalmak lekérdezése hibát adott; próbáld újra később.", "EDITION · LOAD ERROR");
     renderAgora([]);
+    renderArticles([]);
+    if (sectionNav) sectionNav.replaceChildren(new Option("A rovatok most nem érhetők el", ""));
   }
 }
 
