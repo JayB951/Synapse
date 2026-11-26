@@ -27,7 +27,8 @@ AGORA_SECTION_LIMITS = {
     "agora_hungary": 1,
     "agora_world": 1,
 }
-EXPECTED_ITEMS = sum(SECTION_LIMITS.values()) + CLOSING_LIMIT + sum(AGORA_SECTION_LIMITS.values())
+BASE_EXPECTED_ITEMS = sum(SECTION_LIMITS.values()) + CLOSING_LIMIT
+EXPECTED_ITEMS = BASE_EXPECTED_ITEMS + sum(AGORA_SECTION_LIMITS.values())
 
 CONTENT_FIELDS = (
     "id,section_code,title,summary,body,source_name,source_url,"
@@ -207,7 +208,7 @@ def add_music_to_existing_edition(supabase, edition, edition_date):
             "A mai kiadvány nem draft státuszú; automatikus módosítás leállítva."
         )
 
-    allowed_existing_counts = {EXPECTED_ITEMS - 1, EXPECTED_ITEMS}
+    allowed_existing_counts = {BASE_EXPECTED_ITEMS - 1, BASE_EXPECTED_ITEMS}
     if len(existing_items) not in allowed_existing_counts:
         raise RuntimeError(
             f"A meglévő kiadvány {len(existing_items)} elemet tartalmaz; "
