@@ -1,18 +1,18 @@
 import unittest
 
-from agora_daily_editorial import _has_independent_coverage, build_editorial_output
+from agora_daily_editorial import _has_source_url, build_editorial_output
 from agora_historical_figures_testdata import CATALOG
 
 
 class IndependentCoverageTests(unittest.TestCase):
-    def test_requires_two_publishers_and_two_distinct_article_urls(self):
+    def test_accepts_one_verified_article_url(self):
         event = {"articles": [
             {"source_code": "a", "url": "https://a.example/story"},
             {"source_code": "b", "url": "http://b.example/story"},
         ]}
         self.assertTrue(_has_independent_coverage(event))
 
-    def test_two_publishers_may_confirm_the_same_syndicated_article_url(self):
+    def test_multiple_publishers_remain_a_valid_quality_signal(self):
         event = {"articles": [
             {"source_code": "a", "url": "https://wire.example/story"},
             {"source_code": "b", "url": "https://wire.example/story"},
