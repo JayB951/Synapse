@@ -81,45 +81,14 @@ jobs:
           SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
         run: python publish_edition.py
 
-      - name: Ertesito e-mail kuldese sikeres publikacio utan
+      - name: Teljes napi kiadás e-mailben
         if: success() && steps.publish.outputs.published == 'true'
         env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
           MAIL_USERNAME: ${{ secrets.MAIL_USERNAME }}
           MAIL_PASSWORD: ${{ secrets.MAIL_PASSWORD }}
           NOTIFY_EMAIL: ${{ secrets.WORLD_SHARDS_NOTIFY_EMAIL }}
         run: |
-          if [ -z "$MAIL_USERNAME" ] || [ -z "$MAIL_PASSWORD" ] || [ -z "$NOTIFY_EMAIL" ]; then
-            echo "E-mail értesítés kihagyva: a Gmail Secrets értékei még nincsenek beállítva."
-            exit 0
-          fi
-
-          python - <<'PY'
-          import os
-          import smtplib
-          from datetime import datetime
-          from email.message import EmailMessage
-          from zoneinfo import ZoneInfo
-
-          sender = os.environ["MAIL_USERNAME"]
-          password = os.environ["MAIL_PASSWORD"]
-          recipient = os.environ["NOTIFY_EMAIL"]
-
-          now = datetime.now(ZoneInfo("Europe/Budapest"))
-          date_label = now.strftime("%Y. %m. %d.")
-          msg = EmailMessage()
-          msg["Subject"] = f"WORLD SHARDS – elkészült a napi kiadás ({date_label})"
-          msg["From"] = sender
-          msg["To"] = recipient
-          msg.set_content(
-              f"Elkészült és sikeresen publikálásra került a WORLD SHARDS mai kiadása ({date_label}).\n\n"
-              "A magazin itt olvasható:\n"
-              "https://jayb951.github.io/Synapse/\n\n"
-              "Ez automatikus értesítés; csak sikeres publikálás után küldjük."
-          )
-
-          with smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=30) as smtp:
-              smtp.login(sender, password)
-              smtp.send_message(msg)
-
-          print(f"Értesítő e-mail sikeresen elküldve: {recipient}")
-          PY
+          python -m unittest test_send_edition_email.py -v
+          python send_edition_email.py
