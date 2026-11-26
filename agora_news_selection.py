@@ -44,9 +44,10 @@ KÖTELEZŐ KIZÁRÁSOK:
 - Hírességek halála, gyászjelentések, nekrológok és megemlékezések.
 - Hírességek magánélete, celebhírek és bulvár.
 - Zenekarok, előadók, albumok, koncertek, turnék és a szórakoztatóipar
-  hétköznapi hírei (például egy zenekar jubileuma vagy új fellépése).
+  hétköznapi hírei (például Duran Duran-hírek, zenekari jubileumok,
+  új albumok, fellépések vagy turnék).
 - Helyi, kerületi, települési, önkormányzati és városrészi ügyek
-  (például egy budapesti kerület mindennapi híre).
+  (például Budapest XII. kerületének mindennapi hírei).
 - Kizárólag magyarországi vonatkozású események: magyar belpolitika,
   hazai pártpolitika, kizárólag magyar gazdasági, kulturális, tudományos,
   önkormányzati vagy helyi fejlemények.
