@@ -41,12 +41,16 @@ jobs:
           MAIL_USERNAME: ${{ secrets.MAIL_USERNAME }}
           MAIL_PASSWORD: ${{ secrets.MAIL_PASSWORD }}
           NOTIFY_EMAIL: ${{ secrets.WORLD_SHARDS_NOTIFY_EMAIL }}
+          EMAIL_RATING_SECRET: ${{ secrets.EMAIL_RATING_SECRET }}
+          EMAIL_RATING_VOTER_TOKEN: ${{ secrets.EMAIL_RATING_VOTER_TOKEN }}
         run: |
           test -n "$SUPABASE_URL"
           test -n "$SUPABASE_SECRET_KEY"
           test -n "$MAIL_USERNAME"
           test -n "$MAIL_PASSWORD"
           test -n "$NOTIFY_EMAIL"
+          test -n "$EMAIL_RATING_SECRET"
+          test -n "$EMAIL_RATING_VOTER_TOKEN"
 
       - name: E-mail tartalomtesztek
         run: python -m unittest test_send_edition_email.py -v
@@ -58,4 +62,6 @@ jobs:
           MAIL_USERNAME: ${{ secrets.MAIL_USERNAME }}
           MAIL_PASSWORD: ${{ secrets.MAIL_PASSWORD }}
           NOTIFY_EMAIL: ${{ secrets.WORLD_SHARDS_NOTIFY_EMAIL }}
+          EMAIL_RATING_SECRET: ${{ secrets.EMAIL_RATING_SECRET }}
+          EMAIL_RATING_VOTER_TOKEN: ${{ secrets.EMAIL_RATING_VOTER_TOKEN }}
         run: python send_edition_email.py
