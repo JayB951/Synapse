@@ -92,3 +92,31 @@
 .rating-summary{font:10px 'DM Mono',monospace;color:#91a0b2}
 .reader-rating{margin:28px 0 0;padding-top:18px;border-top:1px solid var(--line)}
 .reader-rating .rating-star{font-size:28px}
+
+
+/* AGORA – két kiemelt nyitóhasáb */
+.agora-opening{margin:0 0 76px;padding:34px 0 52px;border-bottom:1px solid var(--line)}
+.agora-opening-heading{display:flex;justify-content:space-between;align-items:flex-end;gap:24px;margin-bottom:26px}
+.agora-opening-heading h2{font:600 clamp(30px,4vw,46px)/1.15 Manrope,sans-serif;letter-spacing:-1.8px;margin:15px 0 8px}
+.agora-opening-heading h2 em{font-family:var(--serif);font-weight:400;color:var(--gold);letter-spacing:-1px}
+.agora-opening-heading p{margin:0;color:var(--muted);font-size:13px}
+.agora-edition-label,.agora-kicker,.agora-index,.agora-sources-label{font:9px 'DM Mono',monospace;letter-spacing:1.2px;color:var(--gold)}
+.agora-edition-label{white-space:nowrap;padding-bottom:5px}
+.agora-columns{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;align-items:start}
+.agora-column{min-width:0;padding:25px 27px 28px;background:linear-gradient(145deg,#172434,#0e151f);border:1px solid rgba(197,166,107,.24);border-top:2px solid rgba(197,166,107,.65)}
+.agora-column-top{display:flex;justify-content:space-between;gap:12px;align-items:center}
+.agora-index{color:#718093}
+.agora-column-title{font:700 19px/1.2 Manrope,sans-serif;letter-spacing:1.1px;margin:18px 0 4px;color:var(--text)}
+.agora-column-subtitle{margin:0 0 22px;color:var(--muted);font-size:11px}
+.agora-news-title{font:600 22px/1.3 Manrope,sans-serif;letter-spacing:-.6px;margin:0 0 12px;color:var(--gold)}
+.agora-news-summary{font:italic 16px/1.65 Georgia,serif;color:#c5d0dc;margin:0 0 24px}
+.agora-body{padding-top:18px;border-top:1px solid var(--line)}
+.agora-body-heading{font:600 15px/1.4 Manrope,sans-serif;color:var(--cyan);margin:22px 0 9px}
+.agora-body-heading:first-child{margin-top:0}
+.agora-body-paragraph{font:13px/1.8 'DM Sans',sans-serif;color:#c0cad5;margin:0 0 13px;overflow-wrap:anywhere}
+.agora-sources{display:flex;flex-direction:column;align-items:flex-start;gap:8px;margin-top:24px;padding-top:17px;border-top:1px solid var(--line)}
+.agora-sources-label{margin-bottom:3px;color:#8192a5}
+.agora-source-link{font:11px/1.5 'DM Sans',sans-serif;color:var(--gold);text-decoration:none;border-bottom:1px solid rgba(197,166,107,.3);overflow-wrap:anywhere}
+.agora-source-link:hover{color:#f0d39b;border-color:currentColor}
+.agora-empty{color:var(--muted);font-size:13px;padding:18px 0}
+@media(max-width:760px){.agora-opening{margin-bottom:56px;padding-top:24px}.agora-opening-heading{align-items:flex-start;flex-direction:column;gap:12px}.agora-columns{grid-template-columns:1fr}.agora-column{padding:21px}.agora-news-title{font-size:20px}}
