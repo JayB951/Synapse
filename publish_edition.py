@@ -11,7 +11,7 @@ from zoneinfo import ZoneInfo
 from supabase import create_client
 
 EXPECTED_COUNTS = {
-    "research_frontier": 5,
+    "research_frontier": 7,
     "art_of_the_day": 1,
     "the_thinker": 1,
     "battlefield": 1,
@@ -20,7 +20,6 @@ EXPECTED_COUNTS = {
     "unsolved": 1,
     "music_of_the_day": 1,
     "closing": 2,
-    "agora": 2,
 }
 EXPECTED_TOTAL = sum(EXPECTED_COUNTS.values())
 
@@ -70,7 +69,7 @@ def main():
     items_response = (
         supabase.table("shard_edition_items")
         .select(
-            "id,section_code,position,processing_status,"
+            "id,section_code,position,processing_status,editor_note,"
             "display_title,display_summary,display_body"
         )
         .eq("edition_id", edition_id)
@@ -91,6 +90,13 @@ def main():
             f"Rovateloszlás hibás. Elvárt: {EXPECTED_COUNTS}; tényleges: {dict(actual_counts)}. "
             "A kiadás draft marad."
         )
+
+    editor_notes = Counter(item.get("editor_note") for item in items)
+    for required_note in ("MAGYAR AGORA", "WORLD AGORA"):
+        if editor_notes.get(required_note, 0) != 1:
+            raise RuntimeError(
+                f"Hiányzó vagy duplikált AGORA-rovat: {required_note}. A kiadás draft marad."
+            )
 
     positions = sorted(item.get("position") for item in items)
     if positions != list(range(1, EXPECTED_TOTAL + 1)):
