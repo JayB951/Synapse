@@ -11,6 +11,20 @@ const sections = [
 ];
 
 const feed = document.querySelector("#article-feed");
+const sectionNav = document.querySelector("#section-nav");
+
+const navigationItems = [
+  ["rovat-world_explorer", "Világjáró"],
+  ["rovat-joke", "Vicc"],
+  ["rovat-research_frontier", "Frontier"],
+  ["rovat-art_of_the_day", "Műalkotás"],
+  ["rovat-the_thinker", "Gondolkodó"],
+  ["rovat-battlefield", "Csatatér"],
+  ["rovat-fundamentals", "Alapok"],
+  ["rovat-unsolved", "Megoldatlan"],
+  ["rovat-music_of_the_day", "Zene"],
+  ["rovat-xkcd", "xkcd"]
+];
 const statusTitle = document.querySelector("#edition-status-title");
 const statusText = document.querySelector("#edition-status-text");
 const statusCode = document.querySelector("#edition-status-code");
@@ -273,6 +287,29 @@ function openArticle(item, sectionName) {
   else reader.setAttribute("open", "");
 }
 
+function renderSectionNavigation() {
+  if (!sectionNav) return;
+  sectionNav.replaceChildren();
+  navigationItems.forEach(([targetId, label]) => {
+    if (!document.getElementById(targetId)) return;
+    const link = makeElement("a", "section-nav-link", label);
+    link.href = "#" + targetId;
+    link.addEventListener("click", event => {
+      event.preventDefault();
+      const target = document.getElementById(targetId);
+      if (!target) return;
+      sectionNav.querySelectorAll(".section-nav-link").forEach(item => {
+        item.classList.remove("is-active");
+        item.removeAttribute("aria-current");
+      });
+      link.classList.add("is-active");
+      link.setAttribute("aria-current", "location");
+      target.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+    sectionNav.append(link);
+  });
+}
+
 function renderArticles(items = []) {
   if (!feed) return;
   feed.replaceChildren();
@@ -299,6 +336,9 @@ function renderArticles(items = []) {
     const cards = makeElement("div", "article-cards");
     sectionItems.forEach((item, index) => {
       const card = makeElement("article", "article-card");
+      const cardSource = getSourceRecord(item);
+      if (code === "closing" && cardSource?.source_name === "JokeAPI") card.id = "rovat-joke";
+      if (code === "closing" && cardSource?.source_name === "xkcd") card.id = "rovat-xkcd";
       const meta = makeElement("div", "article-meta");
       meta.append(
         makeElement("span", "", number + "." + String(index + 1).padStart(2, "0")),
@@ -329,6 +369,7 @@ function renderArticles(items = []) {
     group.append(cards);
     feed.append(group);
   });
+  renderSectionNavigation();
 }
 
 const archiveList = document.querySelector("#archive-list");
