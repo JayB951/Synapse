@@ -5,6 +5,8 @@ Only publishes the latest draft when all 14 expected items are complete.
 import logging
 import os
 from collections import Counter
+from datetime import datetime
+from zoneinfo import ZoneInfo
 
 from supabase import create_client
 
@@ -26,6 +28,12 @@ logging.basicConfig(
     format="%(asctime)s [%(levelname)s] %(message)s",
 )
 logger = logging.getLogger("world-shards-publisher")
+TIMEZONE = ZoneInfo("Europe/Budapest")
+
+
+def get_target_edition_date():
+    """Return the Budapest-local date; never publish an older leftover draft."""
+    return datetime.now(TIMEZONE).date().isoformat()
 
 
 def get_client():
@@ -39,9 +47,13 @@ def get_client():
 def main():
     supabase = get_client()
 
+    target_date = get_target_edition_date()
+    logger.info("Publikálási cél dátuma (Europe/Budapest): %s", target_date)
+
     edition_response = (
         supabase.table("shard_editions")
         .select("id,edition_date,title,status")
+        .eq("edition_date", target_date)
         .eq("status", "draft")
         .order("edition_date", desc=True)
         .limit(1)
