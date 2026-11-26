@@ -1,7 +1,23 @@
 import unittest
 
-from agora_daily_editorial import build_editorial_output
+from agora_daily_editorial import _has_independent_coverage, build_editorial_output
 from agora_historical_figures_testdata import CATALOG
+
+
+class IndependentCoverageTests(unittest.TestCase):
+    def test_requires_two_publishers_and_two_distinct_article_urls(self):
+        event = {"articles": [
+            {"source_code": "a", "url": "https://a.example/story"},
+            {"source_code": "b", "url": "http://b.example/story"},
+        ]}
+        self.assertTrue(_has_independent_coverage(event))
+
+    def test_syndicated_duplicate_url_is_not_independent_coverage(self):
+        event = {"articles": [
+            {"source_code": "a", "url": "https://wire.example/story"},
+            {"source_code": "b", "url": "https://wire.example/story"},
+        ]}
+        self.assertFalse(_has_independent_coverage(event))
 
 
 class DailyEditorialIntegrationTests(unittest.TestCase):
