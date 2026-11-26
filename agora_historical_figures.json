@@ -41,7 +41,8 @@
           "type": "primary_text"
         }
       ],
-      "limits": "Az ókori polisz fogalma nem azonos a modern nemzetállammal; rabszolgaságról és állampolgárságról vallott nézetei történeti kontextusban kezelendők."
+      "limits": "Az ókori polisz fogalma nem azonos a modern nemzetállammal; rabszolgaságról és állampolgárságról vallott nézetei történeti kontextusban kezelendők.",
+      "role": "ókori görög filozófus és tudós"
     },
     {
       "id": "cicero",
@@ -86,7 +87,8 @@
           "type": "primary_text"
         }
       ],
-      "limits": "A római köztársaság társadalmi és politikai intézményei nem vetíthetők közvetlenül a modern demokráciára."
+      "limits": "A római köztársaság társadalmi és politikai intézményei nem vetíthetők közvetlenül a modern demokráciára.",
+      "role": "római államférfi, szónok és filozófus"
     },
     {
       "id": "machiavelli",
@@ -135,7 +137,8 @@
           "type": "primary_text"
         }
       ],
-      "limits": "Nem egyszerűsíthető a „cél szentesíti az eszközt” közhellyé; a köztársasági írásait is figyelembe kell venni."
+      "limits": "Nem egyszerűsíthető a „cél szentesíti az eszközt” közhellyé; a köztársasági írásait is figyelembe kell venni.",
+      "role": "reneszánsz politikai gondolkodó és diplomata"
     },
     {
       "id": "montesquieu",
@@ -176,7 +179,8 @@
           "type": "primary_text"
         }
       ],
-      "limits": "A hatalmi ágak elméletének későbbi alkotmányos alkalmazásai nem mindenben azonosak Montesquieu eredeti leírásával."
+      "limits": "A hatalmi ágak elméletének későbbi alkotmányos alkalmazásai nem mindenben azonosak Montesquieu eredeti leírásával.",
+      "role": "francia felvilágosodás kori filozófus és politikai teoretikus"
     },
     {
       "id": "tocqueville",
@@ -218,7 +222,8 @@
           "type": "primary_text"
         }
       ],
-      "limits": "A 19. századi amerikai és francia tapasztalatokból nem lehet automatikus mai előrejelzést levezetni."
+      "limits": "A 19. századi amerikai és francia tapasztalatokból nem lehet automatikus mai előrejelzést levezetni.",
+      "role": "francia politikai gondolkodó és történetíró"
     },
     {
       "id": "adam_smith",
@@ -271,7 +276,8 @@
           "type": "primary_text"
         }
       ],
-      "limits": "Smith nem azonosítható a korlátlan dereguláció egyszerű támogatójával; erkölcsfilozófiai és intézményi gondolatai is relevánsak."
+      "limits": "Smith nem azonosítható a korlátlan dereguláció egyszerű támogatójával; erkölcsfilozófiai és intézményi gondolatai is relevánsak.",
+      "role": "skót közgazdász és erkölcsfilozófus"
     },
     {
       "id": "marx",
@@ -324,7 +330,8 @@
           "type": "primary_text"
         }
       ],
-      "limits": "Elemzése nem kezelhető a későbbi marxista államok történetével azonosként; a különbségeket meg kell tartani."
+      "limits": "Elemzése nem kezelhető a későbbi marxista államok történetével azonosként; a különbségeket meg kell tartani.",
+      "role": "német filozófus, közgazdász és társadalomelméleti gondolkodó"
     },
     {
       "id": "keynes",
@@ -370,7 +377,8 @@
           "type": "primary_text"
         }
       ],
-      "limits": "A keynesi politika nem egyetlen univerzális recept; az adott gazdasági helyzet, infláció és intézményi környezet számít."
+      "limits": "A keynesi politika nem egyetlen univerzális recept; az adott gazdasági helyzet, infláció és intézményi környezet számít.",
+      "role": "brit közgazdász"
     },
     {
       "id": "arendt",
@@ -422,7 +430,8 @@
           "type": "primary_text"
         }
       ],
-      "limits": "Fogalmait pontosan kell használni; nem minden autoriter intézkedés vagy propaganda azonos a totalitarizmussal."
+      "limits": "Fogalmait pontosan kell használni; nem minden autoriter intézkedés vagy propaganda azonos a totalitarizmussal.",
+      "role": "német–amerikai politikai filozófus"
     },
     {
       "id": "churchill",
@@ -471,7 +480,8 @@
           "type": "archive"
         }
       ],
-      "limits": "A háborús vezetői szerep mellett a birodalmi politikával és vitatott döntésekkel kapcsolatos történeti kritikákat is jelezni kell."
+      "limits": "A háborús vezetői szerep mellett a birodalmi politikával és vitatott döntésekkel kapcsolatos történeti kritikákat is jelezni kell.",
+      "role": "brit politikus, miniszterelnök és hadtörténeti szerző"
     },
     {
       "id": "gandhi",
@@ -519,7 +529,8 @@
           "type": "archive"
         }
       ],
-      "limits": "Gondolatai és személyes gyakorlata ellentmondásos elemeket is tartalmaznak; nem szabad kritikátlan szimbólummá egyszerűsíteni."
+      "limits": "Gondolatai és személyes gyakorlata ellentmondásos elemeket is tartalmaznak; nem szabad kritikátlan szimbólummá egyszerűsíteni.",
+      "role": "indiai függetlenségi vezető és az erőszakmentes ellenállás képviselője"
     },
     {
       "id": "mlk",
@@ -566,7 +577,8 @@
           "type": "primary_text"
         }
       ],
-      "limits": "Az amerikai faji szegregáció története sajátos kontextus; a párhuzamokat körültekintően kell megfogalmazni."
+      "limits": "Az amerikai faji szegregáció története sajátos kontextus; a párhuzamokat körültekintően kell megfogalmazni.",
+      "role": "amerikai baptista lelkész és polgárjogi vezető"
     },
     {
       "id": "clausewitz",
@@ -611,7 +623,8 @@
           "type": "primary_text"
         }
       ],
-      "limits": "A művet nem szabad időtlen katonai receptként olvasni; történeti és stratégiai kontextus szükséges."
+      "limits": "A művet nem szabad időtlen katonai receptként olvasni; történeti és stratégiai kontextus szükséges.",
+      "role": "porosz katonatiszt és hadelméleti gondolkodó"
     },
     {
       "id": "sun_tzu",
@@ -651,7 +664,8 @@
           "type": "primary_text"
         }
       ],
-      "limits": "A szerzőség és a keletkezés datálása vitatott; az aforizmákat nem szabad bizonyíték nélküli modern idézetként használni."
+      "limits": "A szerzőség és a keletkezés datálása vitatott; az aforizmákat nem szabad bizonyíték nélküli modern idézetként használni.",
+      "role": "ókori kínai hadvezér és stratégiai gondolkodó"
     },
     {
       "id": "florence_nightingale",
@@ -701,7 +715,8 @@
           "type": "archive"
         }
       ],
-      "limits": "A 19. századi egészségügyi környezetet és az akkori statisztikai módszereket a mai orvostudománytól külön kell kezelni."
+      "limits": "A 19. századi egészségügyi környezetet és az akkori statisztikai módszereket a mai orvostudománytól külön kell kezelni.",
+      "role": "brit ápolónő, statisztikus és egészségügyi reformer"
     },
     {
       "id": "rachel_carson",
@@ -745,7 +760,8 @@
           "type": "primary_text"
         }
       ],
-      "limits": "A konkrét mai környezeti állításokat korszerű tudományos forrásokkal kell ellenőrizni; Carson műve nem helyettesíti a jelenlegi adatokat."
+      "limits": "A konkrét mai környezeti állításokat korszerű tudományos forrásokkal kell ellenőrizni; Carson műve nem helyettesíti a jelenlegi adatokat.",
+      "role": "amerikai tengerbiológus és környezetvédelmi szerző"
     },
     {
       "id": "alan_turing",
@@ -789,7 +805,8 @@
           "type": "primary_text"
         }
       ],
-      "limits": "Turing korának számítástechnikai fogalmai nem azonosak a mai gépi tanulási rendszerekkel; kerülendő a jelenkori technológiákra vonatkozó hamis attribúció."
+      "limits": "Turing korának számítástechnikai fogalmai nem azonosak a mai gépi tanulási rendszerekkel; kerülendő a jelenkori technológiákra vonatkozó hamis attribúció.",
+      "role": "brit matematikus és számítástudós"
     },
     {
       "id": "einstein",
@@ -837,7 +854,8 @@
           "type": "primary_text"
         }
       ],
-      "limits": "A tudományos tekintély nem teszi minden politikai véleményét szakértői állásfoglalássá; pontos kontextus és dátum szükséges."
+      "limits": "A tudományos tekintély nem teszi minden politikai véleményét szakértői állásfoglalássá; pontos kontextus és dátum szükséges.",
+      "role": "elméleti fizikus"
     },
     {
       "id": "ignaz_semmelweis",
@@ -884,7 +902,8 @@
           "type": "primary_text"
         }
       ],
-      "limits": "A gyermekágyi láz megelőzésére kidolgozott történeti felismeréseit nem szabad a modern sürgősségi orvoslás teljes protokolljaként kezelni."
+      "limits": "A gyermekágyi láz megelőzésére kidolgozott történeti felismeréseit nem szabad a modern sürgősségi orvoslás teljes protokolljaként kezelni.",
+      "role": "magyar orvos, a gyermekágyi láz megelőzésének úttörője"
     },
     {
       "id": "john_snow",
@@ -933,7 +952,8 @@
           "type": "primary_text"
         }
       ],
-      "limits": "A kolerajárványok epidemiológiai vizsgálatából nem lehet közvetlenül levezetni egyedi balesetek klinikai kezelését."
+      "limits": "A kolerajárványok epidemiológiai vizsgálatából nem lehet közvetlenül levezetni egyedi balesetek klinikai kezelését.",
+      "role": "brit orvos és az epidemiológia úttörője"
     },
     {
       "id": "clara_barton",
@@ -981,7 +1001,8 @@
           "type": "primary_text"
         }
       ],
-      "limits": "A 19. századi háborús és katasztrófa-segélyezés szervezeti körülményei eltérnek a mai mentőszolgálati és kórházi rendszerektől."
+      "limits": "A 19. századi háborús és katasztrófa-segélyezés szervezeti körülményei eltérnek a mai mentőszolgálati és kórházi rendszerektől.",
+      "role": "amerikai ápolónő és humanitárius segélyezési szervező"
     }
   ]
 }
