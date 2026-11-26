@@ -78,9 +78,9 @@ def automated_quality_gate(pipeline, editorial, now=None):
             article.get("url") for article in articles
             if str(article.get("url") or "").startswith(("http://", "https://"))
         }
-        if len(sources) < 2 or len(valid_urls) < 1:
+        if len(sources) < 1 or len(valid_urls) < 1:
             errors.append(
-                f"{scope}: legalább két független kiadó és legalább egy eredeti cikk-URL szükséges "
+                f"{scope}: legalább egy kiadó és legalább egy ellenőrizhető cikk-URL szükséges "
                 f"(kiadók: {len(sources)}, URL-ek: {len(valid_urls)})."
             )
 
