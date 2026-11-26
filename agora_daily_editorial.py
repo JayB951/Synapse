@@ -25,6 +25,21 @@ from agora_news_selection import (
 ENGINE_VERSION = "AGORA_DAILY_EDITORIAL_M4.3"
 
 
+def _has_independent_coverage(event):
+    articles = event.get("articles") or []
+    publishers = {
+        str(article.get("source_code") or article.get("source_name") or "").strip()
+        for article in articles
+        if article.get("source_code") or article.get("source_name")
+    }
+    urls = {
+        str(article.get("url") or "").strip()
+        for article in articles
+        if str(article.get("url") or "").startswith(("http://", "https://"))
+    }
+    return len(publishers) >= 2 and len(urls) >= 2
+
+
 def build_editorial_output(pipeline, catalog, figure_limit=3, gemini_client=None):
     validate_catalog(catalog)
     groups = {item.get("event_id"): item for item in pipeline.get("groups", [])}
@@ -40,10 +55,15 @@ def build_editorial_output(pipeline, catalog, figure_limit=3, gemini_client=None
                 candidates = [
                     item for item in shortlist
                     if item.get("eligible_for_daily_proposal") is True
+                    and _has_independent_coverage(item)
                 ][:10]
             else:
                 fallback_id = selection.get("event_id")
-                candidates = [groups[fallback_id]] if fallback_id in groups else []
+                candidates = (
+                    [groups[fallback_id]]
+                    if fallback_id in groups and _has_independent_coverage(groups[fallback_id])
+                    else []
+                )
             selector = (
                 select_hungarian_news_event
                 if scope == "hungary"
