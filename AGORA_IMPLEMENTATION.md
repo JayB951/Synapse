@@ -111,6 +111,24 @@ Az első verzió ingyenes forrásokra és a meglévő GitHub Actions + Supabase 
 - Külön magyar és nemzetközi shortlist.
 - Napi 1+1 kiválasztás és naplózás.
 
+#### M2.2–M2.4 – Feldolgozó pipeline (implementálva, kézi hangolás még hátravan)
+
+- [x] RSS-gyűjtés és M2.1 eseménycsoportosítás összekötése.
+- [x] Determinisztikus, 0–100 pontos bizonyíték/frissesség pontozás.
+- [x] Külön magyar és nemzetközi shortlist.
+- [x] Napi 1+1 szerkesztőségi javaslat, ha van megfelelő friss jelölt.
+- [x] JSON-kimenet, forrás- és feldolgozási metaadatok.
+- [x] Offline tesztek és GitHub Actions ellenőrzés.
+- [x] Nincs automatikus publikálás, adatbázis-írás vagy fizetős API-függőség.
+
+A pontozás összetevői: frissesség (40), független források (30), lefedettség/cikkszám (15), metaadat-teljesség (15). A pontszám nem állítja, hogy automatikusan megméri az esemény valódi közérdekű jelentőségét; ezt továbbra is szerkesztői döntésként kell értékelni. Politikai irányultság nem bemenet. Minden javaslat kötelező emberi szerkesztői ellenőrzést igényel.
+
+Futtatás:
+- Éles RSS-gyűjtéssel: `python agora_pipeline.py`
+- Korábbi gyűjtés feldolgozása: `python agora_pipeline.py --input collector_output.json --output agora_candidates.json`
+
+A kézi minőségellenőrzés, a pontozási küszöbök valós feedeken történő hangolása és a 14 napos próbaüzem továbbra is külön feladat.
+
 ### M3 – Történelmi személyiségek adatbázisa
 - Személyiségek strukturált profilja.
 - Korszak, szakterület, fő művek, dokumentált alapelvek.
