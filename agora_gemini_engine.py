@@ -347,7 +347,7 @@ def simulate_historical_figure(event, profile, client):
 
     news_source_urls = sorted({
         item.get("url") for item in event.get("articles", [])
-        if str(item.get("url") or "").startswith("https://")
+        if str(item.get("url") or "").startswith(("http://", "https://"))
     })
     briefs = []
     for dimension in DIMENSIONS:
