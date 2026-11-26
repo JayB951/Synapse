@@ -11,6 +11,7 @@ from agora_gemini_engine import (
     select_historical_figures,
     simulate_historical_figure,
     _ensure_four_compound_sentences,
+    _validate_long_form_commentary,
 )
 
 
@@ -216,9 +217,9 @@ class GeminiEngineTests(unittest.TestCase):
         client = FakeClient([response])
         result = simulate_historical_figure(EVENT, PROFILE, client)
         self.assertEqual(len(client.calls), 1)
-        self.assertTrue(_ensure_four_compound_sentences(
-            result["sections"][0]["draft_text"], "interpretation"
-        ))
+        _validate_long_form_commentary(
+            result["sections"][0]["draft_text"], "Teszt személy", "interpretation"
+        )
 
     def test_simulator_derives_missing_evidence_notes_from_catalogue(self):
         response = simulation_response()
