@@ -2,8 +2,8 @@ name: WORLD SHARDS - Daily Automatic Edition
 
 on:
   schedule:
-    # 01:30 UTC = 02:30 Budapest winter time / 03:30 summer time
-    - cron: "30 1 * * *"
+    # A local-time gate below makes this 02:00 Europe/Budapest in both DST seasons.
+    - cron: "0 0,1 * * *"
   workflow_dispatch:
 
 permissions:
@@ -14,7 +14,24 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  schedule-gate:
+    runs-on: ubuntu-latest
+    outputs:
+      run: ${{ steps.gate.outputs.run }}
+    steps:
+      - name: Run only at 02:00 Budapest local time
+        id: gate
+        run: |
+          python - <<'PY' >> "$GITHUB_OUTPUT"
+          from datetime import datetime
+          from zoneinfo import ZoneInfo
+          now = datetime.now(ZoneInfo("Europe/Budapest"))
+          print(f"run={'true' if now.hour == 2 else 'false'}")
+          PY
+
   daily-edition:
+    needs: schedule-gate
+    if: github.event_name == 'workflow_dispatch' || needs.schedule-gate.outputs.run == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 90
 
@@ -57,6 +74,14 @@ jobs:
         run: |
           python -m unittest test_music_collector.py -v
           python music_collector.py
+
+      - name: AGORA magyar es nemzetkozi tartalom teljes automatizalasa
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_MODEL: gemini-3.5-flash-lite
+        run: python agora_automation.py
 
       - name: Napi kiadas osszeallitasa
         id: edition_builder
