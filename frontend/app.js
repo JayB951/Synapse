@@ -651,6 +651,7 @@ async function loadEdition(edition) {
   } catch (error) {
     console.error("WORLD SHARDS edition error:", error);
     showStatus("A kiválasztott kiadás most nem tölthető be", "Ellenőrizd a kapcsolatot, majd próbáld újra.", "EDITION · LOAD ERROR");
+    renderAgora([]);
   }
 }
 
@@ -661,6 +662,8 @@ async function loadPublishedEdition() {
 
   if (!supabaseUrl || !anonKey || supabaseUrl.includes("IDE_") || anonKey.includes("IDE_")) {
     showStatus("A Supabase-kapcsolat konfigurálásra vár", "A nyilvános adatkapcsolat beállítása hiányzik.", "F1 · CONFIG REQUIRED");
+    renderAgora([]);
+    renderAgora([]);
     renderArticles();
     if (archiveList) archiveList.replaceChildren(makeElement("p", "archive-empty", "Az archívumhoz adatbázis-kapcsolat szükséges."));
     return;
@@ -680,6 +683,7 @@ async function loadPublishedEdition() {
 
     if (!publishedEditions.length) {
       showStatus("Jelenleg nincs publikált napi kiadás", "A rendszer kapcsolata él. Amint egy kiadás published státuszt kap, itt automatikusan megjelenik. A piszkozatok nem nyilvánosak.", "SUPABASE · CONNECTED");
+      renderAgora([]);
       renderArticles();
       if (countNode) countNode.textContent = "— TARTALOM · 9 ROVAT";
       return;
