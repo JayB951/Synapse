@@ -184,6 +184,7 @@ def main():
     parser.add_argument("--review", help="Completed human-review JSON")
     parser.add_argument("--review-template", help="Write a blank human-review template")
     parser.add_argument("--output", help="Write QA report JSON")
+    parser.add_argument("--allow-pending", action="store_true", help="Return success for a blocked preview; never approves it")
     args = parser.parse_args()
     pipeline = json.loads(Path(args.input).read_text(encoding="utf-8"))
     editorial = json.loads(Path(args.editorial).read_text(encoding="utf-8"))
@@ -199,7 +200,7 @@ def main():
         Path(args.output).write_text(rendered, encoding="utf-8")
     else:
         sys.stdout.write(rendered)
-    if not result["approved"]:
+    if not result["approved"] and not args.allow_pending:
         return 2
     return 0
 
