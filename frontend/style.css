@@ -78,3 +78,17 @@
 .section-nav-select option{color:var(--text);background:#101722}
 .article-group,.article-card{scroll-margin-top:88px}
 @media(max-width:760px){.section-nav-wrap{justify-content:space-between;gap:10px;padding:10px 0;margin-bottom:24px}.section-nav-label{font-size:9px}.section-nav-select{min-width:0;width:min(64%,300px);font-size:10px}}
+
+
+/* M3 – egységes 1–5 csillagos cikkértékelés */
+.article-rating{display:flex;flex-direction:column;align-items:flex-start;gap:5px;margin:0 0 16px}
+.rating-label{font:9px 'DM Mono',monospace;letter-spacing:1px;color:#91a0b2}
+.rating-stars{display:flex;align-items:center;gap:3px}
+.rating-star{padding:0 2px;border:0;background:transparent;color:#536174;font-size:23px;line-height:1.2;cursor:pointer;transition:color .15s,transform .15s}
+.rating-star:hover,.rating-star:focus-visible,.rating-star.is-selected{color:#c5a66b}
+.rating-star:hover{transform:translateY(-1px)}
+.rating-star:focus-visible{outline:1px solid rgba(197,166,107,.7);outline-offset:2px}
+.rating-star:disabled{opacity:.55;cursor:wait}
+.rating-summary{font:10px 'DM Mono',monospace;color:#91a0b2}
+.reader-rating{margin:28px 0 0;padding-top:18px;border-top:1px solid var(--line)}
+.reader-rating .rating-star{font-size:28px}
