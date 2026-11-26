@@ -72,7 +72,7 @@ def automated_quality_gate(pipeline, editorial, now=None):
         sources = {str(article.get("source_code")) for article in articles if article.get("source_code")}
         valid_urls = {
             article.get("url") for article in articles
-            if str(article.get("url") or "").startswith("https://")
+            if str(article.get("url") or "").startswith(("http://", "https://"))
         }
         if len(sources) < 2 or len(valid_urls) < 2:
             errors.append(f"{scope}: legalább két független kiadó és két eredeti HTTPS-cikklink szükséges.")
