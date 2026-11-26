@@ -137,7 +137,7 @@ class EditorialQATests(unittest.TestCase):
                       "source_url", "source_published_at", "collected_at", "status",
                       "relevance_score", "metadata"):
             self.assertIn(field, record)
-        self.assertEqual(record["section_code"], "agora")
+        self.assertEqual(record["section_code"], "research_frontier")
         self.assertEqual(record["status"], "candidate")
         self.assertEqual(len(record["metadata"]["news_items"]), 2)
         self.assertIn("https://example.org/a", record["body"])
