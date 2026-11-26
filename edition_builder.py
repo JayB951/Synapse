@@ -389,7 +389,7 @@ def main():
     github_output = os.getenv("GITHUB_OUTPUT")
     if github_output:
         with open(github_output, "a", encoding="utf-8") as output:
-            output.write("already_published=false\\n")
+            output.write("already_published=false\n")
 
     existing = get_existing_edition(supabase, edition_date)
 
@@ -408,7 +408,7 @@ def main():
             )
             if github_output:
                 with open(github_output, "a", encoding="utf-8") as output:
-                    output.write("already_published=true\\n")
+                    output.write("already_published=true\n")
             return
 
         if status != "draft":
