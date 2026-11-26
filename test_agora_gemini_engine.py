@@ -72,7 +72,7 @@ class GeminiEngineTests(unittest.TestCase):
         result = select_historical_figures(EVENT, catalog, client)
         self.assertEqual(result["selected_count"], 3)
         self.assertEqual(result["figures"][0]["figure_id"], "machiavelli")
-        self.assertIn("internal", result["figures"][0]["selection_rationale_internal"])
+        self.assertEqual(result["figures"][0]["selection_rationale_internal"], "A releváns intézményi és hatalmi gondolkodás miatt.")
 
     def test_selector_rejects_duplicate_or_unknown_ids(self):
         client = FakeClient([{"selected_figure_ids": ["machiavelli", "machiavelli"],
