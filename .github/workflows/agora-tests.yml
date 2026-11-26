@@ -18,7 +18,6 @@ on:
       - "agora_news_selection.py"
       - "agora_gemini_engine.py"
       - "test_agora_gemini_engine.py"
-      - "test_agora_gemini_engine.py"
       - "agora_historical_figures_testdata.py"
       - "test_agora_historical_content.py"
       - "test_agora_daily_editorial.py"
