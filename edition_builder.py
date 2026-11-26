@@ -22,6 +22,10 @@ SECTION_LIMITS = {
 }
 
 CLOSING_LIMIT = 2
+# Optional sections never make the existing daily edition fail when absent.
+OPTIONAL_SECTION_LIMITS = {
+    "agora": 1,
+}
 EXPECTED_ITEMS = sum(SECTION_LIMITS.values()) + CLOSING_LIMIT
 
 CONTENT_FIELDS = (
@@ -141,6 +145,17 @@ def select_edition_items(supabase, edition_date):
     closing_items = select_closing_items(supabase)
     selected_items.extend(closing_items)
 
+    for section_code, limit in OPTIONAL_SECTION_LIMITS.items():
+        candidates = get_candidates(supabase, section_code, limit=limit)
+        chosen = candidates[:limit]
+        selected_items.extend(chosen)
+        logger.info(
+            "%s (opcionális): %s / %s tartalom kiválasztva.",
+            section_code,
+            len(chosen),
+            limit,
+        )
+
     return selected_items
 
 
@@ -189,10 +204,12 @@ def add_music_to_existing_edition(supabase, edition, edition_date):
             "A mai kiadvány nem draft státuszú; automatikus módosítás leállítva."
         )
 
-    if len(existing_items) != EXPECTED_ITEMS - 1:
+    allowed_existing_counts = {EXPECTED_ITEMS - 1, EXPECTED_ITEMS}
+    if len(existing_items) not in allowed_existing_counts:
         raise RuntimeError(
             f"A meglévő kiadvány {len(existing_items)} elemet tartalmaz; "
-            f"a biztonságos visszatöltéshez pontosan {EXPECTED_ITEMS - 1} szükséges."
+            f"a biztonságos visszatöltéshez {sorted(allowed_existing_counts)} "
+            "egyikének kell teljesülnie."
         )
 
     closing_items = [
@@ -283,7 +300,7 @@ def add_music_to_existing_edition(supabase, edition, edition_date):
     if not isinstance(metadata, dict):
         metadata = {}
     metadata.update({
-        "planned_item_count": EXPECTED_ITEMS,
+        "planned_item_count": len(existing_items) + 1,
         "music_backfill": True,
     })
     (
@@ -300,7 +317,7 @@ def add_music_to_existing_edition(supabase, edition, edition_date):
     )
 
 
-def create_edition(supabase, edition_date):
+def create_edition(supabase, edition_date, planned_item_count=EXPECTED_ITEMS):
     date_object = datetime.strptime(edition_date, "%Y-%m-%d").date()
     formatted_date = date_object.strftime("%Y. %m. %d.")
 
@@ -315,7 +332,7 @@ def create_edition(supabase, edition_date):
         "metadata": {
             "builder_version": VERSION,
             "selection_method": "automatic",
-            "planned_item_count": EXPECTED_ITEMS,
+            "planned_item_count": planned_item_count,
         },
     }
 
@@ -426,15 +443,19 @@ def main():
 
     selected_items = select_edition_items(supabase, edition_date)
 
-    if len(selected_items) != EXPECTED_ITEMS:
+    if len(selected_items) < EXPECTED_ITEMS:
         raise RuntimeError(
-            f"A napi kiadványhoz {EXPECTED_ITEMS} elem szükséges, "
+            f"A napi kiadványhoz legalább {EXPECTED_ITEMS} elem szükséges, "
             f"de csak {len(selected_items)} választható ki. "
             "Ellenőrizd, hogy a napi Music of the Day gyűjtés lefutott-e, "
             "és minden rovatban van-e jelölt. A kiadvány nem jött létre."
         )
 
-    edition = create_edition(supabase, edition_date)
+    edition = create_edition(
+        supabase,
+        edition_date,
+        planned_item_count=len(selected_items),
+    )
 
     create_edition_items(
         supabase,
