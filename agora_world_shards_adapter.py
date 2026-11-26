@@ -136,3 +136,61 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+def build_content_items(pipeline, editorial, qa_report, edition_date):
+    """Return separate MAGYAR AGORA and WORLD AGORA content records."""
+    combined = build_content_item(pipeline, editorial, qa_report, edition_date)
+    metadata = combined["metadata"]
+    body = combined["body"]
+    markers = {
+        "hungary": "## Magyarország",
+        "international": "## Nemzetközi",
+    }
+    starts = {scope: body.find(marker) for scope, marker in markers.items()}
+    if any(position < 0 for position in starts.values()):
+        raise ValueError("AGORA export is missing one of its two section bodies.")
+
+    ordered = sorted((position, scope) for scope, position in starts.items())
+    bodies = {}
+    for index, (start, scope) in enumerate(ordered):
+        end = ordered[index + 1][0] if index + 1 < len(ordered) else len(body)
+        bodies[scope] = body[start:end].strip()
+
+    records = []
+    for scope, section_code, title_prefix in (
+        ("hungary", "agora_hungary", "MAGYAR AGORA"),
+        ("international", "agora_world", "WORLD AGORA"),
+    ):
+        event = next(item for item in metadata["news_items"] if item["scope"] == scope)
+        sources = [item for item in metadata["source_references"]
+                   if item.get("source_code") in {
+                       source.get("source_code") for source in event.get("sources", [])
+                   }]
+        figures = [item for item in metadata["historical_figures"]
+                   if item.get("scope") == scope]
+        latest_dates = [item.get("published_at") for item in sources if item.get("published_at")]
+        records.append({
+            "section_code": section_code,
+            "title": f"{title_prefix} – {edition_date}",
+            "summary": event["title"][:1000],
+            "body": bodies[scope],
+            "source_name": title_prefix,
+            "source_url": (sources[0].get("url") if sources else None),
+            "source_published_at": max(latest_dates) if latest_dates else None,
+            "collected_at": pipeline.get("generated_at"),
+            "status": "candidate",
+            "relevance_score": int(event.get("score") or 0),
+            "metadata": {
+                "adapter": ADAPTER_VERSION,
+                "edition_date": edition_date,
+                "content_type": section_code,
+                "news_items": [event],
+                "historical_figures": figures,
+                "source_references": sources,
+                "qa_status": "automatically_approved",
+                "qa_engine": qa_report.get("qa_engine"),
+                "publishing_performed": False,
+            },
+        })
+    return records
