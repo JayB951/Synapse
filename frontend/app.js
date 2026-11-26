@@ -468,7 +468,7 @@ function renderAgoraBody(container, body) {
       container.append(makeElement("h" + level, "agora-body-heading", heading[2]));
     } else {
       const paragraph = makeElement("p", "agora-body-paragraph");
-      paragraph.textContent = block;
+      paragraph.textContent = block.replace(/\\*\\*/g, "");
       container.append(paragraph);
     }
   });
