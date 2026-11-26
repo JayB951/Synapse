@@ -17,7 +17,7 @@ from agora_gemini_engine import (
     build_gemini_commentary_package,
     select_historical_figures as gemini_select_historical_figures,
 )
-from agora_news_selection import select_international_news_event
+from agora_news_selection import (\n    select_hungarian_news_event,\n    select_international_news_event,\n)
 
 ENGINE_VERSION = "AGORA_DAILY_EDITORIAL_M4.3"
 
@@ -30,11 +30,9 @@ def build_editorial_output(pipeline, catalog, figure_limit=3, gemini_client=None
         selection = pipeline.get("daily_selection", {}).get(scope, {})
         news_selection = None
 
-        # The international edition receives an additional Gemini editorial gate.
-        # It evaluates the full ranked shortlist, not merely the mechanically
-        # highest-scoring RSS event, and may deliberately select no story.
-        if scope == "international" and gemini_client is not None:
-            shortlist = pipeline.get("shortlists", {}).get("international", {}).get("events")
+        # Both AGORA sections receive an independent Gemini newsworthiness gate.
+        if gemini_client is not None:
+            shortlist = pipeline.get("shortlists", {}).get(scope, {}).get("events")
             if shortlist is not None:
                 candidates = [
                     item for item in shortlist
@@ -43,13 +41,18 @@ def build_editorial_output(pipeline, catalog, figure_limit=3, gemini_client=None
             else:
                 fallback_id = selection.get("event_id")
                 candidates = [groups[fallback_id]] if fallback_id in groups else []
-            news_selection = select_international_news_event(candidates, gemini_client)
+            selector = (
+                select_hungarian_news_event
+                if scope == "hungary"
+                else select_international_news_event
+            )
+            news_selection = selector(candidates, gemini_client)
             event_id = news_selection["selected_event_id"] or None
             selection = {
                 **selection,
                 "event_id": event_id,
                 "status": news_selection["status"],
-                "editorial_review_required": True,
+                "editorial_review_required": False,
             }
 
         event_id = selection.get("event_id")
@@ -102,10 +105,10 @@ def build_editorial_output(pipeline, catalog, figure_limit=3, gemini_client=None
             "three_commentary_dimensions_per_figure": 3,
             "hypothetical_reconstruction_disclosure_required": True,
             "direct_quotes_must_be_verified": True,
-            "human_editorial_review_required": True,
+            "human_editorial_review_required": False,
             "publishing_performed": False,
         },
-        "status": "awaiting_human_editorial_review" if gemini_client is not None else "editorial_research_required",
+        "status": "generated" if gemini_client is not None else "editorial_research_required",
     }
 
 
