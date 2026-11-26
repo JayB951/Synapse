@@ -2,8 +2,8 @@ name: WORLD SHARDS - Daily Automatic Edition
 
 on:
   schedule:
-    # 01:00 UTC = 02:00 Budapest winter time / 03:00 summer time
-    - cron: "0 1 * * *"
+    # 01:30 UTC = 02:30 Budapest winter time / 03:30 summer time
+    - cron: "30 1 * * *"
   workflow_dispatch:
 
 permissions:
