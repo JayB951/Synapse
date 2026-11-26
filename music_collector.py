@@ -12,7 +12,7 @@ import logging
 import os
 import re
 from collections import Counter
-from datetime import datetime
+from datetime import datetime, timedelta
 from urllib.parse import quote
 from zoneinfo import ZoneInfo
 
@@ -233,11 +233,14 @@ def score_track(track, topic):
     return score
 
 
-def choose_best_track(tracks, topics):
-    """A legerősebb tartalmi egyezést választja determinisztikus döntetlennel."""
+def choose_best_track(tracks, topics, excluded_track_ids=None):
+    """A legerősebb egyezést választja; kizárhatók a közelmúltban használt trackek."""
+    excluded_track_ids = {str(value) for value in (excluded_track_ids or set())}
     candidates = []
 
     for track in deduplicate_tracks(tracks):
+        if str(track.get("trackId") or "") in excluded_track_ids:
+            continue
         if not track.get("trackName") or not track.get("artistName"):
             continue
         if not track.get("trackViewUrl"):
@@ -410,11 +413,36 @@ def collect_music(supabase, http_get=requests.get, edition_date=None):
                 all_tracks.append(track)
                 topic_by_query[query] = topic
 
-    # A kiválasztott témákkal egyező trackek újrapontozása.
+    # Az elmúlt 30 nap zenéit lehetőség szerint ne válasszuk újra.
+    history_since = (datetime.now(TIMEZONE) - timedelta(days=30)).isoformat()
+    history_response = (
+        supabase.table("shard_content_items")
+        .select("metadata")
+        .eq("section_code", "music_of_the_day")
+        .gte("collected_at", history_since)
+        .limit(100)
+        .execute()
+    )
+    recently_used_ids = {
+        str((row.get("metadata") or {}).get("track_id"))
+        for row in (history_response.data or [])
+        if (row.get("metadata") or {}).get("track_id") is not None
+    }
+
     selection = choose_best_track(
         all_tracks,
         [topic for _, topic in search_topics],
+        excluded_track_ids=recently_used_ids,
     )
+    if not selection:
+        logger.warning(
+            "Nem találtunk új megfelelő tracket az elmúlt 30 nap kizárása után; "
+            "engedélyezzük a legjobb releváns ismétlést."
+        )
+        selection = choose_best_track(
+            all_tracks,
+            [topic for _, topic in search_topics],
+        )
 
     if not selection:
         raise RuntimeError(
