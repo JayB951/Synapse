@@ -13,18 +13,7 @@ const sections = [
 const feed = document.querySelector("#article-feed");
 const sectionNav = document.querySelector("#section-nav");
 
-const navigationItems = [
-  ["rovat-world_explorer", "Világjáró"],
-  ["rovat-joke", "Vicc"],
-  ["rovat-research_frontier", "Frontier"],
-  ["rovat-art_of_the_day", "Műalkotás"],
-  ["rovat-the_thinker", "Gondolkodó"],
-  ["rovat-battlefield", "Csatatér"],
-  ["rovat-fundamentals", "Alapok"],
-  ["rovat-unsolved", "Megoldatlan"],
-  ["rovat-music_of_the_day", "Zene"],
-  ["rovat-xkcd", "xkcd"]
-];
+
 const statusTitle = document.querySelector("#edition-status-title");
 const statusText = document.querySelector("#edition-status-text");
 const statusCode = document.querySelector("#edition-status-code");
@@ -287,27 +276,51 @@ function openArticle(item, sectionName) {
   else reader.setAttribute("open", "");
 }
 
+let sectionNavigationObserver = null;
+
 function renderSectionNavigation() {
   if (!sectionNav) return;
+  if (sectionNavigationObserver) sectionNavigationObserver.disconnect();
   sectionNav.replaceChildren();
-  navigationItems.forEach(([targetId, label]) => {
-    if (!document.getElementById(targetId)) return;
-    const link = makeElement("a", "section-nav-link", label);
-    link.href = "#" + targetId;
-    link.addEventListener("click", event => {
-      event.preventDefault();
-      const target = document.getElementById(targetId);
-      if (!target) return;
-      sectionNav.querySelectorAll(".section-nav-link").forEach(item => {
-        item.classList.remove("is-active");
-        item.removeAttribute("aria-current");
+  sectionNav.append(new Option("Válassz rovatot…", ""));
+
+  const targets = [];
+  feed.querySelectorAll(".article-group").forEach(group => {
+    const heading = group.querySelector(".article-group-heading .eyebrow");
+    const label = (heading?.textContent || group.id.replace("rovat-", "")).replace(/^\\d+\\s*[·.]\\s*/, "").trim();
+    targets.push({ id: group.id, label });
+    if (group.id === "rovat-closing") {
+      group.querySelectorAll(".article-card[id]").forEach(card => {
+        const source = card.querySelector(".article-meta span:last-child")?.textContent || "";
+        const cardTitle = card.querySelector("h3")?.textContent || "";
+        const navLabel = card.id === "rovat-joke" ? "Vicc" : card.id === "rovat-xkcd" ? "xkcd" : cardTitle;
+        targets.push({ id: card.id, label: navLabel });
       });
-      link.classList.add("is-active");
-      link.setAttribute("aria-current", "location");
-      target.scrollIntoView({ behavior: "smooth", block: "start" });
-    });
-    sectionNav.append(link);
+    }
   });
+
+  targets.forEach(({ id, label }) => {
+    if (!document.getElementById(id)) return;
+    sectionNav.append(new Option(label, id));
+  });
+
+  sectionNav.onchange = () => {
+    const target = document.getElementById(sectionNav.value);
+    if (target) target.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  if ("IntersectionObserver" in window) {
+    sectionNavigationObserver = new IntersectionObserver(entries => {
+      const visible = entries
+        .filter(entry => entry.isIntersecting)
+        .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+      if (visible) sectionNav.value = visible.target.id;
+    }, { rootMargin: "-18% 0px -68% 0px", threshold: [0, 0.15, 0.4, 0.7] });
+    targets.forEach(({ id }) => {
+      const target = document.getElementById(id);
+      if (target) sectionNavigationObserver.observe(target);
+    });
+  }
 }
 
 function renderArticles(items = []) {
