@@ -54,6 +54,7 @@ jobs:
           SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GEMINI_MODEL: gemini-3.5-flash-lite
+          AGORA_FORCE_UPDATE_EXISTING: "true"
         run: python agora_automation.py --edition-date 2026-11-26
       - name: Add both AGORA sections to edition 26
         id: edition_builder
@@ -62,6 +63,12 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
         run: python edition_builder.py
+      - name: Refresh the two AGORA display rows
+        env:
+          EDITION_DATE: "2026-11-26"
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+        run: python refresh_agora_edition_rows.py
       - name: Process the completed 16-section edition
         env:
           EDITION_DATE: "2026-11-26"
