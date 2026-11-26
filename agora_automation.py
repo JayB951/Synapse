@@ -146,12 +146,13 @@ def get_supabase_client():
 
 def save_content_item(supabase, record):
     section_code = record["section_code"]
+    content_type = record["metadata"]["content_type"]
     edition_date = record["metadata"]["edition_date"]
     existing = (
         supabase.table("shard_content_items")
         .select("id,status")
         .eq("section_code", section_code)
-        .contains("metadata", {"edition_date": edition_date})
+        .contains("metadata", {"edition_date": edition_date, "content_type": content_type})
         .limit(1)
         .execute()
     )
@@ -165,16 +166,16 @@ def save_content_item(supabase, record):
                 .execute()
             )
             if not response.data:
-                raise RuntimeError(f"{section_code}: a meglévő jelölt frissítése nem igazolható.")
-            LOGGER.info("%s: meglévő napi jelölt frissítve.", section_code)
+                raise RuntimeError(f"{content_type}: a meglévő jelölt frissítése nem igazolható.")
+            LOGGER.info("%s: meglévő napi jelölt frissítve.", content_type)
             return current["id"]
-        LOGGER.info("%s: már kiválasztott tartalom, változatlanul hagyva.", section_code)
+        LOGGER.info("%s: már kiválasztott tartalom, változatlanul hagyva.", content_type)
         return current["id"]
 
     response = supabase.table("shard_content_items").insert(record).execute()
     if not response.data:
-        raise RuntimeError(f"{section_code}: a Supabase-beszúrás nem adott vissza rekordot.")
-    LOGGER.info("%s: új napi tartalom mentve.", section_code)
+        raise RuntimeError(f"{content_type}: a Supabase-beszúrás nem adott vissza rekordot.")
+    LOGGER.info("%s: új napi tartalom mentve.", content_type)
     return response.data[0]["id"]
 
 
@@ -202,11 +203,11 @@ def run(edition_date=None):
 
     supabase = get_supabase_client()
     saved = [save_content_item(supabase, record) for record in records]
-    LOGGER.info("AGORA sikeresen integrálva: %s", ", ".join(record["section_code"] for record in records))
+    LOGGER.info("AGORA sikeresen integrálva: %s", ", ".join(record["metadata"]["content_type"] for record in records))
     return {
         "edition_date": edition_date,
         "content_item_ids": saved,
-        "sections": [record["section_code"] for record in records],
+        "sections": [record["metadata"]["content_type"] for record in records],
         "qa": qa_report,
     }
 
