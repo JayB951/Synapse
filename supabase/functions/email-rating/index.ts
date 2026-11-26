@@ -32,7 +32,9 @@ async function verifySignature(message: string, signature: string, secret: strin
       false,
       ["verify"],
     );
-    const bytes = Uint8Array.from(atob(signature.replace(/-/g, "+").replace(/_/g, "/")), c => c.charCodeAt(0));
+    const base64 = signature.replace(/-/g, "+").replace(/_/g, "/");
+    const padded = base64 + "=".repeat((4 - base64.length % 4) % 4);
+    const bytes = Uint8Array.from(atob(padded), c => c.charCodeAt(0));
     return await crypto.subtle.verify("HMAC", key, bytes, new TextEncoder().encode(message));
   } catch {
     return false;
