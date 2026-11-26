@@ -227,3 +227,24 @@ Az M1 első lépése a magyar és nemzetközi RSS-források jegyzékének össze
 - felhasználási feltételek és attribúció.
 
 Ezután készül az önálló, tesztelhető RSS-gyűjtő modul. A meglévő kiadási és publikálási workflow csak a későbbi integrációs mérföldkőben módosul.
+
+
+### M4.2 – Gemini történelmi perspektívamotor
+
+Állapot: első implementáció elkészült, offline tesztelés alatt; élő API-próba és szerkesztői benchmark szükséges.
+
+- [x] Egyetlen, konfigurálható Gemini-modell két elkülönített szerepkörrel.
+- [x] Hírspecifikus, katalógusalapú történelmi szereplőválasztás.
+- [x] Személyenként külön modellhívás, mindhárom kommentárrész közös gondolatmenetben.
+- [x] Strukturált JSON-kimenet és szigorú sémaellenőrzés.
+- [x] Ismeretlen személyazonosító, duplikáció, nem engedélyezett történeti forrás és szó szerinti idézet elutasítása.
+- [x] Átmeneti API-hibák korlátozott újrapróbálkozása.
+- [x] Modellazonosító környezeti változóból cserélhető; alapértelmezés: `gemini-3.8-flash`.
+- [x] A kiválasztási indoklás belső adat, a WORLD SHARDS publikációs rekord nem tartalmazza.
+- [ ] Élő Gemini API-hívás és 2 híren / 6 személyen végzett teljes próba.
+- [ ] A történeti források teljes szövegének vagy releváns kivonatainak betöltése; jelenleg a katalógus dokumentált alapelvei és bibliográfiai hivatkozásai kerülnek a modell elé.
+- [ ] Szerkesztői benchmark a személyiségkövetkezetesség, a történeti állítások és a magyar nyelvi minőség ellenőrzésére.
+
+A Gemini-kulcsot a GitHub repository Actions secrets között `GEMINI_API_KEY` néven kell tárolni. A kulcsot soha nem szabad a kódba, workflow-fájlba vagy artifactba írni.
+
+A napi előnézeti workflow 23:00 UTC-kor (téli időszámításkor 00:00 Budapest) indul. Ez kizárólag előnézetet és emberi ellenőrzési sablont készít; nem hagy jóvá és nem publikál automatikusan. A publikációs kapu továbbra is az M5 emberi ellenőrzéséhez kötött.
