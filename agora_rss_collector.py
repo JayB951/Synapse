@@ -207,10 +207,11 @@ def collect_all(sources=None, pause_seconds=0.5):
             if index < len(sources) - 1 and pause_seconds:
                 time.sleep(pause_seconds)
 
-    # Stable deduplication by normalized publisher article URL.
+    # Deduplicate repeated entries within one feed, but preserve the same URL
+    # reported by different publishers so independent-source evidence survives.
     unique = {}
     for item in all_items:
-        unique.setdefault(item["url"], item)
+        unique.setdefault((item["source_code"], item["url"]), item)
 
     return {
         "collector": "AGORA_RSS_M1.1",
