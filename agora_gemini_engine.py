@@ -232,7 +232,7 @@ def _validate_long_form_commentary(text, figure_name, dimension):
         if len(item.strip().split()) >= 5
     ]
     connectors = re.compile(
-        r"\b(és|de|mert|miközben|ezért|ugyanakkor|noha|bár|hiszen|amely|amelyek|amelynek|amelyben|így|azonban|viszont|tehát|ha|hogy)\b",
+        r"\b(és|de|mert|miközben|ezért|ugyanakkor|noha|bár|hiszen|amely|amelyek|amelynek|amelyben|így|azonban|viszont|tehát|ha|hogy|valamint|illetve|mivel|ugyanis|amikor|amíg|miután|hanem|sőt|holott|amennyiben|továbbá|mindemellett|nemcsak|akár|hacsak|mialatt|minthogy|ennek ellenére|annak ellenére)\b",
         re.IGNORECASE,
     )
     compound = sum(bool(connectors.search(sentence)) for sentence in sentences)
@@ -304,7 +304,7 @@ def simulate_historical_figure(event, profile, client):
     try:
         validate_all_dimensions()
     except GeminiError as validation_error:
-        for repair_attempt in range(2):
+        for repair_attempt in range(3):
             repair_system = system + (
                 " KÖTELEZŐ JAVÍTÁS: az előző válasz nem teljesítette a mondatszerkezeti "
                 "követelményt. Írd újra mindhárom részt úgy, hogy mindegyik legalább négy "
@@ -312,7 +312,7 @@ def simulate_historical_figure(event, profile, client):
                 "Minden mondat külön, ponttal lezárt mondat legyen, és mindegyik tartalmazzon "
                 "kötőszót vagy alárendelő kapcsolatot. Ne rövidíts, ne vond össze a mondatokat. "
                 "Minden egyes mondatban használj legalább egy ilyen kapcsolatot: és, de, mert, "
-                "miközben, ezért, ugyanakkor, noha, amely, így, azonban."
+                "miközben, ezért, ugyanakkor, noha, amely, így, azonban, valamint, illetve, mivel, ugyanis, amikor, amíg, miután, hanem, sőt, holott, amennyiben."
             )
             repair_payload = {
                 **payload,
