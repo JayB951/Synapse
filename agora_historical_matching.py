@@ -17,7 +17,7 @@ MATCHER_VERSION = "AGORA_HISTORICAL_MATCHER_M3.1"
 
 def normalize(value):
     value = unicodedata.normalize("NFKC", str(value or "")).casefold()
-    return re.sub(r"\\s+", " ", re.sub(r"[^\\w]+", " ", value, flags=re.UNICODE)).strip()
+    return re.sub(r"\s+", " ", re.sub(r"[^\w]+, " ", value, flags=re.UNICODE)).strip()
 
 
 def event_text(event):
