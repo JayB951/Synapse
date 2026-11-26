@@ -64,6 +64,7 @@ def automated_quality_gate(pipeline, editorial, now=None):
                 f"indok: {decision.get('internal_rationale') or 'nincs megadva'})."
             )
             continue
+        articles = event.get("articles") or []
         if scope == "international":
             translation = event.get("hungarian_translation") or {}
             translated_articles = translation.get("articles") or []
@@ -78,7 +79,6 @@ def automated_quality_gate(pipeline, editorial, now=None):
         if age is None or age < -1 or age > 72:
             errors.append(f"{scope}: a hír nem rendelkezik érvényes, 72 órán belüli dátummal.")
 
-        articles = event.get("articles") or []
         sources = {str(article.get("source_code")) for article in articles if article.get("source_code")}
         valid_urls = {
             article.get("url") for article in articles
