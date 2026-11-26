@@ -347,6 +347,28 @@ def simulate_historical_figure(event, profile, client):
             if not isinstance(cited_titles, list) or not cited_titles:
                 cited_titles = [allowed_sources[0]["title"]]
                 section["source_titles"] = cited_titles
+            else:
+                invalid_titles = [
+                    str(title) for title in cited_titles
+                    if str(title) not in source_titles
+                ]
+                if invalid_titles:
+                    fallback_title = allowed_sources[0]["title"]
+                    for invalid_title in invalid_titles:
+                        draft = draft.replace(invalid_title, fallback_title)
+                    cited_titles = [
+                        str(title) for title in cited_titles
+                        if str(title) in source_titles
+                    ] or [fallback_title]
+                    section["draft_text"] = draft
+                    section["source_titles"] = cited_titles
+                    existing_notes = notes if isinstance(notes, list) else []
+                    existing_notes.append(
+                        "A katalóguson kívüli forrásmegjelölést a rendszer elvetette; "
+                        f"a hivatkozás a jóváhagyott katalógusforrásra ({fallback_title}) lett cserélve."
+                    )
+                    section["evidence_notes"] = existing_notes
+                    notes = existing_notes
             if not isinstance(notes, list) or not any(str(note).strip() for note in notes):
                 core_idea = next(
                     (str(item).strip() for item in profile.get("core_ideas", []) if str(item).strip()),
