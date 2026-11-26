@@ -90,8 +90,8 @@ def evaluate_quality(pipeline, editorial, review=None, now=None):
             )
             if legitimate_empty_international:
                 _check(
-                    scope_checks, "international_newsworthiness_gate", True,
-                    "A Gemini szerkesztőségi szűrés nem talált megfelelő nemzetközi hírt; a rovat üresen maradhat.",
+                    scope_checks, "international_story_required_for_combined_export", False,
+                    "A szerkesztőség helyesen nem választott gyenge hírt, de a kétrovatú AGORA-kiadvány így nem exportálható és nem publikálható.",
                     scope=scope,
                 )
                 per_scope[scope] = scope_checks
