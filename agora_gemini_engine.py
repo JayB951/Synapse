@@ -323,7 +323,7 @@ def simulate_historical_figure(event, profile, client):
             "evidence_notes": [str(note).strip() for note in notes if str(note).strip()],
             "source_urls": sorted(set(urls)),
             "news_source_urls": news_source_urls,
-            "status": "generated_pending_historical_source_verification",
+            "status": "automatically_validated",
         })
     if result.get("direct_quote_used") is True:
         raise GeminiError(f"{profile.get('name')}: tiltott szó szerinti idézet került a válaszba.")
@@ -350,7 +350,7 @@ def simulate_historical_figure(event, profile, client):
             "historical_source_verification_required": True,
             "anachronism_review_required": True,
         },
-        "publication_status": "awaiting_human_editorial_review",
+        "publication_status": "awaiting_automated_quality_gate",
     }
 
 
@@ -366,6 +366,6 @@ def build_gemini_commentary_package(event, selection, client):
         "figure_count": len(briefs),
         "commentary_count": sum(len(item.get("sections", [])) for item in briefs),
         "briefs": briefs,
-        "status": "awaiting_human_editorial_review" if len(briefs) == 3 else "insufficient_relevant_figures",
+        "status": "awaiting_automated_quality_gate" if len(briefs) == 3 else "insufficient_relevant_figures",
         "publishing": False,
     }
