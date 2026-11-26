@@ -129,6 +129,12 @@ def main():
         edition["title"], edition["edition_date"], len(items), EXPECTED_TOTAL
     )
 
+    # A workflow csak tényleges, visszaellenőrzött publikálás után küldhet e-mailt.
+    github_output = os.getenv("GITHUB_OUTPUT")
+    if github_output:
+        with open(github_output, "a", encoding="utf-8") as output:
+            output.write("published=true\\n")
+
 
 if __name__ == "__main__":
     main()
