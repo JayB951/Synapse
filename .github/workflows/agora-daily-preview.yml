@@ -31,7 +31,7 @@ jobs:
       - name: Select historical figures and generate six commentaries with Gemini
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          GEMINI_MODEL: gemini-3.8-flash
+          GEMINI_MODEL: gemini-3.5-flash-lite
         run: python agora_daily_editorial.py --input agora_candidates.json --output agora_editorial.json --use-gemini
       - name: Run editorial QA and create human review template
         run: >-
