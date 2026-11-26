@@ -266,6 +266,10 @@ def simulate_historical_figure(event, profile, client):
     by_id = {item.get("id"): item for item in sections if isinstance(item, dict)}
     if set(by_id) != set(DIMENSIONS):
         raise GeminiError(f"{profile.get('name')}: pontosan három előírt kommentárrész szükséges.")
+    news_source_urls = sorted({
+        item.get("url") for item in event.get("articles", [])
+        if str(item.get("url") or "").startswith("https://")
+    })
     briefs = []
     for dimension in DIMENSIONS:
         section = by_id[dimension]
@@ -294,6 +298,7 @@ def simulate_historical_figure(event, profile, client):
             "draft_text": draft,
             "evidence_notes": [str(note).strip() for note in notes if str(note).strip()],
             "source_urls": sorted(set(urls)),
+            "news_source_urls": news_source_urls,
             "status": "generated_pending_historical_source_verification",
         })
     if result.get("direct_quote_used") is True:
