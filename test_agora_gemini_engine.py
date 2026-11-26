@@ -167,6 +167,14 @@ class GeminiEngineTests(unittest.TestCase):
         self.assertTrue(result["mandatory_disclosures"]["hypothetical_reconstruction"])
         self.assertFalse(result["mandatory_disclosures"]["direct_quote_used"])
 
+    def test_simulator_regenerates_short_commentary_before_failing(self):
+        invalid = simulation_response()
+        invalid["sections"][0]["draft_text"] = "Ez egy túl rövid mondat."
+        client = FakeClient([invalid, simulation_response()])
+        result = simulate_historical_figure(EVENT, PROFILE, client)
+        self.assertEqual(len(client.calls), 2)
+        self.assertEqual(len(result["sections"]), 3)
+
     def test_simulator_rejects_unlisted_historical_source(self):
         response = simulation_response()
         response["sections"][0]["source_titles"] = ["Kitalált mű"]
