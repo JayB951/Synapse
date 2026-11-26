@@ -43,7 +43,7 @@ RETRY_DELAYS = {
 MAX_OUTPUT_TOKENS = 4096
 MAX_SOURCE_LENGTH = 12000
 
-EXPECTED_ITEMS = 14
+EXPECTED_ITEMS = 16
 
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_SECRET_KEY = os.getenv("SUPABASE_SECRET_KEY")
@@ -915,19 +915,22 @@ def mark_processing_failed(
 # EDITION RETRIEVAL
 # ============================================================
 
-def get_latest_draft_edition(supabase):
+def get_latest_draft_edition(supabase, edition_date=None, allow_published=False):
 
-    response = (
+    query = (
         supabase
         .table("shard_editions")
-        .select(
-            "id,edition_date,title,status"
-        )
-        .eq("status", "draft")
-        .order(
-            "edition_date",
-            desc=True
-        )
+        .select("id,edition_date,title,status")
+    )
+    if edition_date:
+        query = query.eq("edition_date", edition_date)
+    if allow_published:
+        query = query.in_("status", ["draft", "published"])
+    else:
+        query = query.eq("status", "draft")
+    response = (
+        query
+        .order("edition_date", desc=True)
         .limit(1)
         .execute()
     )
@@ -1340,7 +1343,7 @@ def main():
         )
 
         logger.info(
-            "Mind a 14 tartalom sikeresen feldolgozva."
+            "Mind a 16 tartalom sikeresen feldolgozva."
         )
 
         logger.info(
