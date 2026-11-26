@@ -58,8 +58,13 @@ def build_content_item(pipeline, editorial, qa_report, edition_date):
         body_parts.extend([f"## {'Magyarország' if scope == 'hungary' else 'Nemzetközi'} esemény",
                            title])
         for article in articles:
+            publisher = article.get("source_name") or article.get("source_code") or "Hírforrás"
+            article_title = article.get("title") or title
             if article.get("summary"):
+                body_parts.append(f"**{publisher}: {article_title}**")
                 body_parts.append(article["summary"])
+            if article.get("url"):
+                body_parts.append(f"Forrás: {article['url']}")
         for brief in package.get("briefs", []):
             all_figures.append({
                 "scope": scope,
