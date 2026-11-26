@@ -3,6 +3,7 @@ name: WORLD SHARDS - AGORA backfill for edition 2026-11-26
 # Retry after automatic commentary-length repair was added.
 # The generator can repair short or incomplete commentary before the final QA gate.
 # Both HTTP and HTTPS source links are accepted when independently published.
+# News candidates are filtered for independent publishers before Gemini selection.
 
 on:
   push:
