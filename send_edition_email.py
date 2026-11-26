@@ -1,8 +1,8 @@
 """Send the complete, verified WORLD SHARDS edition by email.
 
 This script is read-only with respect to Supabase. It sends only today's
-Budapest-local edition after confirming its published status and all 14
-processed article records.
+Budapest-local edition after confirming its published status and all 16
+processed content records, including both AGORA sections.
 """
 import base64
 import hashlib
@@ -22,7 +22,7 @@ from supabase import create_client
 
 TIMEZONE = ZoneInfo("Europe/Budapest")
 EXPECTED_COUNTS = {
-    "research_frontier": 5,
+    "research_frontier": 7,
     "art_of_the_day": 1,
     "the_thinker": 1,
     "battlefield": 1,
@@ -147,7 +147,7 @@ def build_email_bodies(edition, items, source_by_id, rating_links_by_item=None):
         f"WORLD SHARDS – {date_label}",
         edition.get("introduction") or "A napi WORLD SHARDS teljes kiadása.",
         "",
-        f"A kiadás mind a {EXPECTED_TOTAL} eleme, rovatonként rendezve:",
+        f"A kiadás mind a {EXPECTED_TOTAL} tartalma, rovatonként rendezve:",
         "",
     ]
     html_sections = []
@@ -155,9 +155,15 @@ def build_email_bodies(edition, items, source_by_id, rating_links_by_item=None):
 
     for item in sorted(items, key=lambda row: row["position"]):
         section_code = item["section_code"]
-        if section_code != current_section:
-            current_section = section_code
-            section_title = SECTION_NAMES.get(section_code, section_code)
+        section_title = SECTION_NAMES.get(section_code, section_code)
+        if section_code == "research_frontier":
+            editor_note = item.get("editor_note")
+            if editor_note == "MAGYAR AGORA":
+                section_title = "Magyar AGORA"
+            elif editor_note == "WORLD AGORA":
+                section_title = "WORLD AGORA"
+        if section_title != current_section:
+            current_section = section_title
             plain.extend(["", "=" * 58, section_title.upper(), "=" * 58, ""])
             html_sections.append(
                 f'<h2 style="margin:30px 0 14px;padding-bottom:8px;'
@@ -252,7 +258,7 @@ def build_email_bodies(edition, items, source_by_id, rating_links_by_item=None):
 <p style="margin:0;color:#666;">{html.escape(date_label)} · A teljes napi kiadás</p>
 </header>
 <p style="line-height:1.6;">{html.escape(edition.get("introduction") or "A világ legérdekesebb felfedezései egyetlen kiadásban.")}</p>
-<p style="color:#666;font-size:13px;">{EXPECTED_TOTAL} szerkesztett tartalom · 9 rovat</p>
+<p style="color:#666;font-size:13px;">{EXPECTED_TOTAL} szerkesztett tartalom, köztük a Magyar és a nemzetközi AGORA</p>
 {''.join(html_sections)}
 <footer style="margin-top:30px;padding-top:18px;border-top:2px solid #c8a96a;">
 <a href="{MAGAZINE_URL}" style="color:#6e572b;">WORLD SHARDS – online magazin</a>
@@ -278,7 +284,7 @@ def load_published_edition(supabase):
     items_response = (
         supabase.table("shard_edition_items")
         .select(
-            "id,content_item_id,section_code,position,processing_status,"
+            "id,content_item_id,section_code,position,editor_note,processing_status,"
             "display_title,display_summary,display_body"
         )
         .eq("edition_id", edition["id"])
@@ -346,7 +352,7 @@ def main():
     plain_body, html_body, date_label = build_email_bodies(
         edition, items, source_by_id, rating_links
     )
-    logger.info("E-mail tartalma ellenőrizve: %s elem, %s rovat.", len(items), len(EXPECTED_COUNTS))
+    logger.info("E-mail tartalma ellenőrizve: %s elem, benne mindkét AGORA-rovat.", len(items))
     send_email(plain_body, html_body, date_label)
 
 
