@@ -10,6 +10,7 @@ from agora_gemini_engine import (
     build_gemini_commentary_package,
     select_historical_figures,
     simulate_historical_figure,
+    _ensure_four_compound_sentences,
 )
 
 
@@ -203,6 +204,21 @@ class GeminiEngineTests(unittest.TestCase):
         }
         result = simulate_historical_figure(event, PROFILE, FakeClient([simulation_response()]))
         self.assertIn("http://news.example/second", result["sections"][0]["news_source_urls"])
+
+    def test_simple_fourth_sentence_is_strengthened_without_regeneration(self):
+        response = simulation_response()
+        response["sections"][0]["draft_text"] = (
+            "A döntés azért fontos, mert a történelmi környezet meghatározta a lehetséges választásokat. "
+            "A közösség biztonsága nemcsak az egyéni szándékoktól függ, hanem az intézmények együttműködésétől is. "
+            "A folyamat akkor válik érthetővé, ha a korábbi tapasztalatokat is figyelembe vesszük. "
+            "A változás a későbbi intézményi működés szempontjából is jelentős."
+        )
+        client = FakeClient([response])
+        result = simulate_historical_figure(EVENT, PROFILE, client)
+        self.assertEqual(len(client.calls), 1)
+        self.assertTrue(_ensure_four_compound_sentences(
+            result["sections"][0]["draft_text"], "interpretation"
+        ))
 
     def test_simulator_derives_missing_evidence_notes_from_catalogue(self):
         response = simulation_response()
