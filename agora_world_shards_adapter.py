@@ -93,7 +93,7 @@ def build_content_item(pipeline, editorial, qa_report, edition_date):
     latest_dates = [item.get("published_at") for item in all_sources if item.get("published_at")]
     latest_date = max(latest_dates) if latest_dates else None
     return {
-        "section_code": "agora",
+        "section_code": "research_frontier",
         "title": f"AGORA – {edition_date}",
         "summary": summary[:1000],
         "body": "\n\n".join(body_parts),
