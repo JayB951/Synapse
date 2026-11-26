@@ -680,7 +680,7 @@ async function loadEdition(edition) {
     if (sourceIds.length) {
       const sourceFilter = `in.(${sourceIds.join(",")})`;
       const sourceResponse = await fetch(
-        `${supabaseUrl}/rest/v1/shard_content_items?select=id,title,summary,body,source_name,source_url,source_published_at,metadata&id=${encodeURIComponent(sourceFilter)}`,
+        `${supabaseUrl}/rest/v1/shard_content_items?select=id,title,summary,body,source_name,source_url,source_published_at&id=${encodeURIComponent(sourceFilter)}`,
         { headers }
       );
       if (sourceResponse.ok) {
