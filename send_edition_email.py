@@ -313,10 +313,9 @@ def send_email(plain_body, html_body, date_label):
     password = os.getenv("MAIL_PASSWORD")
     recipient = os.getenv("NOTIFY_EMAIL")
     if not sender or not password or not recipient:
-        logger.warning(
-            "E-mail kihagyva: a MAIL_USERNAME, MAIL_PASSWORD vagy WORLD_SHARDS_NOTIFY_EMAIL secret hiányzik."
+        raise RuntimeError(
+            "E-mail nem küldhető: hiányzik a MAIL_USERNAME, MAIL_PASSWORD vagy WORLD_SHARDS_NOTIFY_EMAIL secret."
         )
-        return False
 
     message = EmailMessage()
     message["Subject"] = f"WORLD SHARDS – teljes napi kiadás ({date_label})"
@@ -353,7 +352,8 @@ def main():
         edition, items, source_by_id, rating_links
     )
     logger.info("E-mail tartalma ellenőrizve: %s elem, benne mindkét AGORA-rovat.", len(items))
-    send_email(plain_body, html_body, date_label)
+    if not send_email(plain_body, html_body, date_label):
+        raise RuntimeError("Az SMTP-küldés nem igazolható; a napi workflow hibával álljon le.")
 
 
 if __name__ == "__main__":
