@@ -440,6 +440,23 @@ SECTION_STYLES = {
         )
     },
 
+    "agora": {
+        "name": "AGORA",
+        "description": (
+            "Napi közéleti és történelmi elemző rovat. Őrizd meg a két külön "
+            "híreseményt: egy magyar és egy nemzetközi eseményt. Ne mosd össze "
+            "őket, és minden tényállítást az eredeti forrásokhoz köss. "
+            "A három történelmi személyiség nézőpontját külön-külön mutasd be, "
+            "a személyenkénti Értelmezés, Következmények és Megoldás szerkezetet "
+            "megtartva. A történelmi személyek mai eseményre adott gondolatai "
+            "hipotetikus rekonstrukciók, nem szó szerinti történelmi állásfoglalások. "
+            "Ne találj ki idézetet, történelmi tényt, mai tényállítást vagy forrást. "
+            "A bizonytalanságot jelezd. Ne adj hozzá pártpolitikai kvótát vagy "
+            "mesterséges politikai egyensúlyozást. A szöveg legyen magyar, "
+            "tárgyszerű, elemző és jól olvasható."
+        )
+    },
+
     "closing": {
         "name": "Closing",
         "description": (
