@@ -10,6 +10,7 @@ from agora_gemini_engine import (
     build_gemini_commentary_package,
     select_historical_figures,
     simulate_historical_figure,
+    translate_event_to_hungarian,
     _ensure_four_compound_sentences,
     _validate_long_form_commentary,
 )
@@ -257,3 +258,38 @@ class GeminiEngineTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class InternationalTranslationTests(unittest.TestCase):
+    def test_translates_event_and_all_article_titles_and_summaries(self):
+        client = FakeClient([{
+            "event_title_hu": "Magyar eseménycím",
+            "articles": [
+                {"title_hu": "Első magyar cím", "summary_hu": "Első magyar összefoglaló."},
+                {"title_hu": "Második magyar cím", "summary_hu": "Második magyar összefoglaló."},
+            ],
+        }])
+        event = {
+            "representative_title": "Original event title",
+            "articles": [
+                {"title": "First title", "summary": "First summary."},
+                {"title": "Second title", "summary": "Second summary."},
+            ],
+        }
+        result = translate_event_to_hungarian(event, client)
+        self.assertEqual(result["language"], "hu")
+        self.assertEqual(result["event_title"], "Magyar eseménycím")
+        self.assertEqual(len(result["articles"]), 2)
+        self.assertEqual(result["articles"][1]["title"], "Második magyar cím")
+
+    def test_rejects_incomplete_translation(self):
+        client = FakeClient([{
+            "event_title_hu": "Magyar eseménycím",
+            "articles": [{"title_hu": "Első cím", "summary_hu": "Első összefoglaló"}],
+        }])
+        event = {"articles": [
+            {"title": "First", "summary": "Summary"},
+            {"title": "Second", "summary": "Summary"},
+        ]}
+        with self.assertRaises(GeminiError):
+            translate_event_to_hungarian(event, client)
