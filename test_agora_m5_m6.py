@@ -20,7 +20,8 @@ def make_package(scope, event_id, keyword):
                 {"id": dimension, "label": dimension.title(),
                  "draft_text": f"Reviewed {dimension} text for {keyword}.",
                  "evidence_notes": ["Primary source checked."],
-                 "source_urls": ["https://example.org/history"]}
+                 "source_urls": ["https://example.org/history"],
+                 "news_source_urls": ["https://example.org/news"]}
                 for dimension in DIMENSIONS
             ],
         })
