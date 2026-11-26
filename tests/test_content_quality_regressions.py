@@ -1,0 +1,109 @@
+import importlib.util
+from pathlib import Path
+
+
+ROOT = Path(__file__).resolve().parents[1]
+
+
+def load_module(name, filename):
+    spec = importlib.util.spec_from_file_location(name, ROOT / filename)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+m13 = load_module("collector_m13", "shards_collector_m13.py")
+m14 = load_module("collector_m14", "shards_collector_m14.py")
+music = load_module("music_collector", "music_collector.py")
+processor = load_module("edition_processor", "edition_processor.py")
+
+
+def page(title, extract):
+    return {"title": title, "extract": extract}
+
+
+def test_battlefield_accepts_bulge_and_d_day_but_rejects_general_topics():
+    assert m13.is_valid_battle_article(page(
+        "Battle of the Bulge",
+        "The Battle of the Bulge was a major German offensive campaign fought "
+        "on the Western Front during World War II."
+    ))
+    assert m13.is_valid_battle_article(page(
+        "D-Day",
+        "The Normandy landings were the Allied amphibious landing operations "
+        "during the invasion of Normandy in World War II."
+    ))
+    assert m13.is_valid_battle_article(page(
+        "Normandy landings",
+        "The Normandy landings were the Allied amphibious landing operations "
+        "during the invasion of Normandy."
+    ))
+    assert not m13.is_valid_battle_article(page(
+        "History of World War II",
+        "This article surveys the military history and major events of the war."
+    ))
+
+
+def test_fundamentals_requires_a_concrete_concept():
+    assert m13.is_valid_fundamentals_article(page(
+        "Conservation of energy",
+        "In physics, conservation of energy is the principle that the total "
+        "energy of an isolated system remains constant."
+    ))
+    assert not m13.is_valid_fundamentals_article(page(
+        "Physics",
+        "Physics is the natural science that studies matter, its motion and behavior."
+    ))
+
+
+def test_unsolved_rejects_a_vague_unknown_mention():
+    assert m14.is_unsolved_candidate(page(
+        "The Wow! signal",
+        "The Wow! signal is a strong narrowband radio signal detected in 1977. "
+        "Its origin remains unexplained and it has not been observed again."
+    ))
+    assert not m14.is_unsolved_candidate(page(
+        "A general history article",
+        "The identity of one minor participant is unknown, but the subject "
+        "of this article is otherwise well documented and resolved."
+    ))
+
+
+def test_joke_record_has_a_valid_id_range_source_and_full_two_part_body():
+    record = m14.build_joke_record({
+        "id": 42,
+        "category": "Programming",
+        "type": "twopart",
+        "setup": "Why did the programmer quit?",
+        "delivery": "Because they didn't get arrays.",
+    })
+    assert "idRange=42-42" in record["source_url"]
+    assert "Why did the programmer quit?" in record["body"]
+    assert "Because they didn't get arrays." in record["body"]
+
+
+def test_joke_prompt_explicitly_preserves_the_punchline():
+    prompt = processor.build_prompt("closing", {
+        "title": "Why did the programmer quit?",
+        "summary": "Why did the programmer quit?",
+        "body": "Why did the programmer quit?\n\nBecause they didn't get arrays.",
+        "source_name": "JokeAPI",
+        "source_url": "https://v2.jokeapi.dev/joke/Any?idRange=42-42",
+        "source_language": "en",
+        "metadata": {"source_provider": "JokeAPI", "joke_id": 42, "joke_type": "twopart"},
+    })
+    assert "CSATTANÓT" in prompt
+    assert "teljes vicc" in prompt.lower()
+
+
+def test_music_picker_can_exclude_recent_tracks():
+    topic = {"title": "The Bulge campaign", "summary": "Battle of the Bulge"}
+    tracks = [
+        {"trackId": 1, "trackName": "Bulge", "artistName": "Artist",
+         "collectionName": "The Bulge", "trackViewUrl": "https://example.com/1"},
+        {"trackId": 2, "trackName": "Bulge", "artistName": "Artist",
+         "collectionName": "The Bulge", "trackViewUrl": "https://example.com/2"},
+    ]
+    chosen = music.choose_best_track(tracks, [topic], excluded_track_ids={"1"})
+    assert chosen is not None
+    assert chosen["track"]["trackId"] == 2
