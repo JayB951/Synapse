@@ -47,7 +47,9 @@ def child_text(element, names):
 def clean_text(value):
     value = html.unescape(value or "")
     value = re.sub(r"<[^>]*>", " ", value)
-    return re.sub(r"\s+", " ", value).strip()
+    value = re.sub(r"\s+", " ", value).strip()
+    # HTML tag removal can leave a gap before punctuation (e.g. </b>.).
+    return re.sub(r"\s+([.,!?;:])", r"\1", value)
 
 
 def parse_timestamp(value):
