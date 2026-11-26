@@ -478,8 +478,7 @@ function renderArticles(items = []) {
       const button = makeElement("button", "read-article", "Cikk olvasása  ↗");
       button.type = "button";
       button.addEventListener("click", () => openArticle(item, title));
-      const feedback = createFeedbackButton(item.id);
-      feedback.dataset.feedbackItem = item.id;
+      const feedback = createRatingWidget(item.id);
       const source = getSourceRecord(item);
       let sectionImage = null;
       if (code === "art_of_the_day") {
