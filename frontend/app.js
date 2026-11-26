@@ -84,23 +84,34 @@ function makeSectionImage(source, title, className, altPrefix) {
     }))
   ];
 
-  for (const candidate of candidates) {
-    if (!candidate.url) continue;
+  const validCandidates = candidates.flatMap(candidate => {
+    if (!candidate.url) return [];
     try {
       const url = new URL(candidate.url);
-      if (url.protocol !== "https:" && url.protocol !== "http:") continue;
-
-      const image = makeElement("img", className);
-      image.src = url.href;
-      image.alt = candidate.caption || (title ? `${altPrefix}: ${title}` : altPrefix);
-      image.loading = "lazy";
-      image.decoding = "async";
-      return image;
+      if (url.protocol !== "https:" && url.protocol !== "http:") return [];
+      return [{ url: url.href, caption: candidate.caption }];
     } catch (_) {
-      // Ignore malformed stored URLs and try the next persisted image.
+      return [];
     }
-  }
-  return null;
+  });
+  if (!validCandidates.length) return null;
+
+  const image = makeElement("img", className);
+  image.loading = "lazy";
+  image.decoding = "async";
+  let candidateIndex = 0;
+  const loadNextImage = () => {
+    const candidate = validCandidates[candidateIndex++];
+    if (!candidate) {
+      image.remove();
+      return;
+    }
+    image.src = candidate.url;
+    image.alt = candidate.caption || (title ? `${altPrefix}: ${title}` : altPrefix);
+  };
+  image.addEventListener("error", loadNextImage);
+  loadNextImage();
+  return image;
 }
 
 function getVoterToken() {
