@@ -56,7 +56,7 @@ def build_editorial_output(pipeline, catalog, figure_limit=3, gemini_client=None
                     item for item in shortlist
                     if item.get("eligible_for_daily_proposal") is True
                     and _has_independent_coverage(item)
-                ][:10]
+                ][:25]
             else:
                 fallback_id = selection.get("event_id")
                 candidates = (
