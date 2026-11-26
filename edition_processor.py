@@ -1085,10 +1085,7 @@ def process_item(
         item["content_item_id"]
     )
 
-    if (
-        item["section_code"] == "agora"
-        and (source.get("metadata") or {}).get("content_type") in {"agora_hungary", "agora_world"}
-    ):
+    if (source.get("metadata") or {}).get("content_type") in {"agora_hungary", "agora_world"}:
         # AGORA is already generated, structured, and quality-gated upstream.
         # Preserve its three historical figures and all nine long-form commentaries verbatim.
         generated_content = {
