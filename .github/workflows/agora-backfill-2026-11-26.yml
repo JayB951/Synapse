@@ -8,6 +8,7 @@ name: WORLD SHARDS - AGORA backfill for edition 2026-11-26
 # Expand Gemini's source-verified shortlist to the top 25 candidates.
 # Missing internal evidence notes are derived from the historical catalogue.
 # Single-source stories remain eligible when a verifiable article URL exists.
+# Both AGORA types use the existing allowed 'agora' database code.
 
 on:
   push:
