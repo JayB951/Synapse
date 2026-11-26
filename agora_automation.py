@@ -181,7 +181,7 @@ def run(edition_date=None):
     collection = collect_all()
     if not collection.get("candidates"):
         raise RuntimeError("Az AGORA RSS-gyűjtés egyetlen jelöltet sem adott.")
-    pipeline = build_pipeline_result(collection)
+    pipeline = build_pipeline_result(collection, shortlist_limit=30)
     client = GeminiClient()
     editorial = build_editorial_output(pipeline, json.loads(
         Path("agora_historical_figures.json").read_text(encoding="utf-8")
