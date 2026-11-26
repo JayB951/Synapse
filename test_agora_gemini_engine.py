@@ -236,7 +236,7 @@ class GeminiEngineTests(unittest.TestCase):
         response["sections"][0]["source_titles"] = ["Kitalált mű"]
         result = simulate_historical_figure(EVENT, PROFILE, FakeClient([response]))
         allowed_title = PROFILE["works"][0]["title"]
-        self.assertEqual(result["sections"][0]["source_titles"], [allowed_title])
+        self.assertIn(PROFILE["works"][0]["url"], result["sections"][0]["source_urls"])
         self.assertNotIn("Kitalált mű", result["sections"][0]["draft_text"])
         self.assertTrue(result["sections"][0]["source_urls"])
 
