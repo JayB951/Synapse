@@ -209,7 +209,7 @@ class GeminiEngineTests(unittest.TestCase):
     def test_simple_fourth_sentence_is_strengthened_without_regeneration(self):
         response = simulation_response()
         response["sections"][0]["draft_text"] = (
-            "A döntés azért fontos, mert a történelmi környezet meghatározta a lehetséges választásokat. "
+            "A döntés azért fontos, mert a történelmi környezet meghatározta a lehetséges választásokat, a szereplők mozgásterét és a korabeli intézményi lehetőségeket. "
             "A közösség biztonsága nemcsak az egyéni szándékoktól függ, hanem az intézmények együttműködésétől is. "
             "A folyamat akkor válik érthetővé, ha a korábbi tapasztalatokat is figyelembe vesszük. "
             "A változás a későbbi intézményi működés szempontjából is jelentős."
