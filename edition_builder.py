@@ -27,7 +27,7 @@ AGORA_SECTION_LIMITS = {
     "agora_hungary": 1,
     "agora_world": 1,
 }
-AGORA_DB_SECTION_CODE = "agora"
+AGORA_DB_SECTION_CODE = "research_frontier"
 AGORA_EDITOR_NOTES = {
     "agora_hungary": "MAGYAR AGORA",
     "agora_world": "WORLD AGORA",
@@ -345,24 +345,6 @@ def add_agora_to_existing_edition(supabase, edition, edition_date):
     )
     existing_items = existing_response.data or []
 
-    # Replace a legacy combined AGORA row, if one was already attached to this edition.
-    legacy_rows = [
-        item for item in existing_items
-        if item.get("section_code") == AGORA_DB_SECTION_CODE
-        and item.get("editor_note") not in set(AGORA_EDITOR_NOTES.values())
-    ]
-    if legacy_rows:
-        legacy_ids = [item["id"] for item in legacy_rows]
-        supabase.table("shard_edition_items").delete().in_("id", legacy_ids).execute()
-        existing_items = [item for item in existing_items if item["id"] not in set(legacy_ids)]
-        for position, item in enumerate(existing_items, start=1):
-            if item.get("position") != position:
-                supabase.table("shard_edition_items").update(
-                    {"position": position}
-                ).eq("id", item["id"]).execute()
-                item["position"] = position
-        logger.info("A korábbi összevont AGORA-rovatot két külön rovat váltja fel.")
-
     present_types = {item.get("editor_note") for item in existing_items}
     missing = []
     for content_type in AGORA_SECTION_LIMITS:
@@ -501,8 +483,7 @@ def create_edition_items(supabase, edition_id, selected_items):
             "position": position,
             "editor_note": (
                 AGORA_EDITOR_NOTES.get((item.get("metadata") or {}).get("content_type"))
-                if item.get("section_code") == AGORA_DB_SECTION_CODE
-                else "Automatikusan kiválasztva."
+                or "Automatikusan kiválasztva."
             ),
         })
 
