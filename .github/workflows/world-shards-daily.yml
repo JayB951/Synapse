@@ -98,6 +98,37 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: python edition_processor.py
 
+      - name: SMTP hitelesites ellenorzese publikacio elott
+        if: steps.edition_builder.outputs.already_published != 'true'
+        env:
+          MAIL_USERNAME: ${{ secrets.MAIL_USERNAME }}
+          MAIL_PASSWORD: ${{ secrets.MAIL_PASSWORD }}
+          NOTIFY_EMAIL: ${{ secrets.WORLD_SHARDS_NOTIFY_EMAIL }}
+        run: |
+          python - <<'PY'
+          import os
+          import smtplib
+
+          sender = os.getenv("MAIL_USERNAME")
+          password = os.getenv("MAIL_PASSWORD")
+          recipient = os.getenv("NOTIFY_EMAIL")
+          missing = [
+              name for name, value in (
+                  ("MAIL_USERNAME", sender),
+                  ("MAIL_PASSWORD", password),
+                  ("WORLD_SHARDS_NOTIFY_EMAIL", recipient),
+              )
+              if not value
+          ]
+          if missing:
+              raise RuntimeError("Hiányzó e-mail beállítás: " + ", ".join(missing))
+
+          with smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=30) as smtp:
+              smtp.login(sender, password)
+
+          print("SMTP-hitelesítés sikeres; a kiadás publikálható és küldhető.")
+          PY
+
       - name: Teljessegi ellenorzes es automatikus publikacio
         id: publish
         if: steps.edition_builder.outputs.already_published != 'true'
