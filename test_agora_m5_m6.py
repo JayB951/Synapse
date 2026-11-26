@@ -72,7 +72,10 @@ def fixture():
     pipeline = {"generated_at": NOW.isoformat(), "groups": groups}
     editorial = {"daily_editorial": {
         "hungary": make_package("hungary", "hu1", "alkotmány"),
-        "international": make_package("international", "int1", "gazdaság"),
+        "international": {
+            **make_package("international", "int1", "gazdaság"),
+            "news_selection": {"status": "selected", "selected_event_id": "int1"},
+        },
     }}
     return pipeline, editorial
 
@@ -99,6 +102,26 @@ class EditorialQATests(unittest.TestCase):
         result = evaluate_quality(pipeline, editorial, build_review_template(editorial), now=NOW)
         self.assertFalse(result["approved"])
         self.assertEqual(result["status"], "blocked")
+
+    def test_no_qualifying_international_story_blocks_combined_export(self):
+        pipeline, editorial = fixture()
+        editorial["daily_editorial"]["international"] = {
+            "status": "no_qualifying_international_news",
+            "news_selection": {
+                "status": "no_qualifying_news",
+                "selected_event_id": "",
+                "internal_rationale": "A jelöltek sport- és szórakoztatóipari hírek voltak.",
+                "excluded_candidates": [],
+            },
+            "historical_selection": None,
+            "commentary_package": None,
+        }
+        result = evaluate_quality(pipeline, editorial, now=NOW)
+        self.assertFalse(result["approved"])
+        self.assertIn(
+            "international_story_required_for_combined_export",
+            [item["code"] for item in result["checks"] if not item["passed"]],
+        )
 
     def test_adapter_refuses_unapproved_qa(self):
         pipeline, editorial = fixture()
