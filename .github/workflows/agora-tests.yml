@@ -25,6 +25,7 @@ on:
       - "agora_world_shards_adapter.py"
       - "agora_automation.py"
       - "test_agora_m5_m6.py"
+      - "test_agora_automation.py"
       - "edition_builder.py"
       - "edition_processor.py"
       - ".github/workflows/agora-tests.yml"
