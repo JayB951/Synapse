@@ -12,7 +12,6 @@ from datetime import datetime, timezone
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
-from supabase import create_client
 
 from agora_daily_editorial import build_editorial_output
 from agora_gemini_engine import GeminiClient
@@ -128,6 +127,7 @@ def automated_quality_gate(pipeline, editorial, now=None):
 
 
 def get_supabase_client():
+    from supabase import create_client
     url = os.getenv("SUPABASE_URL")
     key = os.getenv("SUPABASE_SECRET_KEY")
     if not url or not key:
