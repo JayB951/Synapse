@@ -164,7 +164,7 @@ def save_content_item(supabase, record):
     )
     if existing.data:
         current = existing.data[0]
-        if current.get("status") == "candidate":
+        if current.get("status") == "candidate" or os.getenv("AGORA_FORCE_UPDATE_EXISTING") == "true":
             response = (
                 supabase.table("shard_content_items")
                 .update(record)
@@ -175,7 +175,7 @@ def save_content_item(supabase, record):
                 raise RuntimeError(f"{content_type}: a meglévő jelölt frissítése nem igazolható.")
             LOGGER.info("%s: meglévő napi jelölt frissítve.", content_type)
             return current["id"]
-        LOGGER.info("%s: már kiválasztott tartalom, változatlanul hagyva.", content_type)
+        LOGGER.info("%s: már kiválasztott tartalom, változatlanul hagyva (force update kikapcsolva).", content_type)
         return current["id"]
 
     response = supabase.table("shard_content_items").insert(record).execute()
