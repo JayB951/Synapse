@@ -175,6 +175,21 @@ class GeminiEngineTests(unittest.TestCase):
         self.assertEqual(len(client.calls), 2)
         self.assertEqual(len(result["sections"]), 3)
 
+    def test_simulator_uses_second_repair_when_first_repair_is_still_short(self):
+        invalid_first = simulation_response()
+        invalid_first["sections"][0]["draft_text"] = "Ez egy túl rövid mondat."
+        invalid_second = simulation_response()
+        invalid_second["sections"][1]["draft_text"] = (
+            "A következményeket azért vizsgálja, mert a döntések hatással vannak az intézményekre. "
+            "A közösség biztonsága az együttműködéstől is függ. "
+            "A felelősségi körök akkor világosak, ha minden szereplő elszámoltatható. "
+            "Ezért a bizalom helyreállítása hosszú folyamat."
+        )
+        client = FakeClient([invalid_first, invalid_second, simulation_response()])
+        result = simulate_historical_figure(EVENT, PROFILE, client)
+        self.assertEqual(len(client.calls), 3)
+        self.assertEqual(len(result["sections"]), 3)
+
     def test_simulator_rejects_unlisted_historical_source(self):
         response = simulation_response()
         response["sections"][0]["source_titles"] = ["Kitalált mű"]
