@@ -10,6 +10,7 @@ name: WORLD SHARDS - AGORA backfill for edition 2026-11-26
 # Single-source stories remain eligible when a verifiable article URL exists.
 # Both AGORA types use the existing allowed 'agora' database code.
 # Simple sentences receive a neutral subordinate clause before final QA.
+# Unlisted model source titles are replaced with the approved catalogue source.
 
 on:
   push:
