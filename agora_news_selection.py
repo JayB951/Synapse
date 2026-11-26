@@ -208,6 +208,7 @@ def select_hungarian_news_event(candidates, client):
             "articles": [
                 {
                     "publisher": article.get("source_name") or article.get("source_code"),
+                    "url": article.get("url"),
                     "title": article.get("title"),
                     "published_at": article.get("published_at"),
                     "summary": article.get("summary"),
