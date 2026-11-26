@@ -82,6 +82,7 @@ def build_content_item(pipeline, editorial, qa_report, edition_date):
                 "scope": scope,
                 "figure_id": brief.get("figure_id"),
                 "name": brief.get("figure_name"),
+                "role": brief.get("figure_role"),
             })
             role = str(brief.get("figure_role") or "").strip()
             body_parts.extend([
