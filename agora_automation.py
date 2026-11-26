@@ -32,7 +32,9 @@ def _long_form_ok(text):
     ]
     connector = re.compile(
         r"\b(és|de|mert|miközben|ezért|ugyanakkor|noha|bár|hiszen|amely|amelyek|"
-        r"amelynek|amelyben|így|azonban|viszont|tehát|ha|hogy)\b",
+        r"amelynek|amelyben|így|azonban|viszont|tehát|ha|hogy|valamint|illetve|"
+        r"mivel|ugyanis|amikor|amíg|miután|hanem|sőt|holott|amennyiben|továbbá|"
+        r"mindemellett|nemcsak|akár|hacsak|mialatt|minthogy|ennek ellenére|annak ellenére)\b",
         re.IGNORECASE,
     )
     compound = sum(bool(connector.search(sentence)) for sentence in sentences)
