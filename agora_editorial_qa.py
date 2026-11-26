@@ -123,11 +123,15 @@ def evaluate_quality(pipeline, editorial, review=None, now=None):
             for dimension in REQUIRED_DIMENSIONS:
                 section = sections.get(dimension, {})
                 text_ready = bool(str(section.get("draft_text") or "").strip())
-                evidence_ready = bool(section.get("evidence_notes")) and bool(section.get("source_urls"))
+                evidence_ready = (
+                    bool(section.get("evidence_notes"))
+                    and bool(section.get("source_urls"))
+                    and bool(section.get("news_source_urls"))
+                )
                 _check(scope_checks, f"{brief.get('figure_id')}_{dimension}_text",
                        text_ready, f"{brief.get('figure_name')}: elkészült a(z) {dimension} szöveg.", scope=scope)
                 _check(scope_checks, f"{brief.get('figure_id')}_{dimension}_evidence",
-                       evidence_ready, f"{brief.get('figure_name')}: a(z) {dimension} részhez bizonyíték és forrás tartozik.", scope=scope)
+                       evidence_ready, f"{brief.get('figure_name')}: a(z) {dimension} részhez történeti bizonyíték, hírforrás és hivatkozás tartozik.", scope=scope)
 
         human_scope = review.get("scope_reviews", {}).get(scope, {})
         human_figure_reviews = {f.get("figure_id"): f for f in human_scope.get("figure_reviews", [])}

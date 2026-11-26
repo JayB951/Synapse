@@ -1,4 +1,4 @@
-"""AGORA M3-M4: daily historical figure selection and commentary brief assembly."""
+"""AGORA M3-M4: daily historical figure selection and commentary generation."""
 import argparse
 import json
 import sys
@@ -11,11 +11,17 @@ from agora_historical_matching import (
     select_historical_figures,
     validate_catalog,
 )
+from agora_gemini_engine import (
+    DEFAULT_MODEL,
+    GeminiClient,
+    build_gemini_commentary_package,
+    select_historical_figures as gemini_select_historical_figures,
+)
 
-ENGINE_VERSION = "AGORA_DAILY_EDITORIAL_M4.1"
+ENGINE_VERSION = "AGORA_DAILY_EDITORIAL_M4.2"
 
 
-def build_editorial_output(pipeline, catalog, figure_limit=3):
+def build_editorial_output(pipeline, catalog, figure_limit=3, gemini_client=None):
     validate_catalog(catalog)
     groups = {item.get("event_id"): item for item in pipeline.get("groups", [])}
     result = {}
@@ -31,17 +37,25 @@ def build_editorial_output(pipeline, catalog, figure_limit=3):
             continue
 
         event = groups.get(event_id, selection)
-        historical = select_historical_figures(event, catalog, limit=figure_limit)
-        package = build_commentary_package(event, historical)
+        if gemini_client is not None:
+            historical = gemini_select_historical_figures(event, catalog, gemini_client)
+            package = build_gemini_commentary_package(event, historical, gemini_client)
+            status = package["status"]
+        else:
+            historical = select_historical_figures(event, catalog, limit=figure_limit)
+            package = build_commentary_package(event, historical)
+            status = "editorial_research_required"
         result[scope] = {
-            "status": "editorial_research_required",
+            "status": status,
             "historical_selection": historical,
             "commentary_package": package,
         }
 
     return {
         "engine": ENGINE_VERSION,
-        "matcher": MATCHER_VERSION,
+        "model_provider": "google_gemini" if gemini_client is not None else "offline_keyword_preview",
+        "model": getattr(gemini_client, "model", None) or (DEFAULT_MODEL if gemini_client is not None else None),
+        "matcher": MATCHER_VERSION if gemini_client is None else "GEMINI_DOCUMENTED_PROFILE_RELEVANCE_M1.0",
         "generated_at": pipeline.get("generated_at"),
         "event_pipeline": pipeline.get("pipeline"),
         "figure_catalog_version": catalog.get("schema_version"),
@@ -56,7 +70,7 @@ def build_editorial_output(pipeline, catalog, figure_limit=3):
             "human_editorial_review_required": True,
             "publishing_performed": False,
         },
-        "status": "editorial_research_required",
+        "status": "awaiting_human_editorial_review" if gemini_client is not None else "editorial_research_required",
     }
 
 
@@ -66,13 +80,15 @@ def main():
     parser.add_argument("--catalog", default=str(DEFAULT_CATALOG))
     parser.add_argument("--output")
     parser.add_argument("--figure-limit", type=int, default=3)
+    parser.add_argument("--use-gemini", action="store_true", help="Use Gemini for both role types and all six simulations.")
     args = parser.parse_args()
     if args.figure_limit < 1:
         parser.error("--figure-limit must be positive")
 
     pipeline = json.loads(Path(args.input).read_text(encoding="utf-8"))
     catalog = json.loads(Path(args.catalog).read_text(encoding="utf-8"))
-    result = build_editorial_output(pipeline, catalog, args.figure_limit)
+    client = GeminiClient() if args.use_gemini else None
+    result = build_editorial_output(pipeline, catalog, args.figure_limit, client)
     rendered = json.dumps(result, ensure_ascii=False, indent=2) + "\n"
     if args.output:
         Path(args.output).write_text(rendered, encoding="utf-8")

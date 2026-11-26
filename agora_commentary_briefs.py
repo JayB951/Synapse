@@ -51,6 +51,10 @@ def build_commentary_brief(event, match):
                 "draft_text": None,
                 "evidence_notes": [],
                 "source_urls": [work["url"] for work in match.get("works", [])],
+                "news_source_urls": sorted({
+                    article.get("url") for article in event.get("articles", [])
+                    if str(article.get("url") or "").startswith("https://")
+                }),
                 "status": "awaiting_research_and_authoring",
             }
             for dimension in DIMENSIONS

@@ -20,7 +20,8 @@ def make_package(scope, event_id, keyword):
                 {"id": dimension, "label": dimension.title(),
                  "draft_text": f"Reviewed {dimension} text for {keyword}.",
                  "evidence_notes": ["Primary source checked."],
-                 "source_urls": ["https://example.org/history"]}
+                 "source_urls": ["https://example.org/history"],
+                 "news_source_urls": ["https://example.org/news"]}
                 for dimension in DIMENSIONS
             ],
         })
@@ -116,6 +117,8 @@ class EditorialQATests(unittest.TestCase):
         self.assertEqual(record["section_code"], "agora")
         self.assertEqual(record["status"], "candidate")
         self.assertEqual(len(record["metadata"]["news_items"]), 2)
+        self.assertIn("https://example.org/a", record["body"])
+        self.assertIn("Verified summary about alkotmány.", record["body"])
         self.assertEqual(len(record["metadata"]["historical_figures"]), 6)
         self.assertFalse(record["metadata"]["publishing_performed"])
 
