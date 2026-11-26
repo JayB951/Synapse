@@ -38,6 +38,7 @@ jobs:
           GEMINI_MODEL: gemini-3.5-flash-lite
         run: python agora_automation.py --edition-date 2026-11-26
       - name: Add both AGORA sections to edition 26
+        id: edition_builder
         env:
           EDITION_DATE: "2026-11-26"
           SUPABASE_URL: \${{ secrets.SUPABASE_URL }}
@@ -52,7 +53,7 @@ jobs:
           GEMINI_API_KEY: \${{ secrets.GEMINI_API_KEY }}
         run: python edition_processor.py
       - name: Publish only if edition 26 is still a draft
-        if: success()
+        if: success() && steps.edition_builder.outputs.already_published != 'true'
         id: publish
         env:
           EDITION_DATE: "2026-11-26"
