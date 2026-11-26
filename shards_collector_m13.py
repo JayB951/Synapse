@@ -219,15 +219,15 @@ def is_valid_battle_article(page):
     extract = clean_text(page.get("extract", ""))
     if not title or not extract:
         return False
-    if re.search(r"\\b(book|film|novel|video game|board game|album|song|documentary)\\b", title, re.I):
+    if re.search(r"\b(book|film|novel|video game|board game|album|song|documentary)\b", title, re.I):
         return False
     named_event = re.search(
-        r"\\b(battle|siege|landings?|invasion|campaign|operation)\\b|^D-Day$|^Normandy$",
+        r"\b(battle|siege|landings?|invasion|campaign|operation)\b|^D-Day$|^Normandy$",
         title, re.I,
     )
     military_context = re.search(
-        r"\\b(battle|siege|military campaign|military operation|amphibious landing|"
-        r"invasion|offensive|fought|forces landed|allied landings|German counteroffensive)\\b",
+        r"\b(battle|siege|military campaign|military operation|amphibious landing|"
+        r"invasion|offensive|fought|forces landed|allied landings|German counteroffensive)\b",
         extract[:1800], re.I,
     )
     return bool(named_event and military_context)
@@ -245,14 +245,14 @@ def is_valid_fundamentals_article(page):
     }:
         return False
     concept = re.search(
-        r"\\b(law|theory|principle|effect|equation|theorem|force|energy|entropy|"
+        r"\b(law|theory|principle|effect|equation|theorem|force|energy|entropy|"
         r"gravity|evolution|photosynthesis|replication|probability|number|bond|"
-        r"inflation|supply|demand|memory|conditioning|tectonics|spectrum)\\b",
+        r"inflation|supply|demand|memory|conditioning|tectonics|spectrum)\b",
         title, re.I,
     )
     definition = re.search(
-        r"\\b(is|are|refers to|describes|defined as|the process by which|"
-        r"the principle that|states that|is the tendency|is a measure of)\\b",
+        r"\b(is|are|refers to|describes|defined as|the process by which|"
+        r"the principle that|states that|is the tendency|is a measure of)\b",
         extract[:1200], re.I,
     )
     return bool(concept and definition)
