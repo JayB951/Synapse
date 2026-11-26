@@ -343,6 +343,8 @@ def backfill_world_explorer_images(supabase):
                     gallery_images = fetch_commons_gallery_images(row["title"])
                     if gallery_images:
                         update_data["gallery_images"] = gallery_images
+                except WikimediaPolicyBlock:
+                    raise
                 except Exception as error:
                     logging.warning(
                         "World Explorer gallery lookup failed for '%s': %s",
@@ -508,8 +510,10 @@ def build_record(section_code, page, search_query):
     if section_code == "world_explorer":
         try:
             gallery_images = fetch_commons_gallery_images(title)
+        except WikimediaPolicyBlock:
+            raise
         except Exception as exc:
-            # The Commons gallery is optional: a temporary API failure must
+            # The Commons gallery is optional: ordinary gallery errors must
             # never prevent saving the main Wikipedia article and lead image.
             logging.warning(
                 "World Explorer gallery unavailable for '%s'; continuing "
