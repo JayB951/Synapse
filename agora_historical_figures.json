@@ -1,0 +1,843 @@
+{
+  "schema_version": "1.0.0",
+  "description": "Curated starter catalogue. Relevance is matched from documented themes and works; it is not an endorsement of a figure's views.",
+  "figures": [
+    {
+      "id": "aristotle",
+      "name": "Arisztotelész",
+      "lifespan": "Kr. e. 384–322",
+      "era": "ókori Görögország",
+      "domains": [
+        "political_philosophy",
+        "ethics"
+      ],
+      "topics": [
+        "governance",
+        "democracy",
+        "education",
+        "ethics"
+      ],
+      "keywords": [
+        "állam",
+        "alkotmány",
+        "polisz",
+        "kormányzás",
+        "demokrácia",
+        "közjó",
+        "nevelés",
+        "state",
+        "constitution",
+        "government",
+        "democracy",
+        "education"
+      ],
+      "core_ideas": [
+        "A politikai közösség célja a közjó; az alkotmányos berendezkedés és a polgári erény meghatározó."
+      ],
+      "works": [
+        {
+          "title": "Politika",
+          "url": "https://classics.mit.edu/Aristotle/politics.html",
+          "type": "primary_text"
+        }
+      ],
+      "limits": "Az ókori polisz fogalma nem azonos a modern nemzetállammal; rabszolgaságról és állampolgárságról vallott nézetei történeti kontextusban kezelendők."
+    },
+    {
+      "id": "cicero",
+      "name": "Marcus Tullius Cicero",
+      "lifespan": "Kr. e. 106–43",
+      "era": "Római Köztársaság",
+      "domains": [
+        "law",
+        "political_philosophy"
+      ],
+      "topics": [
+        "rule_of_law",
+        "republic",
+        "governance",
+        "diplomacy"
+      ],
+      "keywords": [
+        "jogállam",
+        "köztársaság",
+        "szenátus",
+        "jog",
+        "alkotmány",
+        "hatalom",
+        "republic",
+        "senate",
+        "law",
+        "constitution",
+        "power"
+      ],
+      "core_ideas": [
+        "A köztársaság közös ügy; a törvényesség, a kötelesség és a közéleti felelősség összetartó erő."
+      ],
+      "works": [
+        {
+          "title": "De re publica",
+          "url": "https://www.thelatinlibrary.com/cicero/repub.shtml",
+          "type": "primary_text"
+        },
+        {
+          "title": "De officiis",
+          "url": "https://www.thelatinlibrary.com/cicero/off.shtml",
+          "type": "primary_text"
+        }
+      ],
+      "limits": "A római köztársaság társadalmi és politikai intézményei nem vetíthetők közvetlenül a modern demokráciára."
+    },
+    {
+      "id": "machiavelli",
+      "name": "Niccolò Machiavelli",
+      "lifespan": "1469–1527",
+      "era": "reneszánsz Itália",
+      "domains": [
+        "political_theory",
+        "statecraft"
+      ],
+      "topics": [
+        "power",
+        "governance",
+        "war",
+        "republic",
+        "diplomacy"
+      ],
+      "keywords": [
+        "hatalom",
+        "vezetés",
+        "állam",
+        "kormány",
+        "politikai válság",
+        "puccs",
+        "háború",
+        "power",
+        "leadership",
+        "state",
+        "government",
+        "political crisis",
+        "coup",
+        "war"
+      ],
+      "core_ideas": [
+        "A politikai cselekvést a hatalom, az intézmények, a konfliktus és az állami fennmaradás realista elemzésével vizsgálta."
+      ],
+      "works": [
+        {
+          "title": "A fejedelem",
+          "url": "https://www.gutenberg.org/ebooks/1232",
+          "type": "primary_text"
+        },
+        {
+          "title": "Beszélgetések Livius első tíz könyvéről",
+          "url": "https://www.gutenberg.org/ebooks/10827",
+          "type": "primary_text"
+        }
+      ],
+      "limits": "Nem egyszerűsíthető a „cél szentesíti az eszközt” közhellyé; a köztársasági írásait is figyelembe kell venni."
+    },
+    {
+      "id": "montesquieu",
+      "name": "Montesquieu",
+      "lifespan": "1689–1755",
+      "era": "felvilágosodás",
+      "domains": [
+        "constitutional_law",
+        "political_philosophy"
+      ],
+      "topics": [
+        "rule_of_law",
+        "separation_of_powers",
+        "governance",
+        "democracy"
+      ],
+      "keywords": [
+        "hatalmi ágak",
+        "hatalommegosztás",
+        "bíróság",
+        "parlament",
+        "alkotmány",
+        "jogállam",
+        "checks and balances",
+        "separation of powers",
+        "judiciary",
+        "parliament",
+        "constitution",
+        "rule of law"
+      ],
+      "core_ideas": [
+        "A szabadság intézményi biztosítékait a hatalom megosztásában és a hatalom korlátozásában látta."
+      ],
+      "works": [
+        {
+          "title": "A törvények szelleméről",
+          "url": "https://oll.libertyfund.org/titles/montesquieu-the-spirit-of-laws-vol-1",
+          "type": "primary_text"
+        }
+      ],
+      "limits": "A hatalmi ágak elméletének későbbi alkotmányos alkalmazásai nem mindenben azonosak Montesquieu eredeti leírásával."
+    },
+    {
+      "id": "tocqueville",
+      "name": "Alexis de Tocqueville",
+      "lifespan": "1805–1859",
+      "era": "19. század",
+      "domains": [
+        "political_sociology",
+        "democratic_theory"
+      ],
+      "topics": [
+        "democracy",
+        "civil_society",
+        "inequality",
+        "centralization",
+        "media"
+      ],
+      "keywords": [
+        "demokrácia",
+        "többség",
+        "önkormányzat",
+        "civil társadalom",
+        "egyenlőség",
+        "központosítás",
+        "democracy",
+        "majority",
+        "local government",
+        "civil society",
+        "equality",
+        "centralization"
+      ],
+      "core_ideas": [
+        "A demokrácia társadalmi feltételeit, a többség zsarnokságának veszélyét és a helyi önkormányzat szerepét elemezte."
+      ],
+      "works": [
+        {
+          "title": "Az amerikai demokrácia",
+          "url": "https://www.gutenberg.org/ebooks/815",
+          "type": "primary_text"
+        }
+      ],
+      "limits": "A 19. századi amerikai és francia tapasztalatokból nem lehet automatikus mai előrejelzést levezetni."
+    },
+    {
+      "id": "adam_smith",
+      "name": "Adam Smith",
+      "lifespan": "1723–1790",
+      "era": "skót felvilágosodás",
+      "domains": [
+        "economics",
+        "moral_philosophy"
+      ],
+      "topics": [
+        "economics",
+        "trade",
+        "inequality",
+        "labor",
+        "taxation"
+      ],
+      "keywords": [
+        "gazdaság",
+        "infláció",
+        "kereskedelem",
+        "adó",
+        "adózás",
+        "piac",
+        "munka",
+        "bérek",
+        "egyenlőtlenség",
+        "economy",
+        "inflation",
+        "trade",
+        "tax",
+        "market",
+        "labour",
+        "labor",
+        "wages",
+        "inequality"
+      ],
+      "core_ideas": [
+        "A piacok működését a munkamegosztás, a verseny, az intézmények és az erkölcsi normák összefüggésében vizsgálta."
+      ],
+      "works": [
+        {
+          "title": "A nemzetek gazdagsága",
+          "url": "https://www.gutenberg.org/ebooks/3300",
+          "type": "primary_text"
+        },
+        {
+          "title": "Az erkölcsi érzelmek elmélete",
+          "url": "https://www.gutenberg.org/ebooks/67363",
+          "type": "primary_text"
+        }
+      ],
+      "limits": "Smith nem azonosítható a korlátlan dereguláció egyszerű támogatójával; erkölcsfilozófiai és intézményi gondolatai is relevánsak."
+    },
+    {
+      "id": "marx",
+      "name": "Karl Marx",
+      "lifespan": "1818–1883",
+      "era": "19. század",
+      "domains": [
+        "political_economy",
+        "social_theory"
+      ],
+      "topics": [
+        "labor",
+        "inequality",
+        "capitalism",
+        "class_conflict",
+        "revolution"
+      ],
+      "keywords": [
+        "munkás",
+        "munkavállaló",
+        "sztrájk",
+        "bérek",
+        "tőke",
+        "vállalat",
+        "privatizáció",
+        "egyenlőtlenség",
+        "lakhatás",
+        "labor",
+        "worker",
+        "strike",
+        "wages",
+        "capital",
+        "company",
+        "privatization",
+        "inequality",
+        "housing"
+      ],
+      "core_ideas": [
+        "A kapitalista termelési viszonyok, az osztályérdekek és a gazdasági hatalom szerkezetét elemezte."
+      ],
+      "works": [
+        {
+          "title": "A tőke",
+          "url": "https://www.marxists.org/archive/marx/works/1867-c1/",
+          "type": "primary_text"
+        },
+        {
+          "title": "Kommunista kiáltvány",
+          "url": "https://www.marxists.org/archive/marx/works/1848/communist-manifesto/",
+          "type": "primary_text"
+        }
+      ],
+      "limits": "Elemzése nem kezelhető a későbbi marxista államok történetével azonosként; a különbségeket meg kell tartani."
+    },
+    {
+      "id": "keynes",
+      "name": "John Maynard Keynes",
+      "lifespan": "1883–1946",
+      "era": "20. század",
+      "domains": [
+        "macroeconomics",
+        "public_policy"
+      ],
+      "topics": [
+        "economics",
+        "recession",
+        "unemployment",
+        "public_spending",
+        "monetary_policy"
+      ],
+      "keywords": [
+        "recesszió",
+        "válság",
+        "munkanélküliség",
+        "állami kiadás",
+        "költségvetés",
+        "kereslet",
+        "kamat",
+        "gazdasági növekedés",
+        "recession",
+        "crisis",
+        "unemployment",
+        "public spending",
+        "budget",
+        "demand",
+        "interest rate",
+        "economic growth"
+      ],
+      "core_ideas": [
+        "A gazdasági visszaesésekben az összkereslet, a foglalkoztatás és az állami stabilizáció szerepét hangsúlyozta."
+      ],
+      "works": [
+        {
+          "title": "A foglalkoztatás, a kamat és a pénz általános elmélete",
+          "url": "https://www.marxists.org/reference/subject/economics/keynes/general-theory/",
+          "type": "primary_text"
+        }
+      ],
+      "limits": "A keynesi politika nem egyetlen univerzális recept; az adott gazdasági helyzet, infláció és intézményi környezet számít."
+    },
+    {
+      "id": "arendt",
+      "name": "Hannah Arendt",
+      "lifespan": "1906–1975",
+      "era": "20. század",
+      "domains": [
+        "political_philosophy",
+        "totalitarianism"
+      ],
+      "topics": [
+        "totalitarianism",
+        "authoritarianism",
+        "propaganda",
+        "refugees",
+        "human_rights",
+        "democracy"
+      ],
+      "keywords": [
+        "totalitárius",
+        "diktatúra",
+        "tekintélyelvű",
+        "propaganda",
+        "menekült",
+        "jogfosztás",
+        "emberi jog",
+        "demokrácia",
+        "totalitarian",
+        "dictatorship",
+        "authoritarian",
+        "propaganda",
+        "refugee",
+        "stateless",
+        "human rights",
+        "democracy"
+      ],
+      "core_ideas": [
+        "A totalitarizmus, a politikai felelősség, a szabadság és a nyilvános cselekvés feltételeit elemezte."
+      ],
+      "works": [
+        {
+          "title": "A totalitarizmus gyökerei",
+          "url": "https://archive.org/details/originsoftotalit00aren",
+          "type": "primary_text"
+        },
+        {
+          "title": "Az emberi állapot",
+          "url": "https://archive.org/details/humancondition00aren",
+          "type": "primary_text"
+        }
+      ],
+      "limits": "Fogalmait pontosan kell használni; nem minden autoriter intézkedés vagy propaganda azonos a totalitarizmussal."
+    },
+    {
+      "id": "churchill",
+      "name": "Winston Churchill",
+      "lifespan": "1874–1965",
+      "era": "20. század",
+      "domains": [
+        "wartime_leadership",
+        "diplomacy"
+      ],
+      "topics": [
+        "war",
+        "diplomacy",
+        "leadership",
+        "democracy"
+      ],
+      "keywords": [
+        "világháború",
+        "háború",
+        "invázió",
+        "honvédelem",
+        "szövetség",
+        "diplomácia",
+        "vezetés",
+        "war",
+        "world war",
+        "invasion",
+        "defence",
+        "defense",
+        "alliance",
+        "diplomacy",
+        "leadership"
+      ],
+      "core_ideas": [
+        "Háborús vezetőként a brit ellenállás, a szövetségi politika és a stratégiai kommunikáció tapasztalata kapcsolható hozzá."
+      ],
+      "works": [
+        {
+          "title": "The Second World War (memoirs)",
+          "url": "https://archive.org/search?query=creator%3A%22Winston+Churchill%22+title%3A%22Second+World+War%22",
+          "type": "memoir"
+        },
+        {
+          "title": "Churchill Archive",
+          "url": "https://www.churchillarchive.com/",
+          "type": "archive"
+        }
+      ],
+      "limits": "A háborús vezetői szerep mellett a birodalmi politikával és vitatott döntésekkel kapcsolatos történeti kritikákat is jelezni kell."
+    },
+    {
+      "id": "gandhi",
+      "name": "Mahatma Gandhi",
+      "lifespan": "1869–1948",
+      "era": "indiai függetlenségi mozgalom",
+      "domains": [
+        "nonviolent_resistance",
+        "political_ethics"
+      ],
+      "topics": [
+        "civil_rights",
+        "nonviolence",
+        "colonialism",
+        "protest",
+        "social_change"
+      ],
+      "keywords": [
+        "polgárjog",
+        "jogegyenlőség",
+        "tüntetés",
+        "tiltakozás",
+        "polgári engedetlenség",
+        "gyarmatosítás",
+        "erőszakmentes",
+        "civil rights",
+        "equality",
+        "protest",
+        "civil disobedience",
+        "colonialism",
+        "nonviolence"
+      ],
+      "core_ideas": [
+        "Az erőszakmentes ellenállás, a polgári engedetlenség és az erkölcsi-politikai cselekvés példája."
+      ],
+      "works": [
+        {
+          "title": "The Story of My Experiments with Truth",
+          "url": "https://www.gutenberg.org/ebooks/8120",
+          "type": "primary_text"
+        },
+        {
+          "title": "Collected Works of Mahatma Gandhi",
+          "url": "https://www.gandhiheritageportal.org/",
+          "type": "archive"
+        }
+      ],
+      "limits": "Gondolatai és személyes gyakorlata ellentmondásos elemeket is tartalmaznak; nem szabad kritikátlan szimbólummá egyszerűsíteni."
+    },
+    {
+      "id": "mlk",
+      "name": "Martin Luther King Jr.",
+      "lifespan": "1929–1968",
+      "era": "amerikai polgárjogi mozgalom",
+      "domains": [
+        "civil_rights",
+        "nonviolent_resistance"
+      ],
+      "topics": [
+        "civil_rights",
+        "equality",
+        "nonviolence",
+        "protest",
+        "democracy"
+      ],
+      "keywords": [
+        "polgárjog",
+        "faji egyenlőség",
+        "diszkrimináció",
+        "szegregáció",
+        "tüntetés",
+        "egyenlőség",
+        "civil rights",
+        "racial equality",
+        "discrimination",
+        "segregation",
+        "protest",
+        "equality"
+      ],
+      "core_ideas": [
+        "Az erőszakmentes polgárjogi küzdelmet, az egyenlő méltóságot és az igazságtalan törvényekkel szembeni erkölcsi fellépést képviselte."
+      ],
+      "works": [
+        {
+          "title": "Letter from Birmingham Jail",
+          "url": "https://www.africa.upenn.edu/Articles_Gen/Letter_Birmingham.html",
+          "type": "primary_text"
+        },
+        {
+          "title": "I Have a Dream speech",
+          "url": "https://www.archives.gov/files/press/exhibits/dream-speech.pdf",
+          "type": "primary_text"
+        }
+      ],
+      "limits": "Az amerikai faji szegregáció története sajátos kontextus; a párhuzamokat körültekintően kell megfogalmazni."
+    },
+    {
+      "id": "clausewitz",
+      "name": "Carl von Clausewitz",
+      "lifespan": "1780–1831",
+      "era": "19. század",
+      "domains": [
+        "military_strategy",
+        "war_studies"
+      ],
+      "topics": [
+        "war",
+        "military_strategy",
+        "geopolitics"
+      ],
+      "keywords": [
+        "katonai",
+        "hadsereg",
+        "front",
+        "offenzíva",
+        "támadás",
+        "védekezés",
+        "fegyveres konfliktus",
+        "háború",
+        "military",
+        "army",
+        "frontline",
+        "offensive",
+        "attack",
+        "defence",
+        "defense",
+        "armed conflict",
+        "war"
+      ],
+      "core_ideas": [
+        "A háborút politikai célokhoz kötött, bizonytalansággal és súrlódással terhelt társadalmi-politikai jelenségként elemezte."
+      ],
+      "works": [
+        {
+          "title": "A háborúról",
+          "url": "https://www.gutenberg.org/ebooks/1946",
+          "type": "primary_text"
+        }
+      ],
+      "limits": "A művet nem szabad időtlen katonai receptként olvasni; történeti és stratégiai kontextus szükséges."
+    },
+    {
+      "id": "sun_tzu",
+      "name": "Szun-ce",
+      "lifespan": "hagyományosan Kr. e. 6–5. század",
+      "era": "ókori Kína",
+      "domains": [
+        "military_strategy",
+        "statecraft"
+      ],
+      "topics": [
+        "war",
+        "military_strategy",
+        "geopolitics",
+        "diplomacy"
+      ],
+      "keywords": [
+        "stratégia",
+        "haderő",
+        "katonai",
+        "háború",
+        "elrettentés",
+        "hírszerzés",
+        "strategy",
+        "military",
+        "war",
+        "deterrence",
+        "intelligence"
+      ],
+      "core_ideas": [
+        "A stratégia, információ, megtévesztés, felkészültség és a harc nélküli győzelem lehetőségeit tárgyalja."
+      ],
+      "works": [
+        {
+          "title": "A háború művészete",
+          "url": "https://www.gutenberg.org/ebooks/132",
+          "type": "primary_text"
+        }
+      ],
+      "limits": "A szerzőség és a keletkezés datálása vitatott; az aforizmákat nem szabad bizonyíték nélküli modern idézetként használni."
+    },
+    {
+      "id": "florence_nightingale",
+      "name": "Florence Nightingale",
+      "lifespan": "1820–1910",
+      "era": "19. század",
+      "domains": [
+        "public_health",
+        "statistics",
+        "nursing"
+      ],
+      "topics": [
+        "public_health",
+        "healthcare",
+        "statistics",
+        "crisis_management",
+        "women"
+      ],
+      "keywords": [
+        "egészségügy",
+        "kórház",
+        "járvány",
+        "fertőzés",
+        "közegészségügy",
+        "ápolás",
+        "statisztika",
+        "healthcare",
+        "hospital",
+        "epidemic",
+        "infection",
+        "public health",
+        "nursing",
+        "statistics"
+      ],
+      "core_ideas": [
+        "A betegellátás, higiénia, intézményi reform és statisztikai bizonyítékok összekapcsolásának úttörője."
+      ],
+      "works": [
+        {
+          "title": "Notes on Hospitals",
+          "url": "https://archive.org/search?query=title%3A%22Notes+on+Hospitals%22+creator%3A%22Florence+Nightingale%22",
+          "type": "primary_text"
+        },
+        {
+          "title": "Florence Nightingale Museum – collection",
+          "url": "https://www.florence-nightingale.co.uk/",
+          "type": "archive"
+        }
+      ],
+      "limits": "A 19. századi egészségügyi környezetet és az akkori statisztikai módszereket a mai orvostudománytól külön kell kezelni."
+    },
+    {
+      "id": "rachel_carson",
+      "name": "Rachel Carson",
+      "lifespan": "1907–1964",
+      "era": "20. század",
+      "domains": [
+        "ecology",
+        "environmental_policy"
+      ],
+      "topics": [
+        "environment",
+        "pollution",
+        "biodiversity",
+        "public_health",
+        "science"
+      ],
+      "keywords": [
+        "környezet",
+        "klímaváltozás",
+        "szennyezés",
+        "vegyszer",
+        "növényvédő",
+        "biodiverzitás",
+        "természetvédelem",
+        "environment",
+        "climate change",
+        "pollution",
+        "chemical",
+        "pesticide",
+        "biodiversity",
+        "conservation"
+      ],
+      "core_ideas": [
+        "A környezeti beavatkozások ökológiai következményeit és a tudományos bizonyítékok közérthető bemutatását hangsúlyozta."
+      ],
+      "works": [
+        {
+          "title": "Silent Spring",
+          "url": "https://www.rachelcarson.org/SilentSpring.aspx",
+          "type": "primary_text"
+        }
+      ],
+      "limits": "A konkrét mai környezeti állításokat korszerű tudományos forrásokkal kell ellenőrizni; Carson műve nem helyettesíti a jelenlegi adatokat."
+    },
+    {
+      "id": "alan_turing",
+      "name": "Alan Turing",
+      "lifespan": "1912–1954",
+      "era": "20. század",
+      "domains": [
+        "computer_science",
+        "cryptanalysis"
+      ],
+      "topics": [
+        "technology",
+        "artificial_intelligence",
+        "cybersecurity",
+        "privacy",
+        "science"
+      ],
+      "keywords": [
+        "mesterséges intelligencia",
+        "algoritmus",
+        "adat",
+        "kiberbiztonság",
+        "titkosítás",
+        "megfigyelés",
+        "digitális",
+        "artificial intelligence",
+        "algorithm",
+        "data",
+        "cybersecurity",
+        "encryption",
+        "surveillance",
+        "digital"
+      ],
+      "core_ideas": [
+        "A számításelmélet, gépi intelligencia és kriptoanalízis alapvető kérdései kapcsolhatók hozzá."
+      ],
+      "works": [
+        {
+          "title": "Computing Machinery and Intelligence (1950)",
+          "url": "https://academic.oup.com/mind/article/LIX/236/433/986238",
+          "type": "primary_text"
+        }
+      ],
+      "limits": "Turing korának számítástechnikai fogalmai nem azonosak a mai gépi tanulási rendszerekkel; kerülendő a jelenkori technológiákra vonatkozó hamis attribúció."
+    },
+    {
+      "id": "einstein",
+      "name": "Albert Einstein",
+      "lifespan": "1879–1955",
+      "era": "20. század",
+      "domains": [
+        "physics",
+        "science_policy"
+      ],
+      "topics": [
+        "science",
+        "nuclear_weapons",
+        "technology",
+        "education"
+      ],
+      "keywords": [
+        "tudomány",
+        "kutatás",
+        "atomenergia",
+        "nukleáris",
+        "atomfegyver",
+        "fizika",
+        "oktatás",
+        "science",
+        "research",
+        "nuclear energy",
+        "nuclear",
+        "atomic weapon",
+        "physics",
+        "education"
+      ],
+      "core_ideas": [
+        "A modern fizika mellett a tudósok társadalmi felelősségéről, a nukleáris fegyverek veszélyéről és a nemzetközi együttműködésről is írt."
+      ],
+      "works": [
+        {
+          "title": "Einstein Papers Project",
+          "url": "https://einsteinpapers.press.princeton.edu/",
+          "type": "archive"
+        },
+        {
+          "title": "Why Socialism?",
+          "url": "https://monthlyreview.org/2009/05/01/why-socialism/",
+          "type": "primary_text"
+        }
+      ],
+      "limits": "A tudományos tekintély nem teszi minden politikai véleményét szakértői állásfoglalássá; pontos kontextus és dátum szükséges."
+    }
+  ]
+}

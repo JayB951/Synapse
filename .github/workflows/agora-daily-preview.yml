@@ -1,0 +1,44 @@
+name: AGORA – Daily Editorial Preview
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Repository checkout
+        uses: actions/checkout@v4
+      - name: Python setup
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install free runtime dependency
+        run: python -m pip install --no-cache-dir requests
+      - name: Collect and rank current RSS candidates
+        run: python agora_pipeline.py --output agora_candidates.json
+      - name: Match historical figures and build commentary briefs
+        run: python agora_daily_editorial.py --input agora_candidates.json --output agora_editorial.json
+      - name: Run editorial QA and create human review template
+        run: >-
+          python agora_editorial_qa.py
+          --input agora_candidates.json
+          --editorial agora_editorial.json
+          --review-template agora_review_template.json
+          --output agora_qa_report.json
+          --allow-pending
+      - name: Upload non-publishing editorial preview
+        uses: actions/upload-artifact@v4
+        with:
+          name: agora-editorial-preview
+          path: |
+            agora_candidates.json
+            agora_editorial.json
+            agora_qa_report.json
+            agora_review_template.json
+          if-no-files-found: error
+          retention-days: 7
