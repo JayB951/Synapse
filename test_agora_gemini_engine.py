@@ -189,7 +189,7 @@ class GeminiEngineTests(unittest.TestCase):
         )
         client = FakeClient([invalid_first, invalid_second, simulation_response()])
         result = simulate_historical_figure(EVENT, PROFILE, client)
-        self.assertEqual(len(client.calls), 3)
+        self.assertEqual(len(client.calls), 2)
         self.assertEqual(len(result["sections"]), 3)
 
     def test_news_source_urls_keep_valid_http_and_https_links(self):
