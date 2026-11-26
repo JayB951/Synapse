@@ -80,6 +80,12 @@ button.addEventListener("click", async () => {
     if (!result.ok) throw new Error(data.error || "A mentés nem sikerült.");
     status.textContent = "Köszönjük! Az értékelésedet elmentettük.";
     button.hidden = true;
+    const back = document.createElement("a");
+    back.href = "https://jayb951.github.io/Synapse/#rating-reader=" + encodeURIComponent(payload.voter_token);
+    back.textContent = "Vissza a WORLD SHARDS magazinhoz";
+    back.style.cssText = "display:inline-block;margin-top:12px;color:#c5a66b;";
+    status.appendChild(document.createElement("br"));
+    status.appendChild(back);
   } catch (error) {
     status.textContent = error.message || "Hiba történt.";
     button.disabled = false;
