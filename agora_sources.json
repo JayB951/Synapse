@@ -1,0 +1,128 @@
+{
+  "version": "0.1.0",
+  "status": "candidate_registry",
+  "selection_policy": {
+    "basis": [
+      "event_significance",
+      "newsworthiness",
+      "recency",
+      "verifiability",
+      "independent_source_confirmation"
+    ],
+    "political_orientation_weight": 0,
+    "political_balance_quotas": false,
+    "source_diversity_purpose": "fact_checking_only"
+  },
+  "sources": [
+    {
+      "code": "telex",
+      "name": "Telex",
+      "scope": "hungary",
+      "language": "hu",
+      "feed_url": "https://telex.hu/rss",
+      "status": "candidate"
+    },
+    {
+      "code": "index",
+      "name": "Index",
+      "scope": "hungary",
+      "language": "hu",
+      "feed_url": "https://index.hu/24ora/rss",
+      "status": "candidate"
+    },
+    {
+      "code": "hvg",
+      "name": "HVG",
+      "scope": "hungary",
+      "language": "hu",
+      "feed_url": "https://hvg.hu/rss",
+      "status": "candidate"
+    },
+    {
+      "code": "444",
+      "name": "444",
+      "scope": "hungary",
+      "language": "hu",
+      "feed_url": "https://444.hu/feed",
+      "status": "candidate"
+    },
+    {
+      "code": "24hu",
+      "name": "24.hu",
+      "scope": "hungary",
+      "language": "hu",
+      "feed_url": "https://24.hu/feed/",
+      "status": "candidate"
+    },
+    {
+      "code": "portfolio",
+      "name": "Portfolio",
+      "scope": "hungary",
+      "language": "hu",
+      "feed_url": "https://portfolio.hu/rss/all.xml",
+      "status": "candidate"
+    },
+    {
+      "code": "bbc_world",
+      "name": "BBC News - World",
+      "scope": "international",
+      "language": "en",
+      "feed_url": "https://feeds.bbci.co.uk/news/world/rss.xml",
+      "status": "candidate"
+    },
+    {
+      "code": "dw_world",
+      "name": "Deutsche Welle",
+      "scope": "international",
+      "language": "en",
+      "feed_url": "https://rss.dw.com/xml/rss-en-all",
+      "status": "candidate"
+    },
+    {
+      "code": "france24",
+      "name": "France 24",
+      "scope": "international",
+      "language": "en",
+      "feed_url": "https://www.france24.com/en/rss",
+      "status": "candidate"
+    },
+    {
+      "code": "aljazeera",
+      "name": "Al Jazeera English",
+      "scope": "international",
+      "language": "en",
+      "feed_url": "https://www.aljazeera.com/xml/rss/all.xml",
+      "status": "candidate"
+    },
+    {
+      "code": "guardian_world",
+      "name": "The Guardian - World",
+      "scope": "international",
+      "language": "en",
+      "feed_url": "https://www.theguardian.com/world/rss",
+      "status": "candidate"
+    },
+    {
+      "code": "euronews",
+      "name": "Euronews",
+      "scope": "international",
+      "language": "en",
+      "feed_url": "https://www.euronews.com/rss",
+      "status": "candidate"
+    }
+  ],
+  "validation_requirements": [
+    "HTTP response succeeds without authentication",
+    "RSS or Atom XML parses successfully",
+    "item has a publisher article URL, not only a feed/API URL",
+    "item has a usable publication timestamp",
+    "publisher identity is stable",
+    "feed terms and attribution requirements are recorded"
+  ],
+  "notes": [
+    "All entries are provisional candidates, not yet enabled production sources.",
+    "Validate feeds from the GitHub Actions runtime before enabling them.",
+    "Do not infer political orientation from this registry or use it in scoring.",
+    "Do not store full article text unless the publisher's terms explicitly permit it; retain title, excerpt, article URL, publication date, publisher, and permitted metadata."
+  ]
+}
