@@ -5,6 +5,7 @@ name: WORLD SHARDS - AGORA backfill for edition 2026-11-26
 # Both HTTP and HTTPS source links are accepted when independently published.
 # News candidates are filtered for independent publishers before Gemini selection.
 # Require two publishers and one accessible article URL, not two unique URLs.
+# Expand Gemini's source-verified shortlist to the top 25 candidates.
 
 on:
   push:
