@@ -190,6 +190,20 @@ class GeminiEngineTests(unittest.TestCase):
         self.assertEqual(len(client.calls), 3)
         self.assertEqual(len(result["sections"]), 3)
 
+    def test_news_source_urls_keep_valid_http_and_https_links(self):
+        event = {
+            **EVENT,
+            "articles": EVENT["articles"] + [{
+                "source_name": "Másik kiadó",
+                "title": "Második forrás",
+                "url": "http://news.example/second",
+                "published_at": "2026-11-26T10:00:00Z",
+                "summary": "Második ellenőrző forrás.",
+            }],
+        }
+        result = simulate_historical_figure(event, PROFILE, FakeClient([simulation_response()]))
+        self.assertIn("http://news.example/second", result["sections"][0]["news_source_urls"])
+
     def test_simulator_regenerates_missing_evidence_notes(self):
         invalid = simulation_response()
         invalid["sections"][0]["evidence_notes"] = []
