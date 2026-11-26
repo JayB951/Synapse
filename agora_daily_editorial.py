@@ -17,7 +17,10 @@ from agora_gemini_engine import (
     build_gemini_commentary_package,
     select_historical_figures as gemini_select_historical_figures,
 )
-from agora_news_selection import (\n    select_hungarian_news_event,\n    select_international_news_event,\n)
+from agora_news_selection import (
+    select_hungarian_news_event,
+    select_international_news_event,
+)
 
 ENGINE_VERSION = "AGORA_DAILY_EDITORIAL_M4.3"
 
@@ -127,7 +130,8 @@ def main():
     catalog = json.loads(Path(args.catalog).read_text(encoding="utf-8"))
     client = GeminiClient() if args.use_gemini else None
     result = build_editorial_output(pipeline, catalog, args.figure_limit, client)
-    rendered = json.dumps(result, ensure_ascii=False, indent=2) + "\n"
+    rendered = json.dumps(result, ensure_ascii=False, indent=2) + "
+"
     if args.output:
         Path(args.output).write_text(rendered, encoding="utf-8")
     else:
