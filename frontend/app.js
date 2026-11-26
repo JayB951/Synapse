@@ -680,32 +680,37 @@ async function loadEdition(edition) {
     if (sourceIds.length) {
       const sourceFilter = `in.(${sourceIds.join(",")})`;
       const sourceResponse = await fetch(
-        `${supabaseUrl}/rest/v1/shard_content_items?select=id,title,summary,body,source_name,source_url,source_published_at,image_url,metadata&id=${encodeURIComponent(sourceFilter)}`,
+        `${supabaseUrl}/rest/v1/shard_content_items?select=id,title,summary,body,source_name,source_url,source_published_at,metadata&id=${encodeURIComponent(sourceFilter)}`,
         { headers }
       );
       if (sourceResponse.ok) {
         const sources = await sourceResponse.json();
         const sourceById = new Map(sources.map(source => [source.id, source]));
 
-        // Gallery images are an optional schema extension. Fetch them
-        // separately so a missing column or grant cannot break the main
-        // source lookup and hide every section image at once.
-        try {
-          const galleryResponse = await fetch(
-            `${supabaseUrl}/rest/v1/shard_content_items?select=id,gallery_images&id=${encodeURIComponent(sourceFilter)}`,
-            { headers }
-          );
-          if (galleryResponse.ok) {
-            const galleries = await galleryResponse.json();
-            galleries.forEach(row => {
-              const source = sourceById.get(row.id);
-              if (source) source.gallery_images = row.gallery_images || [];
-            });
-          } else {
-            console.warn("WORLD SHARDS optional gallery metadata unavailable:", galleryResponse.status);
+        // Image columns are schema extensions and are intentionally fetched
+        // independently. A missing image_url or gallery_images column/grant
+        // must never invalidate the core source lookup for the whole edition.
+        for (const [field, select] of [
+          ["image_url", "id,image_url"],
+          ["gallery_images", "id,gallery_images"]
+        ]) {
+          try {
+            const imageResponse = await fetch(
+              `${supabaseUrl}/rest/v1/shard_content_items?select=${select}&id=${encodeURIComponent(sourceFilter)}`,
+              { headers }
+            );
+            if (imageResponse.ok) {
+              const imageRows = await imageResponse.json();
+              imageRows.forEach(row => {
+                const source = sourceById.get(row.id);
+                if (source) source[field] = row[field] || (field === "gallery_images" ? [] : null);
+              });
+            } else {
+              console.warn(`WORLD SHARDS optional ${field} unavailable:`, imageResponse.status);
+            }
+          } catch (imageError) {
+            console.warn(`WORLD SHARDS optional ${field} lookup failed:`, imageError);
           }
-        } catch (galleryError) {
-          console.warn("WORLD SHARDS optional gallery lookup failed:", galleryError);
         }
 
         items.forEach(item => {
