@@ -12,7 +12,7 @@ class EditionEmailTests(unittest.TestCase):
             "introduction": "Napi bevezető",
         }
         counts = {
-            "research_frontier": 5,
+            "research_frontier": 7,
             "art_of_the_day": 1,
             "the_thinker": 1,
             "battlefield": 1,
@@ -31,6 +31,10 @@ class EditionEmailTests(unittest.TestCase):
                     "content_item_id": f"content-{position}",
                     "section_code": section,
                     "position": position,
+                    "editor_note": (
+                        "MAGYAR AGORA" if position == 6 else
+                        "WORLD AGORA" if position == 7 else None
+                    ),
                     "processing_status": "completed",
                     "display_title": f"Cím {position}",
                     "display_summary": f"Összefoglaló {position}",
@@ -56,12 +60,19 @@ class EditionEmailTests(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             validate_edition(self.edition, broken)
 
-    def test_email_contains_all_fourteen_full_bodies(self):
+    def test_email_contains_all_sixteen_full_bodies(self):
         plain, rendered, date_label = build_email_bodies(self.edition, self.items, {})
         self.assertEqual(date_label, "2026. 11. 26.")
-        for number in range(1, 15):
+        for number in range(1, 17):
             self.assertIn(f"Teljes szöveg {number}", plain)
             self.assertIn(f"Teljes szöveg {number}", rendered)
+
+    def test_email_separates_both_agora_sections(self):
+        plain, rendered, _ = build_email_bodies(self.edition, self.items, {})
+        self.assertIn("MAGYAR AGORA", plain)
+        self.assertIn("WORLD AGORA", plain)
+        self.assertIn("Magyar AGORA", rendered)
+        self.assertIn("WORLD AGORA", rendered)
 
     def test_image_is_rendered_in_html_and_linked_in_plain_text(self):
         sources = {
