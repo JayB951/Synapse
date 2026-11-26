@@ -171,7 +171,7 @@ def build_content_items(pipeline, editorial, qa_report, edition_date):
                    if item.get("scope") == scope]
         latest_dates = [item.get("published_at") for item in sources if item.get("published_at")]
         records.append({
-            "section_code": "agora",
+            "section_code": "research_frontier",
             "title": f"{title_prefix} – {edition_date}",
             "summary": event["title"][:1000],
             "body": bodies[scope],
