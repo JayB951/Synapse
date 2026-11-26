@@ -1274,7 +1274,7 @@ def process_edition(
         ):
 
             logger.info(
-                "Mind a 14 tartalom elkészült."
+                "Mind a 16 tartalom elkészült."
             )
 
             logger.info(
