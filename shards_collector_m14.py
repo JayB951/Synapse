@@ -57,18 +57,21 @@ UNSOLVED_QUERIES = [
     "unexplained events in history",
 ]
 
-UNSOLVED_KEYWORDS = [
-    "unsolved",
-    "unresolved",
-    "unexplained",
-    "unknown",
-    "mystery",
-    "mysterious",
-    "open problem",
-    "not yet solved",
-    "remains unclear",
-    "not known",
-]
+UNSOLVED_TITLE_TERMS = (
+    "mystery", "mysterious", "unsolved", "unexplained",
+    "open problem", "unresolved",
+)
+
+UNSOLVED_EVIDENCE_PATTERNS = (
+    r"\\bremains? unexplained\\b",
+    r"\\bhas not been (?:solved|explained|identified)\\b",
+    r"\\bremain(?:s)? unsolved\\b",
+    r"\\bthe (?:cause|origin|identity|whereabouts) (?:is|remain|remains) unknown\\b",
+    r"\\bno (?:consensus|definitive explanation|conclusive evidence)\\b",
+    r"\\bopen problem in (?:mathematics|physics|science)\\b",
+    r"\\bwhose (?:cause|origin|identity) is unknown\\b",
+    r"\\bthe question of .{3,100} remains open\\b",
+)
 
 
 # --------------------------------------------------
@@ -183,19 +186,19 @@ def fetch_wikipedia_pages(search_query):
 def is_unsolved_candidate(page):
     title = clean_text(page.get("title", ""))
     extract = clean_text(page.get("extract", ""))
-
     if not title or len(extract) < 250:
         return False
-
     if "(disambiguation)" in title.lower():
         return False
 
-    combined_text = (title + " " + extract).lower()
-
-    return any(
-        keyword in combined_text
-        for keyword in UNSOLVED_KEYWORDS
+    title_matches = any(term in title.casefold() for term in UNSOLVED_TITLE_TERMS)
+    evidence_text = extract[:2200].casefold()
+    explicit_evidence = any(
+        re.search(pattern, evidence_text, re.IGNORECASE)
+        for pattern in UNSOLVED_EVIDENCE_PATTERNS
     )
+    # A casual mention of "unknown" is not evidence that the topic itself is unresolved.
+    return title_matches or explicit_evidence
 
 
 def build_unsolved_record(page, search_query):
@@ -489,7 +492,7 @@ def build_joke_record(joke):
         body = joke_text
 
     source_url = (
-        f"https://v2.jokeapi.dev/joke/Any?id={joke_id}"
+        f"https://v2.jokeapi.dev/joke/Any?idRange={joke_id}-{joke_id}"
     )
 
     flags = joke.get("flags", {})
