@@ -2,6 +2,7 @@ import unittest
 
 from agora_news_selection import (
     INTERNATIONAL_NEWS_SYSTEM,
+    select_hungarian_news_event,
     select_international_news_event,
 )
 from agora_gemini_engine import (
@@ -120,6 +121,22 @@ class InternationalNewsSelectionTests(unittest.TestCase):
         result = select_international_news_event([], client)
         self.assertEqual(result["status"], "no_candidates")
         self.assertEqual(client.calls, [])
+
+
+class HungarianNewsSelectionTests(unittest.TestCase):
+    def test_selects_hungarian_event_using_editorial_merit_not_political_quota(self):
+        client = FakeClient([{
+            "selected_event_id": "hu-story",
+            "internal_rationale": "Közérdekű, több forrásból megerősített fejlemény.",
+            "excluded_candidates": [],
+        }])
+        result = select_hungarian_news_event([
+            {"event_id": "hu-story", "scope": "hungary",
+             "representative_title": "Jelentős egészségügyi fejlesztés"},
+        ], client)
+        self.assertEqual(result["status"], "selected")
+        self.assertIn("Nincs politikai kvóta", client.calls[0][0])
+        self.assertIn("jelentős magyar vonatkozású", client.calls[0][0])
 
 
 class GeminiEngineTests(unittest.TestCase):
