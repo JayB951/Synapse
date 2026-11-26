@@ -287,7 +287,7 @@ function renderSectionNavigation() {
   const targets = [];
   feed.querySelectorAll(".article-group").forEach(group => {
     const heading = group.querySelector(".article-group-heading .eyebrow");
-    const label = (heading?.textContent || group.id.replace("rovat-", "")).replace(/^\\d+\\s*[·.]\\s*/, "").trim();
+    const label = (heading?.textContent || group.id.replace("rovat-", "")).replace(/^\d+\s*[·.]\s*/, "").trim();
     targets.push({ id: group.id, label });
     if (group.id === "rovat-closing") {
       group.querySelectorAll(".article-card[id]").forEach(card => {
