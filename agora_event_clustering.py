@@ -221,7 +221,7 @@ def main():
         similarity_threshold=args.threshold,
     )
     json.dump(result, sys.stdout, ensure_ascii=False, indent=2)
-    sys.stdout.write("\\n")
+    sys.stdout.write("\n")
 
 
 if __name__ == "__main__":
