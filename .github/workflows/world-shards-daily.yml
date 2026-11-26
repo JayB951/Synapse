@@ -59,12 +59,14 @@ jobs:
           python music_collector.py
 
       - name: Napi kiadas osszeallitasa
+        id: edition_builder
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
         run: python edition_builder.py
 
       - name: Magyar tartalomfeldolgozas
+        if: steps.edition_builder.outputs.already_published != 'true'
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
@@ -72,13 +74,15 @@ jobs:
         run: python edition_processor.py
 
       - name: Teljessegi ellenorzes es automatikus publikacio
+        id: publish
+        if: steps.edition_builder.outputs.already_published != 'true'
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
         run: python publish_edition.py
 
       - name: Ertesito e-mail kuldese sikeres publikacio utan
-        if: success()
+        if: success() && steps.publish.outputs.published == 'true'
         env:
           MAIL_USERNAME: ${{ secrets.MAIL_USERNAME }}
           MAIL_PASSWORD: ${{ secrets.MAIL_PASSWORD }}
