@@ -7,6 +7,8 @@ on:
       - "agora_rss_collector.py"
       - "agora_sources.json"
       - "test_agora_rss_collector.py"
+      - "agora_event_clustering.py"
+      - "test_agora_event_clustering.py"
       - ".github/workflows/agora-tests.yml"
   workflow_dispatch:
 
@@ -30,5 +32,7 @@ jobs:
         run: python -m json.tool agora_sources.json > /dev/null
       - name: Run offline RSS parser tests
         run: python -m unittest test_agora_rss_collector.py -v
+      - name: Run offline event clustering tests
+        run: python -m unittest test_agora_event_clustering.py -v
       - name: Python syntax check
-        run: python -m py_compile agora_rss_collector.py test_agora_rss_collector.py
+        run: python -m py_compile agora_rss_collector.py test_agora_rss_collector.py agora_event_clustering.py test_agora_event_clustering.py
