@@ -55,3 +55,28 @@ create policy "Readers can remove their own article ratings"
         voter_token::text =
         coalesce(current_setting('request.headers', true)::json ->> 'x-reader-token', '')
     );
+
+-- Publikus összesítés: csak az átlagot és a darabszámot adja vissza,
+-- az egyéni olvasói azonosítókat nem teszi lekérdezhetővé.
+create or replace function public.get_article_rating_summaries(p_item_ids uuid[])
+returns table (
+    edition_item_id uuid,
+    average_rating numeric,
+    rating_count bigint
+)
+language sql
+stable
+security definer
+set search_path = public
+as $$
+    select
+        r.edition_item_id,
+        round(avg(r.rating)::numeric, 2) as average_rating,
+        count(*)::bigint as rating_count
+    from public.shard_article_ratings r
+    where r.edition_item_id = any(p_item_ids)
+    group by r.edition_item_id;
+$$;
+
+revoke all on function public.get_article_rating_summaries(uuid[]) from public, authenticated;
+grant execute on function public.get_article_rating_summaries(uuid[]) to anon;
