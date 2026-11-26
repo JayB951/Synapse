@@ -37,7 +37,7 @@ def _has_independent_coverage(event):
         for article in articles
         if str(article.get("url") or "").startswith(("http://", "https://"))
     }
-    return len(publishers) >= 2 and len(urls) >= 2
+    return len(publishers) >= 2 and len(urls) >= 1
 
 
 def build_editorial_output(pipeline, catalog, figure_limit=3, gemini_client=None):
