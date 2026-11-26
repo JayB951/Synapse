@@ -67,9 +67,8 @@ UNSOLVED_EVIDENCE_PATTERNS = (
     r"\bhas not been (?:solved|explained|identified)\b",
     r"\bremain(?:s)? unsolved\b",
     r"\bthe (?:cause|origin) (?:is|remain|remains) unknown\b",
-    r"\bno (?:consensus|definitive explanation|conclusive evidence)\b",
     r"\bopen problem in (?:mathematics|physics|science)\b",
-    r"\bwhose (?:cause|origin|identity) is unknown\b",
+    r"\bwhose (?:cause|origin) is unknown\b",
     r"\bthe question of .{3,100} remains open\b",
 )
 
