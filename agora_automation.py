@@ -58,7 +58,11 @@ def automated_quality_gate(pipeline, editorial, now=None):
         event = groups.get(event_id)
 
         if not event or event.get("scope") != scope:
-            errors.append(f"{scope}: nincs megfelelően kiválasztott esemény.")
+            errors.append(
+                f"{scope}: nincs megfelelően kiválasztott esemény "
+                f"(státusz: {decision.get('status')}, jelöltek: {decision.get('candidate_count')}, "
+                f"indok: {decision.get('internal_rationale') or 'nincs megadva'})."
+            )
             continue
         if decision.get("status") != "selected" or decision.get("selected_event_id") != event_id:
             errors.append(f"{scope}: a Gemini hírválasztása nem egyezik a kiválasztott eseménnyel.")
@@ -186,6 +190,13 @@ def run(edition_date=None):
     editorial = build_editorial_output(pipeline, json.loads(
         Path("agora_historical_figures.json").read_text(encoding="utf-8")
     ), gemini_client=client)
+    for scope in REQUIRED_SCOPES:
+        decision = (editorial.get("daily_editorial", {}).get(scope) or {}).get("news_selection") or {}
+        LOGGER.info(
+            "%s hírválasztás: státusz=%s, jelöltek=%s, kiválasztott=%s",
+            scope, decision.get("status"), decision.get("candidate_count"),
+            decision.get("selected_event_id") or "nincs",
+        )
     qa_report = automated_quality_gate(pipeline, editorial)
     records = build_content_items(pipeline, editorial, qa_report, edition_date)
 
