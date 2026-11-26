@@ -338,7 +338,7 @@ def add_agora_to_existing_edition(supabase, edition, edition_date):
     edition_id = edition["id"]
     existing_response = (
         supabase.table("shard_edition_items")
-        .select("id,section_code,position,content_item_id")
+        .select("id,section_code,position,content_item_id,editor_note")
         .eq("edition_id", edition_id)
         .order("position")
         .execute()
