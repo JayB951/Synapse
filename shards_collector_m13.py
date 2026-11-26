@@ -57,27 +57,27 @@ SECTION_CONFIG = {
     "battlefield": {
         "name": "Battlefield",
         "queries": [
-            'intitle:"Battle of" ancient battle',
-            'intitle:"Battle of" medieval battle',
+            '"Battle of the Bulge" OR "Normandy landings" OR "D-Day"',
+            '"Operation Overlord" OR "Operation Market Garden" OR "Operation Bagration"',
             'intitle:"Battle of" World War II',
-            'intitle:"Battle of" Napoleonic Wars',
+            'intitle:"Battle of" ancient OR medieval OR Napoleonic',
             'intitle:"Siege of" historical siege',
-            'intitle:"Battle of" naval battle',
-            'intitle:"Battle of" early modern warfare',
-            'intitle:"Battle of" modern military history',
+            'specific naval battles and amphibious landings',
+            'major battles of the American Civil War and World War I',
+            'named historical battles and military campaigns',
         ],
     },
     "fundamentals": {
         "name": "Fundamentals",
         "queries": [
-            "fundamental concepts in physics",
-            "fundamental concepts in biology",
-            "mathematical concepts and principles",
-            "fundamental concepts in chemistry",
-            "principles of astronomy and cosmology",
-            "scientific theories and natural laws",
-            "fundamental concepts in psychology",
-            "basic concepts in economics",
+            "Newton's laws of motion OR conservation of energy OR entropy",
+            "DNA replication OR natural selection OR cell division",
+            "prime number OR probability theory OR Pythagorean theorem",
+            "chemical bond OR pH OR oxidation and reduction",
+            "gravity OR electromagnetic spectrum OR plate tectonics",
+            "evolution OR photosynthesis OR immune system",
+            "memory psychology OR classical conditioning OR perception",
+            "supply and demand OR inflation OR opportunity cost",
         ],
     },
     "world_explorer": {
@@ -214,22 +214,48 @@ def is_valid_article(page):
 
 
 def is_valid_battle_article(page):
-    """Accept articles about a specific, named battle or siege, not books or general military topics."""
+    """Accept specific battles, sieges, landings and named military operations."""
     title = clean_text(page.get("title", ""))
     extract = clean_text(page.get("extract", ""))
-    title_is_battle = re.search(r"\b(battle|siege)\b", title, re.IGNORECASE)
-    extract_describes_battle = re.search(
-        r"\b(was a battle|was fought|battle took place|siege began|siege lasted|"
-        r"besieged|fought between|forces of|army of)\b",
-        extract,
-        re.IGNORECASE,
+    if not title or not extract:
+        return False
+    if re.search(r"\\b(book|film|novel|video game|board game|album|song|documentary)\\b", title, re.I):
+        return False
+    named_event = re.search(
+        r"\\b(battle|siege|landings?|invasion|campaign|operation)\\b|^D-Day$|^Normandy$",
+        title, re.I,
     )
-    excluded_title = re.search(
-        r"\b(book|film|novel|video game|board game|album|song)\b",
-        title,
-        re.IGNORECASE,
+    military_context = re.search(
+        r"\\b(battle|siege|military campaign|military operation|amphibious landing|"
+        r"invasion|offensive|fought|forces landed|allied landings|German counteroffensive)\\b",
+        extract[:1800], re.I,
     )
-    return bool(title and extract and title_is_battle and extract_describes_battle and not excluded_title)
+    return bool(named_event and military_context)
+
+
+def is_valid_fundamentals_article(page):
+    """Accept a specific teachable concept, not broad subject overviews."""
+    title = clean_text(page.get("title", ""))
+    extract = clean_text(page.get("extract", ""))
+    if not title or len(extract) < 250:
+        return False
+    if title.casefold() in {
+        "physics", "biology", "chemistry", "mathematics", "economics",
+        "psychology", "astronomy", "science", "natural science",
+    }:
+        return False
+    concept = re.search(
+        r"\\b(law|theory|principle|effect|equation|theorem|force|energy|entropy|"
+        r"gravity|evolution|photosynthesis|replication|probability|number|bond|"
+        r"inflation|supply|demand|memory|conditioning|tectonics|spectrum)\\b",
+        title, re.I,
+    )
+    definition = re.search(
+        r"\\b(is|are|refers to|describes|defined as|the process by which|"
+        r"the principle that|states that|is the tendency|is a measure of)\\b",
+        extract[:1200], re.I,
+    )
+    return bool(concept and definition)
 
 
 def get_coordinates(page):
@@ -513,10 +539,12 @@ def collect_section(supabase, section_code):
 
         if section_code == "battlefield" and not is_valid_battle_article(page):
             skipped += 1
-            logging.info(
-                "Battlefield: '%s' skipped because it is not a specific battle or siege article.",
-                page.get("title", ""),
-            )
+            logging.info("Battlefield: '%s' skipped; not a specific military event.", page.get("title", ""))
+            continue
+
+        if section_code == "fundamentals" and not is_valid_fundamentals_article(page):
+            skipped += 1
+            logging.info("Fundamentals: '%s' skipped; not a concrete basic concept.", page.get("title", ""))
             continue
 
         record = build_record(section_code, page, search_query)
