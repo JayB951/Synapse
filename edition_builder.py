@@ -23,10 +23,11 @@ SECTION_LIMITS = {
 
 CLOSING_LIMIT = 2
 # Optional sections never make the existing daily edition fail when absent.
-OPTIONAL_SECTION_LIMITS = {
-    "agora": 1,
+AGORA_SECTION_LIMITS = {
+    "agora_hungary": 1,
+    "agora_world": 1,
 }
-EXPECTED_ITEMS = sum(SECTION_LIMITS.values()) + CLOSING_LIMIT
+EXPECTED_ITEMS = sum(SECTION_LIMITS.values()) + CLOSING_LIMIT + sum(AGORA_SECTION_LIMITS.values())
 
 CONTENT_FIELDS = (
     "id,section_code,title,summary,body,source_name,source_url,"
@@ -145,8 +146,10 @@ def select_edition_items(supabase, edition_date):
     closing_items = select_closing_items(supabase)
     selected_items.extend(closing_items)
 
-    for section_code, limit in OPTIONAL_SECTION_LIMITS.items():
-        candidates = get_candidates(supabase, section_code, limit=limit)
+    for section_code, limit in AGORA_SECTION_LIMITS.items():
+        candidates = get_candidates(
+            supabase, section_code, limit=limit, edition_date=edition_date
+        )
         chosen = candidates[:limit]
         selected_items.extend(chosen)
         logger.info(
@@ -317,6 +320,105 @@ def add_music_to_existing_edition(supabase, edition, edition_date):
     )
 
 
+def add_agora_to_existing_edition(supabase, edition, edition_date):
+    """Idempotently append the two AGORA sections to today's existing edition."""
+    edition_id = edition["id"]
+    existing_response = (
+        supabase.table("shard_edition_items")
+        .select("id,section_code,position,content_item_id")
+        .eq("edition_id", edition_id)
+        .order("position")
+        .execute()
+    )
+    existing_items = existing_response.data or []
+    present = {item.get("section_code") for item in existing_items}
+    missing = []
+    for section_code in AGORA_SECTION_LIMITS:
+        if section_code in present:
+            continue
+        candidates = get_candidates(
+            supabase, section_code, limit=1, edition_date=edition_date
+        )
+        if not candidates:
+            raise RuntimeError(
+                f"Hiányzik a(z) {section_code} napi AGORA-tartalma; "
+                "a meglévő kiadvány változatlan maradt."
+            )
+        missing.append((section_code, candidates[0]))
+
+    if not missing:
+        logger.info("Mindkét AGORA-rovat már szerepel a meglévő kiadványban.")
+        return
+
+    if edition.get("status") not in {"draft", "published"}:
+        raise RuntimeError("AGORA csak draft vagy published kiadványhoz illeszthető.")
+
+    closing_positions = [
+        item["position"] for item in existing_items
+        if item.get("section_code") == "closing"
+    ]
+    insert_position = min(closing_positions) if closing_positions else (
+        max((item["position"] for item in existing_items), default=0) + 1
+    )
+    shifted = []
+    try:
+        for item in sorted(
+            [row for row in existing_items if row["position"] >= insert_position],
+            key=lambda row: row["position"],
+            reverse=True,
+        ):
+            new_position = item["position"] + len(missing)
+            supabase.table("shard_edition_items").update(
+                {"position": new_position}
+            ).eq("id", item["id"]).execute()
+            shifted.append((item["id"], item["position"]))
+
+        links = []
+        for offset, (section_code, content) in enumerate(missing):
+            links.append({
+                "edition_id": edition_id,
+                "content_item_id": content["id"],
+                "section_code": section_code,
+                "position": insert_position + offset,
+                "editor_note": "Automatikusan hozzáadott AGORA-rovat.",
+                "processing_status": "pending",
+            })
+        response = supabase.table("shard_edition_items").insert(links).execute()
+        if len(response.data or []) != len(links):
+            raise RuntimeError("Nem minden AGORA-rovat került a kiadványhoz.")
+    except Exception:
+        inserted_ids = [
+            row.get("id") for row in (response.data or [])
+        ] if "response" in locals() else []
+        if inserted_ids:
+            supabase.table("shard_edition_items").delete().in_("id", inserted_ids).execute()
+        for item_id, old_position in sorted(shifted, key=lambda pair: pair[1]):
+            supabase.table("shard_edition_items").update(
+                {"position": old_position}
+            ).eq("id", item_id).execute()
+        raise
+
+    content_ids = [content["id"] for _, content in missing]
+    supabase.table("shard_content_items").update(
+        {"status": "selected"}
+    ).in_("id", content_ids).execute()
+
+    metadata = edition.get("metadata") or {}
+    if not isinstance(metadata, dict):
+        metadata = {}
+    metadata.update({
+        "planned_item_count": len(existing_items) + len(missing),
+        "agora_backfilled": True,
+    })
+    supabase.table("shard_editions").update(
+        {"metadata": metadata}
+    ).eq("id", edition_id).execute()
+    logger.info(
+        "AGORA hozzáadva a meglévő kiadványhoz: %s rovat.",
+        len(missing),
+    )
+
+
 def create_edition(supabase, edition_date, planned_item_count=EXPECTED_ITEMS):
     date_object = datetime.strptime(edition_date, "%Y-%m-%d").date()
     formatted_date = date_object.strftime("%Y. %m. %d.")
@@ -419,9 +521,10 @@ def main():
         )
 
         if status == "published":
+            add_agora_to_existing_edition(supabase, existing, edition_date)
             logger.info(
-                "A mai kiadás már publikált. Nincs további teendő; "
-                "a feldolgozás, publikálás és értesítő e-mail kimarad."
+                "A mai kiadás már publikált; az esetleges hiányzó AGORA-rovatok "
+                "hozzáadása megtörtént, újrapublikálás nem történik."
             )
             if github_output:
                 with open(github_output, "a", encoding="utf-8") as output:
@@ -439,6 +542,7 @@ def main():
             existing,
             edition_date,
         )
+        add_agora_to_existing_edition(supabase, existing, edition_date)
         return
 
     selected_items = select_edition_items(supabase, edition_date)
