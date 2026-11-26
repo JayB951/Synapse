@@ -1,0 +1,62 @@
+name: WORLD SHARDS - AGORA backfill for edition 2026-11-26
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/agora-backfill-2026-11-26.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: world-shards-agora-backfill-2026-11-26
+  cancel-in-progress: false
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - name: Repository checkout
+        uses: actions/checkout@v4
+      - name: Python setup
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install --no-cache-dir -r requirements.txt
+      - name: Generate and save both AGORA sections
+        env:
+          EDITION_DATE: "2026-11-26"
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_MODEL: gemini-3.5-flash-lite
+        run: python agora_automation.py --edition-date 2026-11-26
+      - name: Add both AGORA sections to edition 26
+        id: edition_builder
+        env:
+          EDITION_DATE: "2026-11-26"
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+        run: python edition_builder.py
+      - name: Process the completed 16-section edition
+        env:
+          EDITION_DATE: "2026-11-26"
+          ALLOW_PUBLISHED_EDITION: "true"
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: python edition_processor.py
+      - name: Publish only if edition 26 is still a draft
+        if: success() && steps.edition_builder.outputs.already_published != 'true'
+        id: publish
+        env:
+          EDITION_DATE: "2026-11-26"
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+        run: python publish_edition.py

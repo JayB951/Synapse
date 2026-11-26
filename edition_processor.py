@@ -43,7 +43,7 @@ RETRY_DELAYS = {
 MAX_OUTPUT_TOKENS = 4096
 MAX_SOURCE_LENGTH = 12000
 
-EXPECTED_ITEMS = 14
+EXPECTED_ITEMS = 16
 
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_SECRET_KEY = os.getenv("SUPABASE_SECRET_KEY")
@@ -454,6 +454,32 @@ SECTION_STYLES = {
             "A bizonytalanságot jelezd. Ne adj hozzá pártpolitikai kvótát vagy "
             "mesterséges politikai egyensúlyozást. A szöveg legyen magyar, "
             "tárgyszerű, elemző és jól olvasható."
+        )
+    },
+    "agora_hungary": {
+        "name": "MAGYAR AGORA",
+        "description": (
+            "A magyar közélet és Magyarország szempontjából jelentős esemény "
+            "történelmi elemzése. Őrizd meg az eredeti hírt és minden forráshivatkozást. "
+            "Pontosan három kiválasztott történelmi személyiség nézőpontját mutasd be, "
+            "személyenként külön Értelmezés, Következmények és Megoldás résszel. "
+            "MINDEN kommentárrész legalább négy összetett mondatból álljon; ne rövidítsd "
+            "vázlattá, ne hagyj ki személyt vagy dimenziót. A történelmi nézőpont "
+            "hipotetikus rekonstrukció, nem szó szerinti idézet. Ne találj ki tényt "
+            "vagy forrást. A szöveg legyen magyar, részletes és elemző."
+        )
+    },
+    "agora_world": {
+        "name": "WORLD AGORA",
+        "description": (
+            "Nemzetközi jelentőségű esemény történelmi elemzése. Őrizd meg az eredeti "
+            "hírt és minden forráshivatkozást. Pontosan három kiválasztott történelmi "
+            "személyiség nézőpontját mutasd be, személyenként külön Értelmezés, "
+            "Következmények és Megoldás résszel. MINDEN kommentárrész legalább négy "
+            "összetett mondatból álljon; ne rövidítsd vázlattá, ne hagyj ki személyt "
+            "vagy dimenziót. A történelmi nézőpont hipotetikus rekonstrukció, nem "
+            "szó szerinti idézet. Ne találj ki tényt vagy forrást. A szöveg legyen "
+            "magyar, részletes és elemző."
         )
     },
 
@@ -915,19 +941,22 @@ def mark_processing_failed(
 # EDITION RETRIEVAL
 # ============================================================
 
-def get_latest_draft_edition(supabase):
+def get_latest_draft_edition(supabase, edition_date=None, allow_published=False):
 
-    response = (
+    query = (
         supabase
         .table("shard_editions")
-        .select(
-            "id,edition_date,title,status"
-        )
-        .eq("status", "draft")
-        .order(
-            "edition_date",
-            desc=True
-        )
+        .select("id,edition_date,title,status")
+    )
+    if edition_date:
+        query = query.eq("edition_date", edition_date)
+    if allow_published:
+        query = query.in_("status", ["draft", "published"])
+    else:
+        query = query.eq("status", "draft")
+    response = (
+        query
+        .order("edition_date", desc=True)
         .limit(1)
         .execute()
     )
@@ -1037,7 +1066,7 @@ def verify_edition_completion(
 
         return False
 
-    return completed == EXPECTED_ITEMS
+    return total == EXPECTED_ITEMS and completed == total
 
 
 # ============================================================
@@ -1056,10 +1085,20 @@ def process_item(
         item["content_item_id"]
     )
 
-    generated_content = generate_content_with_retries(
-        item["section_code"],
-        source
-    )
+    if item["section_code"] in {"agora_hungary", "agora_world"}:
+        # AGORA is already generated, structured, and quality-gated upstream.
+        # Preserve its three historical figures and all nine long-form commentaries verbatim.
+        generated_content = {
+            "title": source["title"],
+            "summary": source["summary"],
+            "body": source["body"],
+        }
+        logger.info("AGORA tartalom változtatás nélkül kerül a kiadványba.")
+    else:
+        generated_content = generate_content_with_retries(
+            item["section_code"],
+            source
+        )
 
     save_processed_content(
         supabase,
@@ -1127,10 +1166,10 @@ def process_edition(
                 "A feldolgozás nem indul el."
             )
 
-        if completed == EXPECTED_ITEMS:
+        if completed == total:
 
             logger.info(
-                "Mind a 14 tartalom elkészült."
+                "Mind a 16 tartalom elkészült."
             )
 
             logger.info(
@@ -1310,8 +1349,12 @@ def main():
 
     supabase = get_supabase_client()
 
+    edition_date = os.getenv("EDITION_DATE")
+    allow_published = os.getenv("ALLOW_PUBLISHED_EDITION", "").lower() == "true"
     edition = get_latest_draft_edition(
-        supabase
+        supabase,
+        edition_date=edition_date,
+        allow_published=allow_published,
     )
 
     logger.info(
@@ -1340,7 +1383,7 @@ def main():
         )
 
         logger.info(
-            "Mind a 14 tartalom sikeresen feldolgozva."
+            "Mind a 16 tartalom sikeresen feldolgozva."
         )
 
         logger.info(

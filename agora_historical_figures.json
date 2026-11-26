@@ -838,6 +838,150 @@
         }
       ],
       "limits": "A tudományos tekintély nem teszi minden politikai véleményét szakértői állásfoglalássá; pontos kontextus és dátum szükséges."
+    },
+    {
+      "id": "ignaz_semmelweis",
+      "name": "Ignaz Semmelweis",
+      "lifespan": "1818–1865",
+      "era": "19. századi orvostudomány",
+      "domains": [
+        "medicine",
+        "public_health",
+        "hospital_reform"
+      ],
+      "topics": [
+        "healthcare",
+        "hospital_safety",
+        "infection_control",
+        "medical_evidence",
+        "crisis_management"
+      ],
+      "keywords": [
+        "kórház",
+        "kórházi",
+        "betegellátás",
+        "fertőzés",
+        "higiénia",
+        "orvos",
+        "sérült",
+        "egészségügy",
+        "sürgősségi ellátás",
+        "infection",
+        "hospital",
+        "patient care",
+        "hygiene",
+        "medical",
+        "healthcare",
+        "emergency care"
+      ],
+      "core_ideas": [
+        "A kórházi fertőzések megelőzését megfigyelésre és következetes higiénés gyakorlatra alapozta, és példája megmutatja, milyen következménye lehet annak, ha az intézmények késve fogadják el a bizonyítékokat."
+      ],
+      "works": [
+        {
+          "title": "The Etiology, Concept and Prophylaxis of Childbed Fever",
+          "url": "https://archive.org/details/etiologyconcepta0000unse",
+          "type": "primary_text"
+        }
+      ],
+      "limits": "A gyermekágyi láz megelőzésére kidolgozott történeti felismeréseit nem szabad a modern sürgősségi orvoslás teljes protokolljaként kezelni."
+    },
+    {
+      "id": "john_snow",
+      "name": "John Snow",
+      "lifespan": "1813–1858",
+      "era": "19. századi közegészségügy",
+      "domains": [
+        "medicine",
+        "epidemiology",
+        "public_health"
+      ],
+      "topics": [
+        "public_health",
+        "epidemiology",
+        "statistics",
+        "risk_management",
+        "evidence_based_policy"
+      ],
+      "keywords": [
+        "közegészségügy",
+        "egészségügyi rendszer",
+        "statisztika",
+        "adat",
+        "kockázat",
+        "megelőzés",
+        "járvány",
+        "sérült",
+        "ellátás",
+        "egészségügy",
+        "public health",
+        "epidemiology",
+        "statistics",
+        "data",
+        "risk",
+        "prevention",
+        "healthcare",
+        "patient care"
+      ],
+      "core_ideas": [
+        "A közegészségügyi problémákat rendszerszintű megfigyeléssel, adatokkal és a kockázatok térbeli-társadalmi elemzésével vizsgálta; munkája a bizonyítékokra épülő döntéshozatal jelentőségét mutatja."
+      ],
+      "works": [
+        {
+          "title": "On the Mode of Communication of Cholera",
+          "url": "https://www.gutenberg.org/files/72894/72894-h/72894-h.htm",
+          "type": "primary_text"
+        }
+      ],
+      "limits": "A kolerajárványok epidemiológiai vizsgálatából nem lehet közvetlenül levezetni egyedi balesetek klinikai kezelését."
+    },
+    {
+      "id": "clara_barton",
+      "name": "Clara Barton",
+      "lifespan": "1821–1912",
+      "era": "19. századi humanitárius segítségnyújtás",
+      "domains": [
+        "humanitarian_relief",
+        "nursing",
+        "disaster_response"
+      ],
+      "topics": [
+        "disaster_response",
+        "emergency_aid",
+        "humanitarian_relief",
+        "healthcare",
+        "crisis_management"
+      ],
+      "keywords": [
+        "baleset",
+        "vonatbaleset",
+        "sérült",
+        "mentés",
+        "mentő",
+        "katasztrófa",
+        "sürgősségi",
+        "ápolás",
+        "egészségügy",
+        "disaster",
+        "accident",
+        "injured",
+        "rescue",
+        "emergency",
+        "nursing",
+        "humanitarian aid",
+        "relief"
+      ],
+      "core_ideas": [
+        "A sebesültek és katasztrófák áldozatainak szervezett, gyors és méltóságteljes ellátását, valamint a civil segítségnyújtás intézményesítését képviselte."
+      ],
+      "works": [
+        {
+          "title": "The Red Cross in Peace and War",
+          "url": "https://archive.org/details/redcrossinpeacew00bart",
+          "type": "primary_text"
+        }
+      ],
+      "limits": "A 19. századi háborús és katasztrófa-segélyezés szervezeti körülményei eltérnek a mai mentőszolgálati és kórházi rendszerektől."
     }
   ]
 }

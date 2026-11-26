@@ -149,3 +149,88 @@ def select_international_news_event(candidates, client):
         "status": "selected" if selected_id else "no_qualifying_news",
         "publishing": False,
     }
+
+
+HUNGARIAN_NEWS_SYSTEM = """
+Te vagy a WORLD SHARDS MAGYAR AGORA szigorú hírszerkesztője.
+A jelöltek közül azt a Magyarországhoz közvetlenül kapcsolódó eseményt válaszd,
+amelynek a legnagyobb közérdekű jelentősége, hírértéke és ellenőrizhetősége van.
+
+Értékelési szempontok: tényleges következmény, közérdekűség, aktualitás,
+újdonság, több független szerkesztőség megerősítése és a rendelkezésre álló
+tények minősége. Nincs politikai kvóta, bal-jobb egyensúly, kormány-ellenzék
+arány vagy politikai irányultság szerinti súlyozás. A források sokfélesége
+kizárólag a tények ellenőrzését szolgálja.
+
+Választható témák: magyar közélet és intézmények, gazdaság, társadalom,
+jog, tudomány, technológia, oktatás, egészségügy, kultúra, környezet,
+infrastruktúra, biztonságpolitika és minden más jelentős magyar vonatkozású
+fejlemény. A pusztán helyi, jelentéktelen, promóciós, bulvár- vagy
+kattintásvadász történeteket zárd ki. Sport- és celebhírek nem választhatók.
+
+Legfeljebb egy eseményt válassz. Ha egyik jelölt sem éri el a mércét,
+a selected_event_id legyen üres karakterlánc; ne töltsd fel a rovatot
+gyenge hírrel. Kizárólag a megadott event_id értékek közül választhatsz.
+Ne találj ki tényt. Az indoklás belső szerkesztőségi adat.
+Kizárólag a megadott JSON-sémának megfelelő választ adj.
+""".strip()
+
+
+def select_hungarian_news_event(candidates, client):
+    """Gemini editorial gate for the Hungary-focused AGORA section."""
+    candidates = [
+        item for item in candidates
+        if isinstance(item, dict)
+        and item.get("event_id")
+        and item.get("scope") == "hungary"
+    ]
+    if not candidates:
+        return {
+            "selected_event_id": "",
+            "internal_rationale": "Nincs értékelhető magyar jelölt.",
+            "excluded_candidates": [],
+            "status": "no_candidates",
+        }
+
+    compact = []
+    allowed_ids = set()
+    for event in candidates:
+        event_id = str(event["event_id"])
+        if event_id in allowed_ids:
+            continue
+        allowed_ids.add(event_id)
+        compact.append({
+            "event_id": event_id,
+            "title": event.get("representative_title") or event.get("title"),
+            "latest_published_at": event.get("latest_published_at"),
+            "independent_source_count": event.get("independent_source_count"),
+            "articles": [
+                {
+                    "publisher": article.get("source_name") or article.get("source_code"),
+                    "title": article.get("title"),
+                    "published_at": article.get("published_at"),
+                    "summary": article.get("summary"),
+                }
+                for article in (event.get("articles") or [])[:5]
+            ],
+        })
+
+    result = client.generate_json(
+        HUNGARIAN_NEWS_SYSTEM,
+        {"edition": "hungarian", "candidates": compact},
+        NEWS_SELECTION_SCHEMA,
+    )
+    selected_id = str(result.get("selected_event_id") or "").strip()
+    if selected_id and selected_id not in allowed_ids:
+        raise GeminiError("A magyar hírszerkesztő a jelöltlistán kívüli eseményazonosítót választott.")
+    excluded = result.get("excluded_candidates")
+    if not isinstance(excluded, list):
+        raise GeminiError("A magyar hírszerkesztő kizárási indoklásai hibás formátumúak.")
+    return {
+        "selected_event_id": selected_id,
+        "internal_rationale": str(result.get("internal_rationale") or "").strip(),
+        "excluded_candidates": excluded,
+        "candidate_count": len(compact),
+        "status": "selected" if selected_id else "no_qualifying_news",
+        "publishing": False,
+    }

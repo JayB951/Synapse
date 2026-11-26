@@ -20,6 +20,8 @@ EXPECTED_COUNTS = {
     "unsolved": 1,
     "music_of_the_day": 1,
     "closing": 2,
+    "agora_hungary": 1,
+    "agora_world": 1,
 }
 EXPECTED_TOTAL = sum(EXPECTED_COUNTS.values())
 
@@ -33,7 +35,7 @@ TIMEZONE = ZoneInfo("Europe/Budapest")
 
 def get_target_edition_date():
     """Return the Budapest-local date; never publish an older leftover draft."""
-    return datetime.now(TIMEZONE).date().isoformat()
+    return os.getenv("EDITION_DATE") or datetime.now(TIMEZONE).date().isoformat()
 
 
 def get_client():

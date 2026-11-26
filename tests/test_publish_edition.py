@@ -5,9 +5,9 @@ import publish_edition
 
 
 class PublishEditionSafetyTests(unittest.TestCase):
-    def test_expected_edition_contains_fourteen_items(self):
-        self.assertEqual(publish_edition.EXPECTED_TOTAL, 14)
-        self.assertEqual(sum(publish_edition.EXPECTED_COUNTS.values()), 14)
+    def test_expected_edition_contains_sixteen_items(self):
+        self.assertEqual(publish_edition.EXPECTED_TOTAL, 16)
+        self.assertEqual(sum(publish_edition.EXPECTED_COUNTS.values()), 16)
 
     def test_target_date_uses_budapest_timezone(self):
         value = publish_edition.get_target_edition_date()
