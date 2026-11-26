@@ -68,3 +68,11 @@
 .archive-empty{grid-column:1/-1;padding:18px 0;color:var(--muted);font-size:13px}
 @media(max-width:900px){.archive-list{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:600px){.edition-archive{margin:70px 0}.archive-heading{align-items:flex-start;flex-direction:column;gap:12px}.archive-list{grid-template-columns:1fr}.archive-entry{min-height:112px}}
+
+
+/* M2.5 – gyors rovatnavigáció */
+.section-nav{position:sticky;top:0;z-index:4;display:flex;align-items:center;gap:8px;overflow-x:auto;overscroll-behavior-x:contain;padding:13px 0;margin:0 0 34px;background:rgba(9,13,20,.94);border-bottom:1px solid var(--line);backdrop-filter:blur(14px);scrollbar-width:thin}
+.section-nav-link{flex:none;padding:9px 13px;border:1px solid var(--line);color:var(--muted);background:rgba(20,30,43,.72);text-decoration:none;font:10px 'DM Mono',monospace;letter-spacing:.55px;white-space:nowrap;transition:color .2s,border-color .2s,background .2s}
+.section-nav-link:hover,.section-nav-link.is-active{color:var(--gold);border-color:rgba(197,166,107,.55);background:rgba(197,166,107,.09)}
+.article-group,.article-card{scroll-margin-top:88px}
+@media(max-width:760px){.section-nav{gap:6px;padding:10px 0;margin-bottom:24px}.section-nav-link{padding:9px 11px;font-size:9px}}
