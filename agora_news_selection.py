@@ -81,7 +81,7 @@ ELSŐDLEGESEN KERESENDŐ TÉMÁK:
 5. Egy tájékozott olvasó számára megér-e 2-3 perc figyelmet?
 
 VÁLASZTÁSI SZABÁLYOK:
-- A jelöltek közül legfeljebb egy eseményt válassz. Csak olyan eseményt válassz, amelyet legalább két különböző kiadó megerősít. Legalább egy eredeti cikk-URL-nek elérhetőnek kell lennie; a szindikált URL-ek önmagukban nem növelik a kiadók számát.
+- A jelöltek közül legfeljebb egy eseményt válassz. Csak olyan eseményt válassz, amelyet legalább egy kiadó és legalább egy ellenőrizhető eredeti cikk-URL támaszt alá. Több független kiadó megerősítése minőségi előny, de nem kötelező feltétel.
 - Ha egyik sem üti meg a fenti mércét, selected_event_id legyen üres karakterlánc.
 - Ne válassz csak azért eseményt, hogy a kiadvány mindenképpen megteljen.
 - Kizárólag a megadott event_id értékek közül választhatsz.
@@ -166,7 +166,7 @@ kizárólag a tények ellenőrzését szolgálja.
 Választható témák: magyar közélet és intézmények, gazdaság, társadalom,
 jog, tudomány, technológia, oktatás, egészségügy, kultúra, környezet,
 infrastruktúra, biztonságpolitika és minden más jelentős magyar vonatkozású
-fejlemény. A kiválasztáshoz legalább két különböző kiadó és legalább egy elérhető cikk-URL szükséges. A pusztán helyi, jelentéktelen, promóciós, bulvár- vagy
+fejlemény. A kiválasztáshoz legalább egy kiadó és legalább egy elérhető cikk-URL szükséges; a több forrásból való megerősítés előny. A pusztán helyi, jelentéktelen, promóciós, bulvár- vagy
 kattintásvadász történeteket zárd ki. Sport- és celebhírek nem választhatók.
 
 Legfeljebb egy eseményt válassz. Ha egyik jelölt sem éri el a mércét,
