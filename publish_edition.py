@@ -1,6 +1,6 @@
 """
 WORLD SHARDS – Automatic publication gate
-Only publishes the latest draft when all 14 expected items are complete.
+Only publishes today's Budapest-local draft when all 14 expected items are complete.
 """
 import logging
 import os
