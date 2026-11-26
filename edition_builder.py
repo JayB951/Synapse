@@ -384,14 +384,39 @@ def main():
 
     edition_date = datetime.now(TIMEZONE).date().isoformat()
 
+    # A workflow a GITHUB_OUTPUT-on keresztül jelzi, ha a mai
+    # kiadás már publikált; ilyenkor a feldolgozás és az e-mail is kimarad.
+    github_output = os.getenv("GITHUB_OUTPUT")
+    if github_output:
+        with open(github_output, "a", encoding="utf-8") as output:
+            output.write("already_published=false\\n")
+
     existing = get_existing_edition(supabase, edition_date)
 
     if existing:
+        status = existing.get("status")
         logger.info(
             "A mai kiadvány már létezik (%s, státusz: %s).",
             existing["id"],
-            existing["status"],
+            status,
         )
+
+        if status == "published":
+            logger.info(
+                "A mai kiadás már publikált. Nincs további teendő; "
+                "a feldolgozás, publikálás és értesítő e-mail kimarad."
+            )
+            if github_output:
+                with open(github_output, "a", encoding="utf-8") as output:
+                    output.write("already_published=true\\n")
+            return
+
+        if status != "draft":
+            raise RuntimeError(
+                f"A mai kiadás ismeretlen vagy nem kezelhető státuszú: {status!r}. "
+                "Automatikus módosítás nem történt."
+            )
+
         add_music_to_existing_edition(
             supabase,
             existing,
