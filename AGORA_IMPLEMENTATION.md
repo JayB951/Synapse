@@ -164,6 +164,11 @@ Futtatás:
 
 A két parancs a napi hírjavaslatokat, a személyi hozzárendeléseket és a kommentár-vázakat előkészíti. A kommentár-részek üres kutatási vázak, nem publikálható szövegek.
 
+
+### Kézi, valós RSS-próba
+
+A `.github/workflows/agora-daily-preview.yml` workflow kézzel indítható a GitHub Actions felületéről. Lekéri az aktuális RSS-jelölteket, elkészíti a rangsort, hozzárendeli a történelmi személyiségeket, majd 7 napig elérhető ZIP-artifactként elmenti az előnézeti JSON-fájlokat. Nem publikál és nem ír adatbázisba.
+
 ### M5 – Szerkesztési minőségbiztosítás
 - Tényellenőrzési kapuk.
 - Források és bizonytalanságok ellenőrzése.
