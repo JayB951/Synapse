@@ -261,7 +261,7 @@ def simulate_historical_figure(event, profile, client):
         "Szó szerinti idézetet ne használj. A forráscímek közül csak a megadottakat "
         "add meg. Ha egy történeti állítás a rendelkezésre álló profil alapján nem "
         "támasztható alá, ezt jelezd az evidence_notes mezőben, ne találgass. "
-        "Magyarul írj, összefüggő, publikációra szánt prózát. MINDEN egyes kommentárrész legalább 4 összetett mondatból és legalább 60 szóból álljon; ne írj rövid vázlatot vagy felsorolást. A mondatok kapcsolják össze az okokat, a következményeket és az árnyalatokat (például mert, miközben, ezért, ugyanakkor, noha, amely, így). Mindhárom rész legyen "
+        "Magyarul írj, összefüggő, publikációra szánt prózát. MINDEN egyes kommentárrész legalább 4 különálló, teljes összetett mondatból és legalább 60 szóból álljon. Mind a négy mondat végén legyen pont, és mindegyikben legyen legalább egy kötőszó vagy alárendelő kapcsolat (például mert, miközben, ezért, ugyanakkor, noha, amely, így). Ne írj egyetlen hosszú mondatot, vázlatot vagy felsorolást. Mindhárom rész legyen "
         "érdemi, ne ismételje a másikat. A rekonstrukció hipotetikus, nem valódi "
         "történelmi idézet vagy állásfoglalás. Csak a kért JSON-t add vissza."
     )
@@ -291,6 +291,46 @@ def simulate_historical_figure(event, profile, client):
     by_id = {item.get("id"): item for item in sections if isinstance(item, dict)}
     if set(by_id) != set(DIMENSIONS):
         raise GeminiError(f"{profile.get('name')}: pontosan három előírt kommentárrész szükséges.")
+
+    # Automatically repair a structurally short model response once before blocking the edition.
+    try:
+        for dimension in DIMENSIONS:
+            _validate_long_form_commentary(
+                str(by_id[dimension].get("draft_text") or ""),
+                profile.get("name"),
+                dimension,
+            )
+    except GeminiError as validation_error:
+        repair_system = system + (
+            " KÖTELEZŐ JAVÍTÁS: az előző válasz nem teljesítette a mondatszerkezeti "
+            "követelményt. Írd újra mindhárom részt úgy, hogy mindegyik legalább négy "
+            "különálló, teljes összetett mondatból és legalább 60 szóból álljon. "
+            "Minden mondat külön, ponttal lezárt mondat legyen, és mindegyik tartalmazzon "
+            "kötőszót vagy alárendelő kapcsolatot. Ne rövidíts, ne vond össze a mondatokat."
+        )
+        repair_payload = {
+            **payload,
+            "previous_generation": result,
+            "validation_feedback": str(validation_error),
+            "repair_instruction": (
+                "Javítsd a hibásan rövid kommentárrészeket; a három rész mindegyike "
+                "legalább négy összetett mondatból és 60 szóból álljon."
+            ),
+        }
+        result = client.generate_json(repair_system, repair_payload, SIMULATION_SCHEMA)
+        sections = result.get("sections")
+        if not isinstance(sections, list):
+            raise GeminiError(f"{profile.get('name')}: a javító generálás nem adott szakaszlistát.")
+        by_id = {item.get("id"): item for item in sections if isinstance(item, dict)}
+        if set(by_id) != set(DIMENSIONS):
+            raise GeminiError(f"{profile.get('name')}: a javító generálásból hiányzik egy kommentárrész.")
+        for dimension in DIMENSIONS:
+            _validate_long_form_commentary(
+                str(by_id[dimension].get("draft_text") or ""),
+                profile.get("name"),
+                dimension,
+            )
+
     news_source_urls = sorted({
         item.get("url") for item in event.get("articles", [])
         if str(item.get("url") or "").startswith("https://")
