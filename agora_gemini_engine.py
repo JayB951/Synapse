@@ -171,12 +171,14 @@ def select_historical_figures(event, catalog, client):
     ]
     system = (
         "Te vagy az AGORA történelmi szereplőválasztója. A megadott hírhez válaszd ki "
-        "a katalógusból a három leginkább releváns történelmi személyt. A relevanciát "
-        "a személy dokumentált gondolkodásmódja, művei, szakterülete és a konkrét esemény "
-        "közötti kapcsolat határozza meg. Ne közismertség, politikai szimpátia vagy "
-        "mai pártpolitikai címke alapján válassz. Ne egyszerűsíts közhelyekre. "
-        "Ne találj ki személyeket vagy profilokat. Ha három valóban releváns személy "
-        "nincs a katalógusban, kevesebbet adj vissza; tilos gyenge jelölttel feltölteni. "
+        "a katalógusból pontosan három, az eseményhez leginkább kapcsolódó történelmi személyt. "
+        "A relevanciát a személy dokumentált gondolkodásmódja, művei, szakterülete és "
+        "a konkrét esemény közötti kapcsolat határozza meg. A három kiválasztott személy "
+        "különböző, egymást kiegészítő történelmi nézőpontot adjon. Ne közismertség, "
+        "politikai szimpátia vagy mai pártpolitikai címke alapján válassz. Ne egyszerűsíts "
+        "közhelyekre. Ne találj ki személyeket vagy profilokat; kizárólag a katalógusból "
+        "válassz. A feladat minden esetben pontosan három személy kiválasztása; a "
+        "katalógus leginkább releváns, egymást kiegészítő három profilját rangsorold. "
         "Az internal_rationale belső adat, nem publikációs szöveg. Csak JSON-t adj."
     )
     result = client.generate_json(
