@@ -14,7 +14,7 @@ from zoneinfo import ZoneInfo
 
 
 from agora_daily_editorial import build_editorial_output
-from agora_gemini_engine import GeminiClient
+from agora_gemini_engine import GeminiClient, translate_event_to_hungarian
 from agora_pipeline import build_pipeline_result, parse_datetime
 from agora_rss_collector import collect_all
 from agora_world_shards_adapter import build_content_items
@@ -64,6 +64,12 @@ def automated_quality_gate(pipeline, editorial, now=None):
                 f"indok: {decision.get('internal_rationale') or 'nincs megadva'})."
             )
             continue
+        if scope == "international":
+            translation = event.get("hungarian_translation") or {}
+            translated_articles = translation.get("articles") or []
+            if translation.get("language") != "hu" or not translation.get("event_title") or len(translated_articles) != len(articles):
+                errors.append("international: hiányzik a teljes magyar nyelvű hírfordítás.")
+
         if decision.get("status") != "selected" or decision.get("selected_event_id") != event_id:
             errors.append(f"{scope}: a Gemini hírválasztása nem egyezik a kiválasztott eseménnyel.")
 
@@ -198,6 +204,19 @@ def run(edition_date=None):
             scope, decision.get("status"), decision.get("candidate_count"),
             decision.get("selected_event_id") or "nincs",
         )
+    international_item = editorial.get("daily_editorial", {}).get("international") or {}
+    international_id = (international_item.get("historical_selection") or {}).get("event_id")
+    international_event = next(
+        (item for item in pipeline.get("groups", []) if item.get("event_id") == international_id),
+        None,
+    )
+    if international_event is None:
+        raise RuntimeError("A nemzetközi hír magyar fordítása nem készíthető el: nincs kiválasztott esemény.")
+    international_event["hungarian_translation"] = translate_event_to_hungarian(
+        international_event, client
+    )
+    LOGGER.info("A nemzetközi AGORA-hír magyar fordítása elkészült.")
+
     qa_report = automated_quality_gate(pipeline, editorial)
     records = build_content_items(pipeline, editorial, qa_report, edition_date)
 
