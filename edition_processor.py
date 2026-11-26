@@ -588,12 +588,12 @@ def build_prompt(
     if is_jokeapi:
         joke_type = metadata.get("joke_type", "single")
         structure = (
-            "KÉTRÉSZES VICc: a FELVEZETÉST és a CSATTANÓT is teljes egészében fordítsd le, "
+            "KÉTRÉSZES VICC: a FELVEZETÉST és a CSATTANÓT is teljes egészében fordítsd le, "
             "ebben a sorrendben, külön bekezdésben. A csattanót tilos elhagyni vagy összefoglalni."
             if joke_type == "twopart"
-            else "EGYRÉSZES VICc: a teljes viccet fordítsd le, minden mondatával és a poénnal együtt."
+            else "EGYRÉSZES VICC: a teljes viccet fordítsd le, minden mondatával és a poénnal együtt."
         )
-        return f\\"\\"\\"
+        return f"""
 A WORLD SHARDS magyar magazin műfordítója vagy. A feladatod a teljes vicc magyarra fordítása.
 Ne ismertesd, ne kommentáld, ne magyarázd és ne találj ki új viccet.
 {structure}
@@ -615,7 +615,7 @@ Kizárólag ezt a JSON-struktúrát add vissza:
   "body": "A teljes magyar vicc"
 }}
 Ne használj Markdown kódblokkot.
-\\"\\"\\"
+"""
 
     return f"""
 Te a WORLD SHARDS nevű magyar nyelvű digitális magazin
