@@ -23,6 +23,14 @@ jobs:
         run: python agora_pipeline.py --output agora_candidates.json
       - name: Match historical figures and build commentary briefs
         run: python agora_daily_editorial.py --input agora_candidates.json --output agora_editorial.json
+      - name: Run editorial QA and create human review template
+        run: >-
+          python agora_editorial_qa.py
+          --input agora_candidates.json
+          --editorial agora_editorial.json
+          --review-template agora_review_template.json
+          --output agora_qa_report.json
+          --allow-pending
       - name: Upload non-publishing editorial preview
         uses: actions/upload-artifact@v4
         with:
@@ -30,5 +38,7 @@ jobs:
           path: |
             agora_candidates.json
             agora_editorial.json
+            agora_qa_report.json
+            agora_review_template.json
           if-no-files-found: error
           retention-days: 7
