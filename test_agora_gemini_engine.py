@@ -1,5 +1,9 @@
 import unittest
 
+from agora_news_selection import (
+    INTERNATIONAL_NEWS_SYSTEM,
+    select_international_news_event,
+)
 from agora_gemini_engine import (
     GeminiError,
     build_gemini_commentary_package,
@@ -59,6 +63,63 @@ def simulation_response():
         "historical_disclosure": "Hipotetikus rekonstrukció.",
         "direct_quote_used": False,
     }
+
+
+class InternationalNewsSelectionTests(unittest.TestCase):
+    def test_selects_only_an_id_from_the_candidate_list(self):
+        candidates = [
+            {"event_id": "sport", "scope": "international",
+             "representative_title": "Champions League final result",
+             "articles": [{"title": "The final", "summary": "A football result."}]},
+            {"event_id": "world", "scope": "international",
+             "representative_title": "Major international climate agreement",
+             "articles": [{"title": "Countries reach climate agreement",
+                           "summary": "A multi-country agreement changes emissions commitments."}]},
+        ]
+        client = FakeClient([{
+            "selected_event_id": "world",
+            "internal_rationale": "Nemzetközi, hosszú távú következményekkel járó fejlemény.",
+            "excluded_candidates": [{"event_id": "sport", "reason": "Sporthír."}],
+        }])
+        result = select_international_news_event(candidates, client)
+        self.assertEqual(result["selected_event_id"], "world")
+        self.assertEqual(result["status"], "selected")
+        self.assertIn("Sport minden formája", client.calls[0][0])
+        self.assertIn("Duran Duran", client.calls[0][0])
+        self.assertIn("Budapest XII. kerület", client.calls[0][0])
+        self.assertIn("kizárólag magyarországi", client.calls[0][0].lower())
+
+    def test_empty_selection_is_a_valid_editorial_decision(self):
+        client = FakeClient([{
+            "selected_event_id": "",
+            "internal_rationale": "A jelöltek egyike sem éri el a hírértékküszöböt.",
+            "excluded_candidates": [],
+        }])
+        result = select_international_news_event(
+            [{"event_id": "local", "scope": "international",
+              "representative_title": "Budapest district council meeting"}],
+            client,
+        )
+        self.assertEqual(result["status"], "no_qualifying_news")
+        self.assertEqual(result["selected_event_id"], "")
+
+    def test_rejects_an_event_id_not_in_the_candidate_list(self):
+        client = FakeClient([{
+            "selected_event_id": "invented",
+            "internal_rationale": "not allowed",
+            "excluded_candidates": [],
+        }])
+        with self.assertRaises(GeminiError):
+            select_international_news_event(
+                [{"event_id": "real", "representative_title": "Real event"}],
+                client,
+            )
+
+    def test_empty_candidate_list_does_not_call_gemini(self):
+        client = FakeClient([])
+        result = select_international_news_event([], client)
+        self.assertEqual(result["status"], "no_candidates")
+        self.assertEqual(client.calls, [])
 
 
 class GeminiEngineTests(unittest.TestCase):

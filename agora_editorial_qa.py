@@ -7,7 +7,7 @@ from pathlib import Path
 
 from agora_pipeline import parse_datetime
 
-QA_VERSION = "AGORA_EDITORIAL_QA_M5.1"
+QA_VERSION = "AGORA_EDITORIAL_QA_M5.2"
 REQUIRED_SCOPES = ("hungary", "international")
 REQUIRED_DIMENSIONS = ("interpretation", "consequences", "response")
 REVIEW_FLAGS = (
@@ -56,7 +56,7 @@ def build_review_template(editorial):
             ],
         }
     return {
-        "review_schema": "AGORA_HUMAN_REVIEW_M5.1",
+        "review_schema": "AGORA_HUMAN_REVIEW_M5.2",
         "approved": False,
         "editor_name": "",
         "reviewed_at": None,
@@ -79,8 +79,25 @@ def evaluate_quality(pipeline, editorial, review=None, now=None):
         event_id = selection.get("event_id")
         event = groups.get(event_id)
         scope_checks = []
+
         if not event_id or not event:
-            _check(scope_checks, "event_selected", False, "Nincs azonosítható napi esemény.", scope=scope)
+            news_selection = item.get("news_selection") or {}
+            legitimate_empty_international = (
+                scope == "international"
+                and item.get("status") == "no_qualifying_international_news"
+                and news_selection.get("status") in {"no_qualifying_news", "no_candidates"}
+                and bool(str(news_selection.get("internal_rationale") or "").strip())
+            )
+            if legitimate_empty_international:
+                _check(
+                    scope_checks, "international_story_required_for_combined_export", False,
+                    "A szerkesztőség helyesen nem választott gyenge hírt, de a kétrovatú AGORA-kiadvány így nem exportálható és nem publikálható.",
+                    scope=scope,
+                )
+                per_scope[scope] = scope_checks
+                checks.extend(scope_checks)
+                continue
+            _check(scope_checks, "event_selected", False, "Nincs azonosítható napi esemény vagy igazolt szerkesztőségi kizárás.", scope=scope)
             per_scope[scope] = scope_checks
             checks.extend(scope_checks)
             continue
@@ -89,6 +106,15 @@ def evaluate_quality(pipeline, editorial, review=None, now=None):
                "Az esemény földrajzi besorolása megfelel a rovatnak.", scope=scope)
         _check(scope_checks, "event_not_reused", True,
                "Az eseményazonosító egyedisége a globális ellenőrzésben vizsgálandó.", "warning", scope)
+
+        if scope == "international":
+            news_selection = item.get("news_selection") or {}
+            _check(
+                scope_checks, "international_newsworthiness_gate",
+                news_selection.get("status") == "selected",
+                "A nemzetközi esemény átment a WORLD SHARDS tartalmi relevanciaszűrésén.",
+                scope=scope,
+            )
 
         latest = parse_datetime(event.get("latest_published_at"))
         age_hours = (now - latest).total_seconds() / 3600 if latest else None
@@ -147,10 +173,23 @@ def evaluate_quality(pipeline, editorial, review=None, now=None):
         per_scope[scope] = scope_checks
         checks.extend(scope_checks)
 
-    ids = [editorial.get("daily_editorial", {}).get(scope, {}).get("historical_selection", {}).get("event_id")
-           for scope in REQUIRED_SCOPES]
-    _check(checks, "two_distinct_news_events", all(ids) and len(set(ids)) == 2,
-           "Pontosan két külön esemény szükséges: egy magyar és egy nemzetközi.")
+    hu_id = editorial.get("daily_editorial", {}).get("hungary", {}).get("historical_selection", {}).get("event_id")
+    int_item = editorial.get("daily_editorial", {}).get("international", {})
+    int_id = (int_item.get("historical_selection") or {}).get("event_id")
+    int_decision = int_item.get("news_selection") or {}
+    international_decision_recorded = (
+        bool(int_id) and int_decision.get("status") == "selected"
+    ) or (
+        not int_id
+        and int_item.get("status") == "no_qualifying_international_news"
+        and int_decision.get("status") in {"no_qualifying_news", "no_candidates"}
+    )
+    distinct_when_both_exist = not int_id or (hu_id and hu_id != int_id)
+    _check(
+        checks, "hungary_event_and_international_editorial_decision",
+        bool(hu_id) and international_decision_recorded and distinct_when_both_exist,
+        "A magyar rovat eseménye és a nemzetközi rovat dokumentált szerkesztőségi döntése rendelkezésre áll; a nemzetközi rovat indokoltan maradhat üres.",
+    )
     for flag in REVIEW_FLAGS:
         _check(checks, "human_" + flag, review.get("checks", {}).get(flag) is True,
                f"Szerkesztői jóváhagyás szükséges: {flag}.")
