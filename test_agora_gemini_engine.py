@@ -231,11 +231,14 @@ class GeminiEngineTests(unittest.TestCase):
         self.assertTrue(result["sections"][0]["evidence_notes"])
         self.assertTrue(result["sections"][0]["source_urls"])
 
-    def test_simulator_rejects_unlisted_historical_source(self):
+    def test_simulator_replaces_unlisted_historical_source_with_catalogue_source(self):
         response = simulation_response()
         response["sections"][0]["source_titles"] = ["Kitalált mű"]
-        with self.assertRaises(GeminiError):
-            simulate_historical_figure(EVENT, PROFILE, FakeClient([response]))
+        result = simulate_historical_figure(EVENT, PROFILE, FakeClient([response]))
+        allowed_title = PROFILE["works"][0]["title"]
+        self.assertEqual(result["sections"][0]["source_titles"], [allowed_title])
+        self.assertNotIn("Kitalált mű", result["sections"][0]["draft_text"])
+        self.assertTrue(result["sections"][0]["source_urls"])
 
     def test_simulator_rejects_direct_quote(self):
         response = simulation_response()
