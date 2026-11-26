@@ -1040,7 +1040,7 @@ def verify_edition_completion(
 
         return False
 
-    return completed == EXPECTED_ITEMS
+    return total == EXPECTED_ITEMS and completed == total
 
 
 # ============================================================
@@ -1130,10 +1130,10 @@ def process_edition(
                 "A feldolgozás nem indul el."
             )
 
-        if completed == EXPECTED_ITEMS:
+        if completed == total:
 
             logger.info(
-                "Mind a 14 tartalom elkészült."
+                "Mind a 16 tartalom elkészült."
             )
 
             logger.info(
@@ -1313,8 +1313,12 @@ def main():
 
     supabase = get_supabase_client()
 
+    edition_date = os.getenv("EDITION_DATE")
+    allow_published = os.getenv("ALLOW_PUBLISHED_EDITION", "").lower() == "true"
     edition = get_latest_draft_edition(
-        supabase
+        supabase,
+        edition_date=edition_date,
+        allow_published=allow_published,
     )
 
     logger.info(
