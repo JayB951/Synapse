@@ -74,15 +74,26 @@ def get_candidates(supabase, section_code, limit=100, edition_date=None, content
             metadata_filter["content_type"] = content_type
         query = query.contains("metadata", metadata_filter)
 
+    fetch_limit = (
+        limit * 3
+        if section_code == AGORA_DB_SECTION_CODE and content_type is None
+        else limit
+    )
     response = (
         query
         .order("relevance_score", desc=True)
         .order("collected_at", desc=True)
-        .limit(limit)
+        .limit(fetch_limit)
         .execute()
     )
 
-    return response.data or []
+    items = response.data or []
+    if section_code == AGORA_DB_SECTION_CODE and content_type is None:
+        items = [
+            item for item in items
+            if (item.get("metadata") or {}).get("content_type") not in AGORA_SECTION_LIMITS
+        ]
+    return items[:limit]
 
 
 def select_closing_items(supabase):
