@@ -79,6 +79,10 @@ class GeminiClient:
                 if not isinstance(parsed, dict):
                     raise GeminiError("A Gemini JSON-válaszának objektumnak kell lennie.")
                 return parsed
+            except requests.HTTPError as exc:
+                status = exc.response.status_code if exc.response is not None else "unknown"
+                detail = (exc.response.text[:500] if exc.response is not None else str(exc))
+                raise GeminiError(f"Gemini HTTP-hiba ({status}): {detail}") from exc
             except requests.RequestException as exc:
                 last_error = f"Gemini hálózati/API-hiba: {exc}"
                 if attempt < MAX_ATTEMPTS - 1:
