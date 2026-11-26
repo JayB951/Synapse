@@ -50,13 +50,13 @@ EVENT = {
 def simulation_response():
     return {
         "sections": [
-            {"id": "interpretation", "draft_text": "Az intézmények és a hatalmi viszonyok felől értelmezi az eseményt.",
+            {"id": "interpretation", "draft_text": "A politikai intézmények működését a hatalmi viszonyok felől értelmezi, mert a válságok idején különösen láthatóvá válik, hogy a szabályok mennyire korlátozzák a vezetőket. A közösség biztonsága nem pusztán a döntéshozók szándékától függ, hanem attól is, hogy az intézmények képesek-e ellenőrizni egymást. Amikor a felelősségi körök világosak, a hibák feltárása gyorsabbá válik, és a közbizalom is könnyebben helyreáll. Ezért a történelmi tanulság az, hogy a rend tartósságát nem az erő, hanem az elszámoltatható intézményrendszer biztosítja.",
              "evidence_notes": ["A politikai intézményekről szóló elemzéshez kapcsolódik."],
              "source_titles": ["A fejedelem"]},
-            {"id": "consequences", "draft_text": "A következményeket a hatalom stabilitása és az intézmények ellenálló képessége felől vizsgálja.",
+            {"id": "consequences", "draft_text": "A következményeket a hatalom stabilitása és az intézmények ellenálló képessége felől vizsgálja, mert egyetlen rossz döntés hatása messze túlterjedhet az adott eseményen. Ha a felelősség elmosódik, akkor a hibák ismétlődnek, miközben a polgárok egyre kevésbé bíznak a közös szabályokban. A válság így nemcsak közvetlen károkat okoz, hanem az intézményi együttműködést is gyengítheti. Ugyanakkor a következmények mérsékelhetők, ha a döntések indokai nyilvánosak, és a korrekció lehetősége minden érintett számára biztosított.",
              "evidence_notes": ["A fejedelemségek és politikai rend elemzése releváns."],
              "source_titles": ["A fejedelem"]},
-            {"id": "response", "draft_text": "A megoldásnál a politikai célok és az intézményi korlátok együttes mérlegelését javasolja.",
+            {"id": "response", "draft_text": "A megoldásnál a politikai célokat az intézményi korlátokkal együtt kell mérlegelni, mert a gyors cselekvés önmagában még nem garantál jó eredményt. A vezetőknek világos felelősséget kell vállalniuk, miközben független ellenőrzésnek is működnie kell. Az intézmények akkor őrzik meg hitelességüket, ha a szabályokat a nehéz helyzetekben is következetesen alkalmazzák, és a hibák kijavítása nem válik politikai presztízskérdéssé. Ezért a tartós megoldás az átláthatóság, az együttműködés és a számonkérhetőség összehangolása lehet.",
              "evidence_notes": ["A mű politikai cselekvésről szóló gondolatmenete releváns."],
              "source_titles": ["Beszélgetések"]},
         ],
