@@ -1,4 +1,4 @@
-project_id = "world-shards"
+project_id = "kfihibtnjymrfskygrcy"
 
 [functions.email-rating]
 verify_jwt = false
