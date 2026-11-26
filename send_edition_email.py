@@ -4,14 +4,18 @@ This script is read-only with respect to Supabase. It sends only today's
 Budapest-local edition after confirming its published status and all 14
 processed article records.
 """
+import base64
+import hashlib
+import hmac
 import html
 import logging
 import os
+import uuid
 import smtplib
 from collections import Counter
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from email.message import EmailMessage
-from urllib.parse import urlparse
+from urllib.parse import urlencode, urlparse
 from zoneinfo import ZoneInfo
 
 from supabase import create_client
@@ -108,7 +112,36 @@ def get_image_details(source):
     return image_url, str(alt_text)
 
 
-def build_email_bodies(edition, items, source_by_id):
+def build_rating_links(items, supabase_url, signing_secret, voter_token, now=None):
+    """Create signed, expiring links; opening a link never writes a rating."""
+    if not supabase_url or not signing_secret or len(signing_secret) < 32:
+        raise ValueError("Érvénytelen értékelési URL vagy túl rövid aláírókulcs.")
+    voter_token = str(uuid.UUID(voter_token))
+    now = now or datetime.now(timezone.utc)
+    expires = int((now + timedelta(days=30)).timestamp())
+    endpoint = supabase_url.rstrip("/") + "/functions/v1/email-rating"
+    links = {}
+    for item in items:
+        item_id = str(uuid.UUID(item["id"]))
+        item_links = {}
+        for rating in range(1, 6):
+            message = f"{item_id}|{rating}|{voter_token}|{expires}".encode("utf-8")
+            signature = base64.urlsafe_b64encode(
+                hmac.new(signing_secret.encode("utf-8"), message, hashlib.sha256).digest()
+            ).decode("ascii").rstrip("=")
+            query = urlencode({
+                "item_id": item_id,
+                "rating": rating,
+                "voter_token": voter_token,
+                "exp": expires,
+                "sig": signature,
+            })
+            item_links[rating] = f"{endpoint}?{query}"
+        links[item_id] = item_links
+    return links
+
+
+def build_email_bodies(edition, items, source_by_id, rating_links_by_item=None):
     date_label = datetime.strptime(edition["edition_date"], "%Y-%m-%d").strftime("%Y. %m. %d.")
     plain = [
         f"WORLD SHARDS – {date_label}",
@@ -162,6 +195,27 @@ def build_email_bodies(edition, items, source_by_id):
                 source_html += html.escape(source_name)
             source_html += "</p>"
 
+        rating_html = ""
+        rating_links = (rating_links_by_item or {}).get(item.get("id"), {})
+        if rating_links:
+            stars = " ".join(
+                f'<a href="{html.escape(rating_links[score], quote=True)}" '
+                f'style="color:#b18a42;text-decoration:none;font-size:23px;letter-spacing:2px;" '
+                f'aria-label="{score} csillag">★</a>'
+                for score in range(1, 6)
+            )
+            rating_html = (
+                '<div style="margin-top:18px;padding:12px 14px;background:#f7f5f0;'
+                'border-left:3px solid #c8a96a;">'
+                '<div style="font-size:12px;color:#555;margin-bottom:5px;">Értékeld ezt a cikket:</div>'
+                f'<div>{stars}</div>'
+                '<div style="font-size:10px;color:#777;margin-top:4px;">'
+                'A választás a megnyíló oldalon külön megerősítést igényel.</div></div>'
+            )
+            plain.extend(["Értékeld a cikket (a link megnyitása után erősítsd meg):"])
+            plain.extend([f"{score} csillag: {rating_links[score]}" for score in range(1, 6)])
+            plain.append("")
+
         image_html = ""
         if image_url:
             image_html = (
@@ -177,7 +231,7 @@ def build_email_bodies(edition, items, source_by_id):
             '<article style="margin:0 0 26px;padding:0 0 18px;border-bottom:1px solid #e6e1d8;">'
             f'<h3 style="margin:0 0 8px;color:#182538;font-size:19px;">{html.escape(title)}</h3>'
             f'<p style="margin:0 0 14px;color:#555;font-style:italic;line-height:1.5;">{html.escape(summary)}</p>'
-            f'{image_html}{body_paragraphs}{source_html}</article>'
+            f'{image_html}{body_paragraphs}{source_html}{rating_html}</article>'
         )
 
     plain.extend([
@@ -276,7 +330,22 @@ def send_email(plain_body, html_body, date_label):
 def main():
     supabase = get_supabase_client()
     edition, items, source_by_id = load_published_edition(supabase)
-    plain_body, html_body, date_label = build_email_bodies(edition, items, source_by_id)
+    rating_links = None
+    rating_secret = os.getenv("EMAIL_RATING_SECRET")
+    rating_voter_token = os.getenv("EMAIL_RATING_VOTER_TOKEN")
+    if rating_secret and rating_voter_token:
+        rating_links = build_rating_links(
+            items,
+            os.getenv("SUPABASE_URL", ""),
+            rating_secret,
+            rating_voter_token,
+        )
+        logger.info("Az e-mailhez 1–5 csillagos értékelési linkek készültek.")
+    else:
+        logger.warning("Az e-mail csillagos értékelés nélkül készül: hiányzik az EMAIL_RATING_SECRET vagy EMAIL_RATING_VOTER_TOKEN.")
+    plain_body, html_body, date_label = build_email_bodies(
+        edition, items, source_by_id, rating_links
+    )
     logger.info("E-mail tartalma ellenőrizve: %s elem, %s rovat.", len(items), len(EXPECTED_COUNTS))
     send_email(plain_body, html_body, date_label)
 
