@@ -19,6 +19,7 @@ on:
       - "test_agora_historical_content.py"
       - "test_agora_daily_editorial.py"
       - ".github/workflows/agora-tests.yml"
+      - ".github/workflows/agora-daily-preview.yml"
   workflow_dispatch:
 
 permissions:
