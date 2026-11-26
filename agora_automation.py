@@ -165,9 +165,11 @@ def save_content_item(supabase, record):
     if existing.data:
         current = existing.data[0]
         if current.get("status") == "candidate" or os.getenv("AGORA_FORCE_UPDATE_EXISTING") == "true":
+            update_record = dict(record)
+            update_record["status"] = current.get("status") or record["status"]
             response = (
                 supabase.table("shard_content_items")
-                .update(record)
+                .update(update_record)
                 .eq("id", current["id"])
                 .execute()
             )
