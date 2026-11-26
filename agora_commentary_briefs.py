@@ -98,7 +98,7 @@ def main():
         event_id = selection.get("event_id")
         event = next((g for g in pipeline.get("groups", []) if g.get("event_id") == event_id), {})
         packages[scope] = build_commentary_package(event, selection)
-    rendered = json.dumps({"brief_engine": BRIEF_VERSION, "packages": packages}, ensure_ascii=False, indent=2) + "\\n"
+    rendered = json.dumps({"brief_engine": BRIEF_VERSION, "packages": packages}, ensure_ascii=False, indent=2) + "\n"
     if args.output:
         Path(args.output).write_text(rendered, encoding="utf-8")
     else:
