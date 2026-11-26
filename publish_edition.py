@@ -35,7 +35,7 @@ TIMEZONE = ZoneInfo("Europe/Budapest")
 
 def get_target_edition_date():
     """Return the Budapest-local date; never publish an older leftover draft."""
-    return datetime.now(TIMEZONE).date().isoformat()
+    return os.getenv("EDITION_DATE") or datetime.now(TIMEZONE).date().isoformat()
 
 
 def get_client():
