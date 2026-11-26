@@ -11,7 +11,7 @@ class PublishEditionSafetyTests(unittest.TestCase):
 
     def test_target_date_uses_budapest_timezone(self):
         value = publish_edition.get_target_edition_date()
-        self.assertRegex(value, r"^\\d{4}-\\d{2}-\\d{2}$")
+        self.assertRegex(value, r"^\d{4}-\d{2}-\d{2}$")
 
     def test_no_draft_for_today_fails_closed_without_publishing(self):
         supabase = MagicMock()
