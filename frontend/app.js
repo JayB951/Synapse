@@ -685,7 +685,7 @@ async function loadPublishedEdition() {
       showStatus("Jelenleg nincs publikált napi kiadás", "A rendszer kapcsolata él. Amint egy kiadás published státuszt kap, itt automatikusan megjelenik. A piszkozatok nem nyilvánosak.", "SUPABASE · CONNECTED");
       renderAgora([]);
       renderArticles();
-      if (countNode) countNode.textContent = "— TARTALOM · 9 ROVAT";
+      if (countNode) countNode.textContent = "— TARTALOM · 11 ROVAT";
       return;
     }
 
