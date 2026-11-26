@@ -99,7 +99,7 @@ Az első verzió ingyenes forrásokra és a meglévő GitHub Actions + Supabase 
 - Tesztek hálózati hívás nélkül, mintafeedekkel.
 
 ### M2 – Eseménycsoportosítás és rangsorolás
-- [x] M2.1: determinisztikus, külső függőség nélküli első eseménycsoportosító.
+- [ ] M2.1: determinisztikus, külső függőség nélküli első eseménycsoportosító (CI-ellenőrzés folyamatban).
 - [x] Magyar és nemzetközi hírek külön csoportban maradnak.
 - [x] Azonos URL több forrásból megőrzi a forrásonkénti rekordokat.
 - [x] Fuzzy cím-egyezés csak azonos nyelven, 72 órás időablakban.
