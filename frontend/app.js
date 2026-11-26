@@ -30,6 +30,10 @@ const readerSection = document.querySelector("#reader-section");
 const readerSource = document.querySelector("#reader-source");
 const readerFeedback = document.querySelector("#reader-feedback");
 const feedbackVotes = new Map();
+const articleRatings = new Map();
+const ratingSummaries = new Map();
+let ratingHeaders = null;
+let ratingApiUrl = "";
 let feedbackHeaders = null;
 let feedbackApiUrl = "";
 let readerFeedbackItemId = null;
@@ -83,12 +87,124 @@ function makeSectionImage(source, title, className, altPrefix) {
 
 function getVoterToken() {
   const storageKey = "world-shards-reader-token";
+  const transferMatch = location.hash.match(/^#rating-reader=([0-9a-f-]{36})$/i);
+  if (transferMatch && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(transferMatch[1])) {
+    localStorage.setItem(storageKey, transferMatch[1]);
+    history.replaceState(null, "", location.pathname + location.search);
+  }
   let token = localStorage.getItem(storageKey);
   if (!token) {
     token = crypto.randomUUID();
     localStorage.setItem(storageKey, token);
   }
   return token;
+}
+
+function createRatingWidget(itemId, className = "article-rating") {
+  const widget = makeElement("div", className);
+  widget.dataset.ratingItem = itemId;
+  const label = makeElement("span", "rating-label", "ÉRTÉKELD A CIKKET");
+  const stars = makeElement("div", "rating-stars");
+  for (let score = 1; score <= 5; score++) {
+    const button = makeElement("button", "rating-star", "★");
+    button.type = "button";
+    button.dataset.ratingScore = String(score);
+    button.setAttribute("aria-label", `${score} csillag`);
+    button.title = `${score}/5 csillag`;
+    button.addEventListener("click", () => saveArticleRating(itemId, score, widget));
+    stars.append(button);
+  }
+  const summary = makeElement("span", "rating-summary", "Még nincs értékelés");
+  widget.append(label, stars, summary);
+  syncRatingWidget(itemId);
+  return widget;
+}
+
+function syncRatingWidget(itemId) {
+  const current = articleRatings.get(itemId) || 0;
+  const summary = ratingSummaries.get(itemId);
+  document.querySelectorAll("[data-rating-item]").forEach(widget => {
+    if (widget.dataset.ratingItem !== itemId) return;
+    widget.querySelectorAll(".rating-star").forEach(button => {
+      const score = Number(button.dataset.ratingScore);
+      button.classList.toggle("is-selected", score <= current);
+      button.setAttribute("aria-pressed", String(score === current));
+    });
+    const text = summary && summary.count
+      ? `Átlag: ${Number(summary.average).toFixed(2)} / 5 · ${summary.count} értékelés`
+      : "Még nincs értékelés";
+    const summaryNode = widget.querySelector(".rating-summary");
+    if (summaryNode) summaryNode.textContent = text;
+  });
+}
+
+async function loadArticleRatingSummaries(itemIds) {
+  if (!ratingHeaders || !ratingApiUrl || !itemIds.length) return;
+  const response = await fetch(`${ratingApiUrl}/rest/v1/rpc/get_article_rating_summaries`, {
+    method: "POST",
+    headers: { ...ratingHeaders, "Content-Type": "application/json" },
+    body: JSON.stringify({ p_item_ids: itemIds })
+  });
+  if (!response.ok) throw new Error(`Értékelési összesítés: HTTP ${response.status}`);
+  const rows = await response.json();
+  itemIds.forEach(id => ratingSummaries.delete(id));
+  rows.forEach(row => ratingSummaries.set(row.edition_item_id, {
+    average: row.average_rating,
+    count: Number(row.rating_count)
+  }));
+}
+
+async function loadArticleRatings(items, headers, supabaseUrl) {
+  articleRatings.clear();
+  ratingSummaries.clear();
+  ratingApiUrl = supabaseUrl;
+  const token = getVoterToken();
+  ratingHeaders = { ...headers, "x-reader-token": token };
+  const ids = items.map(item => item.id);
+  if (!ids.length) return;
+  const ownResponse = await fetch(
+    `${supabaseUrl}/rest/v1/shard_article_ratings?select=edition_item_id,rating&voter_token=eq.${encodeURIComponent(token)}`,
+    { headers: ratingHeaders }
+  );
+  if (!ownResponse.ok) throw new Error(`Saját értékelések: HTTP ${ownResponse.status}`);
+  const ownRows = await ownResponse.json();
+  ownRows.forEach(row => articleRatings.set(row.edition_item_id, row.rating));
+  await loadArticleRatingSummaries(ids);
+}
+
+async function saveArticleRating(itemId, rating, widget) {
+  if (!ratingHeaders || !ratingApiUrl) return;
+  widget.querySelectorAll("button").forEach(button => button.disabled = true);
+  try {
+    const voterToken = getVoterToken();
+    const response = await fetch(
+      `${ratingApiUrl}/rest/v1/shard_article_ratings?on_conflict=edition_item_id,voter_token`,
+      {
+        method: "POST",
+        headers: {
+          ...ratingHeaders,
+          "Content-Type": "application/json",
+          Prefer: "resolution=merge-duplicates,return=minimal"
+        },
+        body: JSON.stringify({
+          edition_item_id: itemId,
+          voter_token: voterToken,
+          rating,
+          updated_at: new Date().toISOString()
+        })
+      }
+    );
+    if (!response.ok) throw new Error(`Értékelés mentése: HTTP ${response.status}`);
+    articleRatings.set(itemId, rating);
+    await loadArticleRatingSummaries([itemId]);
+    syncRatingWidget(itemId);
+  } catch (error) {
+    console.error("WORLD SHARDS rating error:", error);
+    const summary = widget.querySelector(".rating-summary");
+    if (summary) summary.textContent = "Nem sikerült menteni";
+  } finally {
+    widget.querySelectorAll("button").forEach(button => button.disabled = false);
+  }
 }
 
 function feedbackLabel(vote) {
@@ -244,7 +360,7 @@ function openArticle(item, sectionName) {
   readerFeedbackItemId = item.id;
   readerFeedbackSectionName = sectionName;
   if (readerFeedback) {
-    readerFeedback.replaceChildren(createFeedbackButton(item.id, "feedback-toggle reader-feedback-toggle"));
+    readerFeedback.replaceChildren(createRatingWidget(item.id, "article-rating reader-rating"));
   }
   if (readerSource) {
     readerSource.replaceChildren();
@@ -431,11 +547,11 @@ async function loadEdition(edition) {
     const items = await itemsResponse.json();
 
     try {
-      await loadFeedbackVotes(items, headers, supabaseUrl);
-    } catch (feedbackError) {
-      console.warn("WORLD SHARDS feedback is temporarily unavailable:", feedbackError);
-      feedbackHeaders = { ...headers, "x-reader-token": getVoterToken() };
-      feedbackApiUrl = supabaseUrl;
+      await loadArticleRatings(items, headers, supabaseUrl);
+    } catch (ratingError) {
+      console.warn("WORLD SHARDS article ratings are temporarily unavailable:", ratingError);
+      ratingHeaders = { ...headers, "x-reader-token": getVoterToken() };
+      ratingApiUrl = supabaseUrl;
     }
 
     const formatted = formatEditionDate(edition.edition_date);
