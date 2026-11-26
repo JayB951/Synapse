@@ -13,7 +13,7 @@ from urllib.parse import urlparse, urlunparse
 
 
 DEFAULT_TIME_WINDOW_HOURS = 72
-DEFAULT_SIMILARITY_THRESHOLD = 0.78
+DEFAULT_SIMILARITY_THRESHOLD = 0.58
 
 # Conservative stopword lists: remove common grammatical words, not topic terms.
 STOPWORDS = {
