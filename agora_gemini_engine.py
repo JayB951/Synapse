@@ -133,6 +133,66 @@ SIMULATION_SCHEMA = {
 }
 
 
+TRANSLATION_SCHEMA = {
+    "type": "OBJECT",
+    "properties": {
+        "event_title_hu": {"type": "STRING"},
+        "articles": {
+            "type": "ARRAY",
+            "items": {
+                "type": "OBJECT",
+                "properties": {
+                    "title_hu": {"type": "STRING"},
+                    "summary_hu": {"type": "STRING"},
+                },
+                "required": ["title_hu", "summary_hu"],
+            },
+        },
+    },
+    "required": ["event_title_hu", "articles"],
+}
+
+
+def translate_event_to_hungarian(event, client):
+    """Translate the international news presentation into fluent Hungarian, retaining source facts."""
+    articles = event.get("articles") or []
+    if not articles:
+        raise GeminiError("A nemzetközi hír fordításához nincs cikkanyag.")
+    system = (
+        "Fordítóként dolgozol a WORLD SHARDS magyar nyelvű magazinjának. "
+        "Fordítsd magyarra a nemzetközi esemény címét és minden cikk címét, összefoglalóját. "
+        "Ne hagyj meg idegen nyelvű címet vagy összefoglalót. Ne adj hozzá új tényt, "
+        "ne rövidíts lényeges információt, ne változtasd meg a neveket, számokat, dátumokat "
+        "vagy állítások jelentését. Természetes, pontos, szerkesztett magyar nyelvet használj. "
+        "Az articles tömb sorrendje és elemszáma egyezzen a bemenettel. Csak JSON-t adj."
+    )
+    payload = {
+        "event_title": event.get("representative_title") or event.get("title"),
+        "articles": [
+            {"title": item.get("title"), "summary": item.get("summary")}
+            for item in articles
+        ],
+    }
+    result = client.generate_json(system, payload, TRANSLATION_SCHEMA)
+    translated = result.get("articles")
+    if not isinstance(translated, list) or len(translated) != len(articles):
+        raise GeminiError("A nemzetközi hír fordítása hiányos: a cikkek száma nem egyezik.")
+    title = str(result.get("event_title_hu") or "").strip()
+    if not title:
+        raise GeminiError("A nemzetközi hír magyar címe hiányzik.")
+    clean_articles = []
+    for original, translated_article in zip(articles, translated):
+        translated_title = str(translated_article.get("title_hu") or "").strip()
+        translated_summary = str(translated_article.get("summary_hu") or "").strip()
+        if not translated_title or (original.get("summary") and not translated_summary):
+            raise GeminiError("A nemzetközi hír valamelyik címe vagy összefoglalója nem lett lefordítva.")
+        clean_articles.append({
+            "title": translated_title,
+            "summary": translated_summary,
+        })
+    return {"event_title": title, "articles": clean_articles, "language": "hu"}
+
+
 def _event_payload(event):
     return {
         "event_id": event.get("event_id"),
@@ -159,6 +219,7 @@ def select_historical_figures(event, catalog, client):
         {
             "id": item.get("id"),
             "name": item.get("name"),
+            "role": item.get("role"),
             "lifespan": item.get("lifespan"),
             "era": item.get("era"),
             "domains": item.get("domains", []),
@@ -203,6 +264,7 @@ def select_historical_figures(event, catalog, client):
             {
                 "figure_id": item["id"],
                 "name": item["name"],
+                "role": item.get("role"),
                 "score": None,
                 "matched_keywords": [],
                 "relevant_topics": item.get("topics", []),
@@ -305,6 +367,7 @@ def simulate_historical_figure(event, profile, client):
         "news": _event_payload(event),
         "historical_person": {
             "name": profile.get("name"),
+            "role": profile.get("role"),
             "lifespan": profile.get("lifespan"),
             "era": profile.get("era"),
             "domains": profile.get("domains", []),
@@ -461,6 +524,7 @@ def simulate_historical_figure(event, profile, client):
     return {
         "figure_id": profile.get("id"),
         "figure_name": profile.get("name"),
+        "figure_role": profile.get("role"),
         "event_id": event.get("event_id"),
         "event_title": event.get("representative_title") or event.get("title"),
         "historical_basis": {
