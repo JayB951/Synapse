@@ -144,9 +144,6 @@ def select_edition_items(supabase, edition_date):
             limit,
         )
 
-    closing_items = select_closing_items(supabase)
-    selected_items.extend(closing_items)
-
     for section_code, limit in AGORA_SECTION_LIMITS.items():
         candidates = get_candidates(
             supabase, section_code, limit=limit, edition_date=edition_date
@@ -154,11 +151,14 @@ def select_edition_items(supabase, edition_date):
         chosen = candidates[:limit]
         selected_items.extend(chosen)
         logger.info(
-            "%s (opcionális): %s / %s tartalom kiválasztva.",
+            "%s: %s / %s tartalom kiválasztva.",
             section_code,
             len(chosen),
             limit,
         )
+
+    closing_items = select_closing_items(supabase)
+    selected_items.extend(closing_items)
 
     return selected_items
 
