@@ -117,6 +117,8 @@ class EditorialQATests(unittest.TestCase):
         self.assertEqual(record["section_code"], "agora")
         self.assertEqual(record["status"], "candidate")
         self.assertEqual(len(record["metadata"]["news_items"]), 2)
+        self.assertIn("https://example.org/a", record["body"])
+        self.assertIn("Verified summary about alkotmány.", record["body"])
         self.assertEqual(len(record["metadata"]["historical_figures"]), 6)
         self.assertFalse(record["metadata"]["publishing_performed"])
 
