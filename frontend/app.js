@@ -11,6 +11,7 @@ const sections = [
 ];
 
 const feed = document.querySelector("#article-feed");
+const agoraFeed = document.querySelector("#agora-feed");
 const sectionNav = document.querySelector("#section-nav");
 
 
@@ -410,6 +411,9 @@ function renderSectionNavigation() {
   sectionNav.append(new Option("Válassz rovatot…", ""));
 
   const targets = [];
+  document.querySelectorAll(".agora-column[id]").forEach(column => {
+    targets.push({ id: column.id, label: column.dataset.navLabel || column.querySelector("h3")?.textContent || "AGORA" });
+  });
   feed.querySelectorAll(".article-group").forEach(group => {
     const heading = group.querySelector(".article-group-heading .eyebrow");
     const label = (heading?.textContent || group.id.replace("rovat-", "")).replace(/^\d+\s*[·.]\s*/, "").trim();
@@ -446,6 +450,79 @@ function renderSectionNavigation() {
       if (target) sectionNavigationObserver.observe(target);
     });
   }
+}
+
+function getRelatedContent(item) {
+  return Array.isArray(item.shard_content_items)
+    ? item.shard_content_items[0]
+    : item.shard_content_items;
+}
+
+function renderAgoraBody(container, body) {
+  container.replaceChildren();
+  const blocks = String(body || "").split(/\n\s*\n/).map(part => part.trim()).filter(Boolean);
+  blocks.forEach(block => {
+    const heading = block.match(/^(#{2,4})\s+(.+)$/);
+    if (heading) {
+      const level = Math.min(5, heading[1].length + 1);
+      container.append(makeElement("h" + level, "agora-body-heading", heading[2]));
+    } else {
+      const paragraph = makeElement("p", "agora-body-paragraph");
+      paragraph.textContent = block;
+      container.append(paragraph);
+    }
+  });
+  if (!blocks.length) container.append(makeElement("p", "agora-empty", "Ehhez az AGORA-rovatcikkhez nem érhető el szöveg."));
+}
+
+function renderAgora(items = []) {
+  if (!agoraFeed) return;
+  agoraFeed.replaceChildren();
+  const definitions = [
+    { code: "agora_hungary", id: "agora-hungary", title: "MAGYAR AGORA", subtitle: "A nap magyarországi eseménye" },
+    { code: "agora_world", id: "agora-world", title: "WORLD AGORA", subtitle: "A nap nemzetközi eseménye" }
+  ];
+  definitions.forEach(definition => {
+    const item = items.find(row => row.section_code === definition.code);
+    const column = makeElement("article", "agora-column");
+    column.id = definition.id;
+    column.dataset.navLabel = definition.title;
+    const top = makeElement("div", "agora-column-top");
+    top.append(makeElement("span", "agora-kicker", "AGORA · TÖRTÉNELMI NÉZŐPONTOK"));
+    top.append(makeElement("span", "agora-index", definition.code === "agora_hungary" ? "01 / 02" : "02 / 02"));
+    column.append(top, makeElement("h3", "agora-column-title", definition.title));
+    column.append(makeElement("p", "agora-column-subtitle", definition.subtitle));
+    if (!item) {
+      column.append(makeElement("p", "agora-empty", "A mai kiadásban ez az AGORA-rovat még nem érhető el."));
+    } else {
+      column.append(makeElement("h4", "agora-news-title", item.display_title || "Cím nélkül"));
+      if (item.display_summary) column.append(makeElement("p", "agora-news-summary", item.display_summary));
+      const body = makeElement("div", "agora-body");
+      renderAgoraBody(body, item.display_body);
+      column.append(body);
+      const sourceRecord = getRelatedContent(item);
+      const metadata = sourceRecord?.metadata && typeof sourceRecord.metadata === "object" ? sourceRecord.metadata : {};
+      const references = Array.isArray(metadata.source_references) ? metadata.source_references : [];
+      if (references.length) {
+        const sourceList = makeElement("div", "agora-sources");
+        sourceList.append(makeElement("span", "agora-sources-label", "FELHASZNÁLT HÍRFORRÁSOK"));
+        references.forEach(reference => {
+          if (!reference?.url) return;
+          try {
+            const url = new URL(reference.url);
+            if (url.protocol !== "https:" && url.protocol !== "http:") return;
+            const link = makeElement("a", "agora-source-link", reference.publisher || reference.title || "Eredeti cikk");
+            link.href = url.href;
+            link.target = "_blank";
+            link.rel = "noopener noreferrer";
+            sourceList.append(link);
+          } catch (_) {}
+        });
+        if (sourceList.querySelector("a")) column.append(sourceList);
+      }
+    }
+    agoraFeed.append(column);
+  });
 }
 
 function renderArticles(items = []) {
@@ -548,7 +625,7 @@ async function loadEdition(edition) {
     renderArchive(publishedEditions);
     showStatus("A kiadás betöltése", `${formatEditionDate(edition.edition_date)} – a tartalom betöltése folyamatban…`);
     const itemsResponse = await fetch(
-      `${supabaseUrl}/rest/v1/shard_edition_items?select=id,section_code,position,display_title,display_summary,display_body,processing_status,shard_content_items(source_name,source_url,source_published_at,image_url,gallery_images)&edition_id=eq.${encodeURIComponent(edition.id)}&processing_status=eq.completed&order=position.asc`,
+      `${supabaseUrl}/rest/v1/shard_edition_items?select=id,section_code,position,display_title,display_summary,display_body,processing_status,shard_content_items(source_name,source_url,source_published_at,image_url,gallery_images,metadata)&edition_id=eq.${encodeURIComponent(edition.id)}&processing_status=eq.completed&order=position.asc`,
       { headers }
     );
     if (!itemsResponse.ok) throw new Error(`Tartalomlekérdezés: HTTP ${itemsResponse.status}`);
@@ -565,8 +642,9 @@ async function loadEdition(edition) {
     const formatted = formatEditionDate(edition.edition_date);
     if (dateNode) dateNode.textContent = formatted.toLocaleUpperCase("hu-HU");
     if (headerDate) headerDate.textContent = formatted.toLocaleUpperCase("hu-HU");
-    if (countNode) countNode.textContent = `${items.length} TARTALOM · 9 ROVAT`;
+    if (countNode) countNode.textContent = `${items.length} TARTALOM · 11 ROVAT`;
     showStatus(edition.title || "A kiadás elérhető", edition.introduction || "A kiválasztott kiadás betöltődött.", `PUBLISHED · ${items.length} ITEMS`);
+    renderAgora(items);
     renderArticles(items);
     renderArchive(publishedEditions);
     document.querySelector("#edition")?.scrollIntoView({ behavior: "smooth", block: "start" });
