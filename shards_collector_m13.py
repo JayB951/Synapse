@@ -245,7 +245,7 @@ def is_valid_fundamentals_article(page):
     }:
         return False
     concept = re.search(
-        r"\b(law|theory|principle|effect|equation|theorem|force|energy|entropy|"
+        r"\b(law|theory|principle|effect|equation|theorem|force|energy|entropy|prime|ph|oxidation|natural selection|cell division|pythagorean|"
         r"gravity|evolution|photosynthesis|replication|probability|number|bond|"
         r"inflation|supply|demand|memory|conditioning|tectonics|spectrum)\b",
         title, re.I,
