@@ -1,6 +1,7 @@
 name: WORLD SHARDS - AGORA backfill for edition 2026-11-26
 # One-time backfill is triggered on integration into main.
 # Retry after automatic commentary-length repair was added.
+# The generator can repair a short response twice before the final QA gate.
 
 on:
   push:
