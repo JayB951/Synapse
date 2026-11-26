@@ -27,6 +27,11 @@ AGORA_SECTION_LIMITS = {
     "agora_hungary": 1,
     "agora_world": 1,
 }
+AGORA_DB_SECTION_CODE = "agora"
+AGORA_EDITOR_NOTES = {
+    "agora_hungary": "MAGYAR AGORA",
+    "agora_world": "WORLD AGORA",
+}
 BASE_EXPECTED_ITEMS = sum(SECTION_LIMITS.values()) + CLOSING_LIMIT
 EXPECTED_ITEMS = BASE_EXPECTED_ITEMS + sum(AGORA_SECTION_LIMITS.values())
 
@@ -55,7 +60,7 @@ def get_supabase_client():
     return create_client(url, key)
 
 
-def get_candidates(supabase, section_code, limit=100, edition_date=None):
+def get_candidates(supabase, section_code, limit=100, edition_date=None, content_type=None):
     query = (
         supabase.table("shard_content_items")
         .select(CONTENT_FIELDS)
@@ -64,7 +69,10 @@ def get_candidates(supabase, section_code, limit=100, edition_date=None):
     )
 
     if edition_date:
-        query = query.contains("metadata", {"edition_date": edition_date})
+        metadata_filter = {"edition_date": edition_date}
+        if content_type:
+            metadata_filter["content_type"] = content_type
+        query = query.contains("metadata", metadata_filter)
 
     response = (
         query
@@ -144,15 +152,19 @@ def select_edition_items(supabase, edition_date):
             limit,
         )
 
-    for section_code, limit in AGORA_SECTION_LIMITS.items():
+    for content_type, limit in AGORA_SECTION_LIMITS.items():
         candidates = get_candidates(
-            supabase, section_code, limit=limit, edition_date=edition_date
+            supabase,
+            AGORA_DB_SECTION_CODE,
+            limit=limit,
+            edition_date=edition_date,
+            content_type=content_type,
         )
         chosen = candidates[:limit]
         selected_items.extend(chosen)
         logger.info(
             "%s: %s / %s tartalom kiválasztva.",
-            section_code,
+            content_type,
             len(chosen),
             limit,
         )
@@ -187,7 +199,7 @@ def add_music_to_existing_edition(supabase, edition, edition_date):
 
     response = (
         supabase.table("shard_edition_items")
-        .select("id,section_code,position,content_item_id")
+        .select("id,section_code,position,content_item_id,editor_note")
         .eq("edition_id", edition_id)
         .order("position")
         .execute()
@@ -332,20 +344,25 @@ def add_agora_to_existing_edition(supabase, edition, edition_date):
         .execute()
     )
     existing_items = existing_response.data or []
-    present = {item.get("section_code") for item in existing_items}
+    present_types = {item.get("editor_note") for item in existing_items}
     missing = []
-    for section_code in AGORA_SECTION_LIMITS:
-        if section_code in present:
+    for content_type in AGORA_SECTION_LIMITS:
+        editor_note = AGORA_EDITOR_NOTES[content_type]
+        if editor_note in present_types:
             continue
         candidates = get_candidates(
-            supabase, section_code, limit=1, edition_date=edition_date
+            supabase,
+            AGORA_DB_SECTION_CODE,
+            limit=1,
+            edition_date=edition_date,
+            content_type=content_type,
         )
         if not candidates:
             raise RuntimeError(
-                f"Hiányzik a(z) {section_code} napi AGORA-tartalma; "
+                f"Hiányzik a(z) {content_type} napi AGORA-tartalma; "
                 "a meglévő kiadvány változatlan maradt."
             )
-        missing.append((section_code, candidates[0]))
+        missing.append((content_type, candidates[0]))
 
     if not missing:
         logger.info("Mindkét AGORA-rovat már szerepel a meglévő kiadványban.")
@@ -375,13 +392,13 @@ def add_agora_to_existing_edition(supabase, edition, edition_date):
             shifted.append((item["id"], item["position"]))
 
         links = []
-        for offset, (section_code, content) in enumerate(missing):
+        for offset, (content_type, content) in enumerate(missing):
             links.append({
                 "edition_id": edition_id,
                 "content_item_id": content["id"],
-                "section_code": section_code,
+                "section_code": AGORA_DB_SECTION_CODE,
                 "position": insert_position + offset,
-                "editor_note": "Automatikusan hozzáadott AGORA-rovat.",
+                "editor_note": AGORA_EDITOR_NOTES[content_type],
                 "processing_status": "pending",
             })
         response = supabase.table("shard_edition_items").insert(links).execute()
@@ -463,7 +480,11 @@ def create_edition_items(supabase, edition_id, selected_items):
             "content_item_id": item["id"],
             "section_code": item["section_code"],
             "position": position,
-            "editor_note": "Automatikusan kiválasztva.",
+            "editor_note": (
+                AGORA_EDITOR_NOTES.get((item.get("metadata") or {}).get("content_type"))
+                if item.get("section_code") == AGORA_DB_SECTION_CODE
+                else "Automatikusan kiválasztva."
+            ),
         })
 
     if not edition_items:
