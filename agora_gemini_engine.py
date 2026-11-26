@@ -17,7 +17,7 @@ import requests
 DEFAULT_MODEL = "gemini-3.8-flash"
 API_ROOT = "https://generativelanguage.googleapis.com/v1beta/models"
 TIMEOUT_SECONDS = 90
-MAX_ATTEMPTS = 3
+MAX_ATTEMPTS = 5
 DIMENSIONS = ("interpretation", "consequences", "response")
 
 
