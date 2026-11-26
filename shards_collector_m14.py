@@ -348,6 +348,7 @@ def build_xkcd_record(comic):
         "body": "\n".join(body_parts),
         "source_name": "xkcd",
         "source_url": source_url,
+        "image_url": image_url,
         "source_language": "en",
         "status": "candidate",
         "metadata": {
