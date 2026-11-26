@@ -176,7 +176,7 @@ def get_existing_edition(supabase, edition_date):
 
 def add_music_to_existing_edition(supabase, edition, edition_date):
     """
-    Egyszeri, idempotens visszatöltés: a mai 13 elemű draft kiadványhoz
+    Egyszeri, idempotens visszatöltés: a meglévő draft kiadványhoz
     hozzáadja a mai Music of the Day rekordot a záróelemek elé.
     """
     edition_id = edition["id"]
