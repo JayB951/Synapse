@@ -294,12 +294,28 @@ def simulate_historical_figure(event, profile, client):
 
     # Retry structurally short commentaries twice before blocking the edition.
     def validate_all_dimensions():
+        if result.get("direct_quote_used") is True:
+            raise GeminiError(f"{profile.get('name')}: a generált szöveg tiltott szó szerinti idézetet tartalmaz.")
+        if not str(result.get("historical_disclosure") or "").strip():
+            raise GeminiError(f"{profile.get('name')}: hiányzik a hipotetikus rekonstrukció jelölése.")
         for dimension in DIMENSIONS:
-            _validate_long_form_commentary(
-                str(by_id[dimension].get("draft_text") or ""),
-                profile.get("name"),
-                dimension,
-            )
+            section = by_id[dimension]
+            draft = str(section.get("draft_text") or "").strip()
+            notes = section.get("evidence_notes")
+            cited_titles = section.get("source_titles")
+            if not draft or not isinstance(notes, list) or not notes:
+                raise GeminiError(f"{profile.get('name')}/{dimension}: hiányzó szöveg vagy bizonyítéki megjegyzés.")
+            if not isinstance(cited_titles, list) or not cited_titles:
+                raise GeminiError(f"{profile.get('name')}/{dimension}: hiányzó történelmi forrásmegjelölés.")
+            if any(title not in source_titles for title in cited_titles):
+                raise GeminiError(f"{profile.get('name')}/{dimension}: nem engedélyezett történelmi forrás.")
+            if not any(
+                item.get("title") in cited_titles
+                and str(item.get("url") or "").startswith("https://")
+                for item in allowed_sources
+            ):
+                raise GeminiError(f"{profile.get('name')}/{dimension}: nincs érvényes történelmi forráslink.")
+            _validate_long_form_commentary(draft, profile.get("name"), dimension)
 
     try:
         validate_all_dimensions()
