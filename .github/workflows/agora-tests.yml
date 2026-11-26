@@ -1,14 +1,16 @@
-name: AGORA – RSS Collector Tests
+name: AGORA – RSS Collector and Pipeline Tests
 
 on:
   push:
-    branches: [main]
+    branches: [main, "feature/agora-m2-ranking-pipeline"]
     paths:
       - "agora_rss_collector.py"
       - "agora_sources.json"
       - "test_agora_rss_collector.py"
       - "agora_event_clustering.py"
       - "test_agora_event_clustering.py"
+      - "agora_pipeline.py"
+      - "test_agora_pipeline.py"
       - ".github/workflows/agora-tests.yml"
   workflow_dispatch:
 
@@ -16,7 +18,7 @@ permissions:
   contents: read
 
 jobs:
-  agora-rss-tests:
+  agora-tests:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -34,5 +36,7 @@ jobs:
         run: python -m unittest test_agora_rss_collector.py -v
       - name: Run offline event clustering tests
         run: python -m unittest test_agora_event_clustering.py -v
+      - name: Run offline pipeline and ranking tests
+        run: python -m unittest test_agora_pipeline.py -v
       - name: Python syntax check
-        run: python -m py_compile agora_rss_collector.py test_agora_rss_collector.py agora_event_clustering.py test_agora_event_clustering.py
+        run: python -m py_compile agora_rss_collector.py test_agora_rss_collector.py agora_event_clustering.py test_agora_event_clustering.py agora_pipeline.py test_agora_pipeline.py
