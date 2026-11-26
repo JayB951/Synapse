@@ -22,7 +22,7 @@ SECTION_LIMITS = {
 }
 
 CLOSING_LIMIT = 2
-# Optional sections never make the existing daily edition fail when absent.
+# Both AGORA sections are required for every new 16-item edition.
 AGORA_SECTION_LIMITS = {
     "agora_hungary": 1,
     "agora_world": 1,
