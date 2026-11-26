@@ -2,7 +2,7 @@ name: AGORA – RSS Collector and Pipeline Tests
 
 on:
   push:
-    branches: [main, "feature/agora-m2-ranking-pipeline"]
+    branches: [main, "feature/agora-m2-ranking-pipeline", "feature/agora-gemini-m1"]
     paths:
       - "agora_rss_collector.py"
       - "agora_sources.json"
@@ -15,6 +15,8 @@ on:
       - "agora_historical_matching.py"
       - "agora_commentary_briefs.py"
       - "agora_daily_editorial.py"
+      - "agora_gemini_engine.py"
+      - "test_agora_gemini_engine.py"
       - "agora_historical_figures_testdata.py"
       - "test_agora_historical_content.py"
       - "test_agora_daily_editorial.py"
@@ -51,9 +53,9 @@ jobs:
         run: python -m unittest test_agora_event_clustering.py -v
       - name: Run offline pipeline and ranking tests
         run: python -m unittest test_agora_pipeline.py -v
-      - name: Run historical matching and commentary brief tests
-        run: python -m unittest test_agora_historical_content.py test_agora_daily_editorial.py test_agora_m5_m6.py -v
+      - name: Run historical matching, Gemini engine and editorial tests
+        run: python -m unittest test_agora_gemini_engine.py test_agora_historical_content.py test_agora_daily_editorial.py test_agora_m5_m6.py -v
       - name: Validate historical figure catalogue
         run: python -c "import json; from agora_historical_matching import validate_catalog; validate_catalog(json.load(open('agora_historical_figures.json', encoding='utf-8')))"
       - name: Python syntax check
-        run: python -m py_compile agora_rss_collector.py test_agora_rss_collector.py agora_event_clustering.py test_agora_event_clustering.py agora_pipeline.py test_agora_pipeline.py agora_historical_matching.py agora_commentary_briefs.py agora_daily_editorial.py agora_editorial_qa.py agora_world_shards_adapter.py test_agora_historical_content.py test_agora_daily_editorial.py test_agora_m5_m6.py edition_builder.py edition_processor.py
+        run: python -m py_compile agora_rss_collector.py test_agora_rss_collector.py agora_event_clustering.py test_agora_event_clustering.py agora_pipeline.py test_agora_pipeline.py agora_historical_matching.py agora_commentary_briefs.py agora_daily_editorial.py agora_gemini_engine.py test_agora_gemini_engine.py agora_editorial_qa.py agora_world_shards_adapter.py test_agora_historical_content.py test_agora_daily_editorial.py test_agora_m5_m6.py edition_builder.py edition_processor.py
