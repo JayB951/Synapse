@@ -25,7 +25,7 @@ from agora_news_selection import (
 ENGINE_VERSION = "AGORA_DAILY_EDITORIAL_M4.3"
 
 
-def _has_independent_coverage(event):
+def _has_source_url(event):
     articles = event.get("articles") or []
     publishers = {
         str(article.get("source_code") or article.get("source_name") or "").strip()
@@ -37,7 +37,7 @@ def _has_independent_coverage(event):
         for article in articles
         if str(article.get("url") or "").startswith(("http://", "https://"))
     }
-    return len(publishers) >= 2 and len(urls) >= 1
+    return len(publishers) >= 1 and len(urls) >= 1
 
 
 def build_editorial_output(pipeline, catalog, figure_limit=3, gemini_client=None):
@@ -55,13 +55,13 @@ def build_editorial_output(pipeline, catalog, figure_limit=3, gemini_client=None
                 candidates = [
                     item for item in shortlist
                     if item.get("eligible_for_daily_proposal") is True
-                    and _has_independent_coverage(item)
+                    and _has_source_url(item)
                 ][:25]
             else:
                 fallback_id = selection.get("event_id")
                 candidates = (
                     [groups[fallback_id]]
-                    if fallback_id in groups and _has_independent_coverage(groups[fallback_id])
+                    if fallback_id in groups and _has_source_url(groups[fallback_id])
                     else []
                 )
             selector = (
