@@ -46,7 +46,13 @@ def build_content_item(pipeline, editorial, qa_report, edition_date):
                 })
         all_sources.extend(sources)
         scores.append(int(event.get("score") or 0))
-        title = event.get("representative_title") or selection.get("title") or "Cím nélküli esemény"
+        translation = event.get("hungarian_translation") if scope == "international" else None
+        title = (
+            (translation or {}).get("event_title")
+            or event.get("representative_title")
+            or selection.get("title")
+            or "Cím nélküli esemény"
+        )
         event_records.append({
             "scope": scope,
             "event_id": event_id,
@@ -57,12 +63,18 @@ def build_content_item(pipeline, editorial, qa_report, edition_date):
         })
         body_parts.extend([f"## {'Magyarország' if scope == 'hungary' else 'Nemzetközi'} esemény",
                            title])
-        for article in articles:
+        for article_index, article in enumerate(articles):
             publisher = article.get("source_name") or article.get("source_code") or "Hírforrás"
-            article_title = article.get("title") or title
-            if article.get("summary"):
+            translated_article = (
+                (translation or {}).get("articles", [])[article_index]
+                if translation and article_index < len((translation or {}).get("articles", []))
+                else {}
+            )
+            article_title = translated_article.get("title") or article.get("title") or title
+            article_summary = translated_article.get("summary") or article.get("summary")
+            if article_summary:
                 body_parts.append(f"**{publisher}: {article_title}**")
-                body_parts.append(article["summary"])
+                body_parts.append(article_summary)
             if article.get("url"):
                 body_parts.append(f"Forrás: {article['url']}")
         for brief in package.get("briefs", []):
@@ -71,7 +83,12 @@ def build_content_item(pipeline, editorial, qa_report, edition_date):
                 "figure_id": brief.get("figure_id"),
                 "name": brief.get("figure_name"),
             })
-            body_parts.extend([f"### {brief.get('figure_name')} – történelmi nézőpont"])
+            role = str(brief.get("figure_role") or "").strip()
+            body_parts.extend([
+                f"### {brief.get('figure_name')}",
+                f"**{role}**" if role else "",
+                "Történelmi nézőpont",
+            ])
             for dimension in DIMENSIONS:
                 section = next((s for s in brief.get("sections", [])
                                 if s.get("id") == dimension), None)
