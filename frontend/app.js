@@ -652,7 +652,7 @@ async function loadEdition(edition) {
     if (sourceIds.length) {
       const sourceFilter = `in.(${sourceIds.join(",")})`;
       const sourceResponse = await fetch(
-        `${supabaseUrl}/rest/v1/shard_content_items?select=id,source_name,source_url,source_published_at,image_url,gallery_images,metadata&id=${encodeURIComponent(sourceFilter)}`,
+        `${supabaseUrl}/rest/v1/shard_content_items?select=id,title,summary,body,source_name,source_url,source_published_at,image_url,gallery_images,metadata&id=${encodeURIComponent(sourceFilter)}`,
         { headers }
       );
       if (sourceResponse.ok) {
@@ -669,6 +669,15 @@ async function loadEdition(edition) {
         items.forEach(item => { item.shard_content_items = null; });
       }
     }
+    // A published edition can contain rows still marked pending/failed after
+    // a partial editorial run. Keep those rows visible using their source text
+    // instead of silently filtering the entire section out.
+    items.forEach(item => {
+      const source = getRelatedContent(item);
+      if (!item.display_title) item.display_title = source?.title || "Feldolgozás alatt";
+      if (!item.display_summary) item.display_summary = source?.summary || "";
+      if (!item.display_body) item.display_body = source?.body || "";
+    });
 
     try {
       await loadArticleRatings(items, headers, supabaseUrl);
