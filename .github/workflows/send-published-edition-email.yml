@@ -1,0 +1,61 @@
+name: WORLD SHARDS - Send Published Edition Email
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_send:
+        description: "A mai published kiadás tényleges elküldésének megerősítése"
+        required: true
+        type: choice
+        options:
+          - "no"
+          - "yes"
+        default: "no"
+
+permissions:
+  contents: read
+
+jobs:
+  send-published-edition:
+    if: inputs.confirm_send == 'yes'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Repository letoltese
+        uses: actions/checkout@v4
+
+      - name: Python beallitasa
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Fuggosegek telepitese
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install --no-cache-dir -r requirements.txt
+
+      - name: E-mail beallitasok ellenorzese
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          MAIL_USERNAME: ${{ secrets.MAIL_USERNAME }}
+          MAIL_PASSWORD: ${{ secrets.MAIL_PASSWORD }}
+          NOTIFY_EMAIL: ${{ secrets.WORLD_SHARDS_NOTIFY_EMAIL }}
+        run: |
+          test -n "$SUPABASE_URL"
+          test -n "$SUPABASE_SECRET_KEY"
+          test -n "$MAIL_USERNAME"
+          test -n "$MAIL_PASSWORD"
+          test -n "$NOTIFY_EMAIL"
+
+      - name: E-mail tartalomtesztek
+        run: python -m unittest test_send_edition_email.py -v
+
+      - name: Mai publikalt kiadas elkuldese
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          MAIL_USERNAME: ${{ secrets.MAIL_USERNAME }}
+          MAIL_PASSWORD: ${{ secrets.MAIL_PASSWORD }}
+          NOTIFY_EMAIL: ${{ secrets.WORLD_SHARDS_NOTIFY_EMAIL }}
+        run: python send_edition_email.py
