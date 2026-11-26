@@ -456,6 +456,32 @@ SECTION_STYLES = {
             "tárgyszerű, elemző és jól olvasható."
         )
     },
+    "agora_hungary": {
+        "name": "MAGYAR AGORA",
+        "description": (
+            "A magyar közélet és Magyarország szempontjából jelentős esemény "
+            "történelmi elemzése. Őrizd meg az eredeti hírt és minden forráshivatkozást. "
+            "Pontosan három kiválasztott történelmi személyiség nézőpontját mutasd be, "
+            "személyenként külön Értelmezés, Következmények és Megoldás résszel. "
+            "MINDEN kommentárrész legalább négy összetett mondatból álljon; ne rövidítsd "
+            "vázlattá, ne hagyj ki személyt vagy dimenziót. A történelmi nézőpont "
+            "hipotetikus rekonstrukció, nem szó szerinti idézet. Ne találj ki tényt "
+            "vagy forrást. A szöveg legyen magyar, részletes és elemző."
+        )
+    },
+    "agora_world": {
+        "name": "WORLD AGORA",
+        "description": (
+            "Nemzetközi jelentőségű esemény történelmi elemzése. Őrizd meg az eredeti "
+            "hírt és minden forráshivatkozást. Pontosan három kiválasztott történelmi "
+            "személyiség nézőpontját mutasd be, személyenként külön Értelmezés, "
+            "Következmények és Megoldás résszel. MINDEN kommentárrész legalább négy "
+            "összetett mondatból álljon; ne rövidítsd vázlattá, ne hagyj ki személyt "
+            "vagy dimenziót. A történelmi nézőpont hipotetikus rekonstrukció, nem "
+            "szó szerinti idézet. Ne találj ki tényt vagy forrást. A szöveg legyen "
+            "magyar, részletes és elemző."
+        )
+    },
 
     "closing": {
         "name": "Closing",
