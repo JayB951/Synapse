@@ -1,0 +1,4 @@
+project_id = "world-shards"
+
+[functions.email-rating]
+verify_jwt = false
