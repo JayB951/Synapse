@@ -80,10 +80,32 @@ def validate_edition(edition, items):
 def safe_source_url(value):
     if not value:
         return None
-    parsed = urlparse(value)
+    parsed = urlparse(str(value))
     if parsed.scheme not in ("http", "https") or not parsed.netloc:
         return None
-    return value
+    return str(value)
+
+
+def get_image_details(source):
+    """Return a safe externally hosted image URL and a useful alt description."""
+    metadata = source.get("metadata") or {}
+    candidates = [
+        source.get("image_url"),
+        metadata.get("image_url"),
+        metadata.get("artwork_url"),
+    ]
+    image_url = next(
+        (safe_source_url(value) for value in candidates if safe_source_url(value)),
+        None,
+    )
+    alt_text = (
+        metadata.get("alt_text")
+        or metadata.get("alt")
+        or metadata.get("comic_title")
+        or source.get("source_name")
+        or "A cikkhez tartozó kép"
+    )
+    return image_url, str(alt_text)
 
 
 def build_email_bodies(edition, items, source_by_id):
@@ -115,8 +137,12 @@ def build_email_bodies(edition, items, source_by_id):
         source = source_by_id.get(item.get("content_item_id"), {})
         source_name = source.get("source_name") or ""
         source_url = safe_source_url(source.get("source_url"))
+        image_url, image_alt = get_image_details(source)
 
-        plain.extend([title, "-" * min(len(title), 50), summary, "", body, ""])
+        plain.extend([title, "-" * min(len(title), 50), summary, ""])
+        if image_url:
+            plain.extend([f"Kép: {image_url}", ""])
+        plain.extend([body, ""])
         if source_name or source_url:
             source_line = "Forrás: " + source_name
             if source_url:
@@ -136,11 +162,22 @@ def build_email_bodies(edition, items, source_by_id):
                 source_html += html.escape(source_name)
             source_html += "</p>"
 
+        image_html = ""
+        if image_url:
+            image_html = (
+                '<div style="margin:14px 0 18px;text-align:center;">'
+                f'<img src="{html.escape(image_url, quote=True)}" '
+                f'alt="{html.escape(image_alt, quote=True)}" '
+                'style="display:block;width:100%;max-width:680px;height:auto;'
+                'margin:0 auto;border-radius:6px;" />'
+                '</div>'
+            )
+
         html_sections.append(
             '<article style="margin:0 0 26px;padding:0 0 18px;border-bottom:1px solid #e6e1d8;">'
             f'<h3 style="margin:0 0 8px;color:#182538;font-size:19px;">{html.escape(title)}</h3>'
             f'<p style="margin:0 0 14px;color:#555;font-style:italic;line-height:1.5;">{html.escape(summary)}</p>'
-            f'{body_paragraphs}{source_html}</article>'
+            f'{image_html}{body_paragraphs}{source_html}</article>'
         )
 
     plain.extend([
@@ -202,7 +239,7 @@ def load_published_edition(supabase):
     if content_ids:
         source_response = (
             supabase.table("shard_content_items")
-            .select("id,source_name,source_url")
+            .select("id,source_name,source_url,image_url,metadata")
             .in_("id", content_ids)
             .execute()
         )
