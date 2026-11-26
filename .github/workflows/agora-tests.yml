@@ -47,7 +47,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install dependencies
-        run: python -m pip install --no-cache-dir requests
+        run: python -m pip install --no-cache-dir requests supabase
       - name: Validate source registry JSON
         run: python -m json.tool agora_sources.json > /dev/null
       - name: Run offline RSS parser tests
@@ -58,6 +58,8 @@ jobs:
         run: python -m unittest test_agora_pipeline.py -v
       - name: Run historical matching, Gemini engine and editorial tests
         run: python -m unittest test_agora_gemini_engine.py test_agora_historical_content.py test_agora_daily_editorial.py test_agora_m5_m6.py test_agora_automation.py -v
+      - name: Validate 16-item publication gate
+        run: python -m unittest tests.test_publish_edition -v
       - name: Validate historical figure catalogue
         run: python -c "import json; from agora_historical_matching import validate_catalog; validate_catalog(json.load(open('agora_historical_figures.json', encoding='utf-8')))"
       - name: Python syntax check
