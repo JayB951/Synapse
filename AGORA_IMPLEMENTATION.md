@@ -130,17 +130,39 @@ Futtatás:
 A kézi minőségellenőrzés, a pontozási küszöbök valós feedeken történő hangolása és a 14 napos próbaüzem továbbra is külön feladat.
 
 ### M3 – Történelmi személyiségek adatbázisa
-- Személyiségek strukturált profilja.
-- Korszak, szakterület, fő művek, dokumentált alapelvek.
-- Forrásjegyzék és relevanciacímkék.
-- Személyiségek ismétlődésének kezelése.
+
+Állapot: első strukturált katalógus és determinisztikus illesztő elkészült.
+
+- [x] 18 induló történelmi személyiség strukturált profilja.
+- [x] Korszak, szakterület, relevanciatémák, keresőkifejezések és dokumentált alapelvek.
+- [x] Művek, archívumok és forráslinkek profilhoz kötése.
+- [x] Történeti korlátok és anakronizmus-veszélyek rögzítése.
+- [x] Cím + elérhető cikkösszefoglaló alapján magyarázható kulcsszavas illesztés.
+- [x] Legfeljebb 3 személy kiválasztása; nincs kötelező feltöltés gyenge egyezés esetén.
+- [ ] Katalógus bővítése és forráslinkek egyenkénti szerkesztői ellenőrzése.
+- [ ] Ismétlődés-rotáció tartós naplózása.
+
+A kiválasztás témakapcsolatot jelez, nem politikai egyetértést vagy támogatást. A kulcsszavas pontszám előzetes relevanciajelzés, minden személyi hozzárendelés emberi ellenőrzést igényel.
 
 ### M4 – Kommentármotor
-- Esemény–személyiség relevancia.
-- Háromrészes kommentárváz.
-- Történelmi forrásokhoz kötött állítások.
-- Hipotetikus rekonstrukció egyértelmű jelölése.
-- Kitalált idézetek és forrás nélküli történelmi állítások kizárása.
+
+Állapot: strukturált kommentár-előkészítő elkészült; kész szöveg automatikus generálása még nincs bekapcsolva.
+
+- [x] Személyenként három rész: értelmezés, következmények, megoldási irány.
+- [x] Minden részhez kutatási kérdések és profilhoz kötött történelmi forráslinkek.
+- [x] Dokumentált alapelvek és személyhez kötött történeti korlátok átadása.
+- [x] Hipotetikus rekonstrukció kötelező jelölése.
+- [x] Szó szerinti idézet csak pontos forrás és hely megadásával használható.
+- [x] Mai tényállításokhoz aktuális hírforrás, történelmi állításokhoz történeti forrás szükséges.
+- [x] Nincs kitalált idézet, automatikus publikálás vagy fizetős AI/API-függőség.
+- [ ] Szerkesztői kutatás és a kommentárszövegek megírása/generálása.
+- [ ] Történeti források és minden állítás tételes ellenőrzése.
+
+Futtatás:
+`python agora_pipeline.py --output agora_candidates.json`
+`python agora_daily_editorial.py --input agora_candidates.json --output agora_editorial.json`
+
+A két parancs a napi hírjavaslatokat, a személyi hozzárendeléseket és a kommentár-vázakat előkészíti. A kommentár-részek üres kutatási vázak, nem publikálható szövegek.
 
 ### M5 – Szerkesztési minőségbiztosítás
 - Tényellenőrzési kapuk.
