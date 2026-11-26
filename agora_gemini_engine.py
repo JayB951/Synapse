@@ -292,44 +292,52 @@ def simulate_historical_figure(event, profile, client):
     if set(by_id) != set(DIMENSIONS):
         raise GeminiError(f"{profile.get('name')}: pontosan három előírt kommentárrész szükséges.")
 
-    # Automatically repair a structurally short model response once before blocking the edition.
+    # Retry structurally short commentaries twice before blocking the edition.
+    def validate_all_dimensions():
+        for dimension in DIMENSIONS:
+            _validate_long_form_commentary(
+                str(by_id[dimension].get("draft_text") or ""),
+                profile.get("name"),
+                dimension,
+            )
+
     try:
-        for dimension in DIMENSIONS:
-            _validate_long_form_commentary(
-                str(by_id[dimension].get("draft_text") or ""),
-                profile.get("name"),
-                dimension,
-            )
+        validate_all_dimensions()
     except GeminiError as validation_error:
-        repair_system = system + (
-            " KÖTELEZŐ JAVÍTÁS: az előző válasz nem teljesítette a mondatszerkezeti "
-            "követelményt. Írd újra mindhárom részt úgy, hogy mindegyik legalább négy "
-            "különálló, teljes összetett mondatból és legalább 60 szóból álljon. "
-            "Minden mondat külön, ponttal lezárt mondat legyen, és mindegyik tartalmazzon "
-            "kötőszót vagy alárendelő kapcsolatot. Ne rövidíts, ne vond össze a mondatokat."
-        )
-        repair_payload = {
-            **payload,
-            "previous_generation": result,
-            "validation_feedback": str(validation_error),
-            "repair_instruction": (
-                "Javítsd a hibásan rövid kommentárrészeket; a három rész mindegyike "
-                "legalább négy összetett mondatból és 60 szóból álljon."
-            ),
-        }
-        result = client.generate_json(repair_system, repair_payload, SIMULATION_SCHEMA)
-        sections = result.get("sections")
-        if not isinstance(sections, list):
-            raise GeminiError(f"{profile.get('name')}: a javító generálás nem adott szakaszlistát.")
-        by_id = {item.get("id"): item for item in sections if isinstance(item, dict)}
-        if set(by_id) != set(DIMENSIONS):
-            raise GeminiError(f"{profile.get('name')}: a javító generálásból hiányzik egy kommentárrész.")
-        for dimension in DIMENSIONS:
-            _validate_long_form_commentary(
-                str(by_id[dimension].get("draft_text") or ""),
-                profile.get("name"),
-                dimension,
+        for repair_attempt in range(2):
+            repair_system = system + (
+                " KÖTELEZŐ JAVÍTÁS: az előző válasz nem teljesítette a mondatszerkezeti "
+                "követelményt. Írd újra mindhárom részt úgy, hogy mindegyik legalább négy "
+                "különálló, teljes összetett mondatból és legalább 60 szóból álljon. "
+                "Minden mondat külön, ponttal lezárt mondat legyen, és mindegyik tartalmazzon "
+                "kötőszót vagy alárendelő kapcsolatot. Ne rövidíts, ne vond össze a mondatokat. "
+                "Minden egyes mondatban használj legalább egy ilyen kapcsolatot: és, de, mert, "
+                "miközben, ezért, ugyanakkor, noha, amely, így, azonban."
             )
+            repair_payload = {
+                **payload,
+                "previous_generation": result,
+                "validation_feedback": str(validation_error),
+                "repair_attempt": repair_attempt + 1,
+                "repair_instruction": (
+                    "Javítsd újra a hibás kommentárrészeket; minden dimenzió legalább "
+                    "négy különálló összetett mondatból és 60 szóból álljon."
+                ),
+            }
+            result = client.generate_json(repair_system, repair_payload, SIMULATION_SCHEMA)
+            sections = result.get("sections")
+            if not isinstance(sections, list):
+                raise GeminiError(f"{profile.get('name')}: a javító generálás nem adott szakaszlistát.")
+            by_id = {item.get("id"): item for item in sections if isinstance(item, dict)}
+            if set(by_id) != set(DIMENSIONS):
+                raise GeminiError(f"{profile.get('name')}: a javító generálásból hiányzik egy kommentárrész.")
+            try:
+                validate_all_dimensions()
+                break
+            except GeminiError as next_error:
+                validation_error = next_error
+        else:
+            raise validation_error
 
     news_source_urls = sorted({
         item.get("url") for item in event.get("articles", [])
