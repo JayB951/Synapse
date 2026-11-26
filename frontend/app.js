@@ -114,9 +114,18 @@ function createRatingWidget(itemId, className = "article-rating") {
     button.addEventListener("click", () => saveArticleRating(itemId, score, widget));
     stars.append(button);
   }
-  const summary = makeElement("span", "rating-summary", "Még nincs értékelés");
+  const current = articleRatings.get(itemId) || 0;
+  stars.querySelectorAll(".rating-star").forEach(button => {
+    const score = Number(button.dataset.ratingScore);
+    button.classList.toggle("is-selected", score <= current);
+    button.setAttribute("aria-pressed", String(score === current));
+  });
+  const storedSummary = ratingSummaries.get(itemId);
+  const summaryText = storedSummary && storedSummary.count
+    ? `Átlag: ${Number(storedSummary.average).toFixed(2)} / 5 · ${storedSummary.count} értékelés`
+    : "Még nincs értékelés";
+  const summary = makeElement("span", "rating-summary", summaryText);
   widget.append(label, stars, summary);
-  syncRatingWidget(itemId);
   return widget;
 }
 
