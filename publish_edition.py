@@ -20,8 +20,7 @@ EXPECTED_COUNTS = {
     "unsolved": 1,
     "music_of_the_day": 1,
     "closing": 2,
-    "agora_hungary": 1,
-    "agora_world": 1,
+    "agora": 2,
 }
 EXPECTED_TOTAL = sum(EXPECTED_COUNTS.values())
 
