@@ -59,5 +59,24 @@ class EditionEmailTests(unittest.TestCase):
             self.assertIn(f"Teljes szöveg {number}", plain)
             self.assertIn(f"Teljes szöveg {number}", rendered)
 
+    def test_image_is_rendered_in_html_and_linked_in_plain_text(self):
+        sources = {
+            "content-1": {
+                "source_name": "Art Institute",
+                "source_url": "https://example.org/art",
+                "image_url": "https://images.example.org/artwork.jpg",
+                "metadata": {"alt_text": "Festmény részlete"},
+            }
+        }
+        plain, rendered, _ = build_email_bodies(self.edition, self.items, sources)
+        self.assertIn("Kép: https://images.example.org/artwork.jpg", plain)
+        self.assertIn('src="https://images.example.org/artwork.jpg"', rendered)
+        self.assertIn('alt="Festmény részlete"', rendered)
+
+    def test_rejects_non_http_image_urls(self):
+        from send_edition_email import get_image_details
+        image, _ = get_image_details({"image_url": "javascript:alert(1)"})
+        self.assertIsNone(image)
+
 if __name__ == "__main__":
     unittest.main()
