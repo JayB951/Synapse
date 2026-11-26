@@ -130,8 +130,7 @@ def main():
     catalog = json.loads(Path(args.catalog).read_text(encoding="utf-8"))
     client = GeminiClient() if args.use_gemini else None
     result = build_editorial_output(pipeline, catalog, args.figure_limit, client)
-    rendered = json.dumps(result, ensure_ascii=False, indent=2) + "
-"
+    rendered = json.dumps(result, ensure_ascii=False, indent=2) + "\n"
     if args.output:
         Path(args.output).write_text(rendered, encoding="utf-8")
     else:
