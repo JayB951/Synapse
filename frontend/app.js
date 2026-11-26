@@ -468,11 +468,22 @@ function renderAgoraBody(container, body) {
       container.append(makeElement("h" + level, "agora-body-heading", heading[2]));
     } else {
       const paragraph = makeElement("p", "agora-body-paragraph");
-      paragraph.textContent = block.replace(/\\*\\*/g, "");
+      paragraph.textContent = block.replace(/\*\*/g, "");
       container.append(paragraph);
     }
   });
   if (!blocks.length) container.append(makeElement("p", "agora-empty", "Ehhez az AGORA-rovatcikkhez nem érhető el szöveg."));
+}
+
+function getAgoraContentType(item) {
+  const source = getRelatedContent(item);
+  const metadata = source?.metadata && typeof source.metadata === "object" ? source.metadata : {};
+  if (metadata.content_type === "agora_hungary" || metadata.content_type === "agora_world") {
+    return metadata.content_type;
+  }
+  if (source?.source_name === "MAGYAR AGORA") return "agora_hungary";
+  if (source?.source_name === "WORLD AGORA") return "agora_world";
+  return null;
 }
 
 function renderAgora(items = []) {
@@ -483,7 +494,7 @@ function renderAgora(items = []) {
     { code: "agora_world", id: "agora-world", title: "WORLD AGORA", subtitle: "A nap nemzetközi eseménye" }
   ];
   definitions.forEach(definition => {
-    const item = items.find(row => row.section_code === definition.code);
+    const item = items.find(row => getAgoraContentType(row) === definition.code);
     const column = makeElement("article", "agora-column");
     column.id = definition.id;
     column.dataset.navLabel = definition.title;
