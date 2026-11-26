@@ -133,7 +133,7 @@ def main():
     github_output = os.getenv("GITHUB_OUTPUT")
     if github_output:
         with open(github_output, "a", encoding="utf-8") as output:
-            output.write("published=true\\n")
+            output.write("published=true\n")
 
 
 if __name__ == "__main__":
