@@ -204,13 +204,15 @@ class GeminiEngineTests(unittest.TestCase):
         result = simulate_historical_figure(event, PROFILE, FakeClient([simulation_response()]))
         self.assertIn("http://news.example/second", result["sections"][0]["news_source_urls"])
 
-    def test_simulator_regenerates_missing_evidence_notes(self):
-        invalid = simulation_response()
-        invalid["sections"][0]["evidence_notes"] = []
-        client = FakeClient([invalid, simulation_response()])
+    def test_simulator_derives_missing_evidence_notes_from_catalogue(self):
+        response = simulation_response()
+        response["sections"][0]["evidence_notes"] = []
+        response["sections"][0]["source_titles"] = []
+        client = FakeClient([response])
         result = simulate_historical_figure(EVENT, PROFILE, client)
-        self.assertEqual(len(client.calls), 2)
-        self.assertEqual(len(result["sections"]), 3)
+        self.assertEqual(len(client.calls), 1)
+        self.assertTrue(result["sections"][0]["evidence_notes"])
+        self.assertTrue(result["sections"][0]["source_urls"])
 
     def test_simulator_rejects_unlisted_historical_source(self):
         response = simulation_response()
