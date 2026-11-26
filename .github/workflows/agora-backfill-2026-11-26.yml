@@ -1,4 +1,5 @@
 name: WORLD SHARDS - AGORA backfill for edition 2026-11-26
+# One-time backfill is triggered on integration into main.
 
 on:
   push:
