@@ -26,6 +26,7 @@ on:
       - "agora_automation.py"
       - "test_agora_m5_m6.py"
       - "test_agora_automation.py"
+      - "tests/test_publish_edition.py"
       - "edition_builder.py"
       - "edition_processor.py"
       - ".github/workflows/agora-tests.yml"
