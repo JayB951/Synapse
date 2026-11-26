@@ -1,0 +1,27 @@
+name: WORLD SHARDS - Email Delivery Test
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  email-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Repository letoltese
+        uses: actions/checkout@v4
+
+      - name: Python beallitasa
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: SMTP e-mail teszt
+        env:
+          MAIL_USERNAME: ${{ secrets.MAIL_USERNAME }}
+          MAIL_PASSWORD: ${{ secrets.MAIL_PASSWORD }}
+          WORLD_SHARDS_NOTIFY_EMAIL: ${{ secrets.WORLD_SHARDS_NOTIFY_EMAIL }}
+        run: python test_email_delivery.py
