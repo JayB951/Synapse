@@ -16,6 +16,8 @@ def make_package(scope, event_id, keyword):
         figures.append({
             "figure_id": figure_id,
             "name": f"Historical Figure {scope} {i}",
+            "figure_name": f"Historical Figure {scope} {i}",
+            "figure_role": "történész és közéleti gondolkodó",
             "sections": [
                 {"id": dimension, "label": dimension.title(),
                  "draft_text": f"Reviewed {dimension} text for {keyword}.",
@@ -68,6 +70,16 @@ def fixture():
                  "title": title, "url": "https://example.net/b", "published_at": NOW.isoformat(),
                  "summary": f"Independent summary about {keyword}."},
             ],
+            **({
+                "hungarian_translation": {
+                    "language": "hu",
+                    "event_title": "Magyarra fordított nemzetközi esemény",
+                    "articles": [
+                        {"title": "Lefordított cím A", "summary": "Lefordított összefoglaló A."},
+                        {"title": "Lefordított cím B", "summary": "Lefordított összefoglaló B."},
+                    ],
+                }
+            } if scope == "international" else {}),
         })
     pipeline = {"generated_at": NOW.isoformat(), "groups": groups}
     editorial = {"daily_editorial": {
@@ -141,6 +153,9 @@ class EditorialQATests(unittest.TestCase):
         self.assertEqual(record["status"], "candidate")
         self.assertEqual(len(record["metadata"]["news_items"]), 2)
         self.assertIn("https://example.org/a", record["body"])
+        self.assertIn("Lefordított cím A", record["body"])
+        self.assertIn("Lefordított összefoglaló A.", record["body"])
+        self.assertIn("történész és közéleti gondolkodó", record["body"])
         self.assertIn("Verified summary about alkotmány.", record["body"])
         self.assertEqual(len(record["metadata"]["historical_figures"]), 6)
         self.assertFalse(record["metadata"]["publishing_performed"])
