@@ -170,16 +170,45 @@ A két parancs a napi hírjavaslatokat, a személyi hozzárendeléseket és a ko
 A `.github/workflows/agora-daily-preview.yml` workflow kézzel indítható a GitHub Actions felületéről. Lekéri az aktuális RSS-jelölteket, elkészíti a rangsort, hozzárendeli a történelmi személyiségeket, majd 7 napig elérhető ZIP-artifactként elmenti az előnézeti JSON-fájlokat. Nem publikál és nem ír adatbázisba.
 
 ### M5 – Szerkesztési minőségbiztosítás
-- Tényellenőrzési kapuk.
-- Források és bizonytalanságok ellenőrzése.
-- Tartalmi ismétlődés és személyiség-rotáció.
-- Tesztkiadások, publikálás nélkül.
+
+Állapot: determinisztikus QA-kapuk és emberi ellenőrzési sablon elkészült.
+
+- [x] Pontosan két külön esemény ellenőrzése: egy magyar és egy nemzetközi.
+- [x] 72 órás frissességi kapu.
+- [x] Legalább két független kiadó és két eredeti cikk-URL megkövetelése.
+- [x] Publikálási dátumok és kivonatok ellenőrzése.
+- [x] Pontosan három külön történelmi személyiség megkövetelése hírenként.
+- [x] Mindhárom kommentárdimenzió szövegének, bizonyítékainak és forrásainak ellenőrzése.
+- [x] Emberi tényellenőrzés, történeti forrásellenőrzés, anakronizmus- és idézetellenőrzés.
+- [x] Szerkesztő, ellenőrzési időpont és jóváhagyás rögzítése.
+- [x] Jóváhagyás nélkül az M6 export blokkolása.
+- [ ] Valós hírek és kommentárok szerkesztői ellenőrzése, a sablon kitöltése.
+
+A legalább két független kiadó kemény jóváhagyási feltétel. Egyforrásos esemény a jelöltlistában továbbra is látható lehet, de nem kerülhet jóváhagyott AGORA-kiadásba.
+
+Futtatás:
+`python agora_editorial_qa.py --input agora_candidates.json --editorial agora_editorial.json --review-template agora_review_template.json --output agora_qa_report.json --allow-pending`
+
+A létrejövő `agora_review_template.json` kitöltése után a QA újrafuttatható `--review agora_review_template.json` paraméterrel, az `--allow-pending` elhagyásával. Jóváhagyás csak minden kötelező kapu teljesülésekor lehetséges.
 
 ### M6 – WORLD SHARDS integráció
-- AGORA adatmodell átadása a kiadványépítőnek.
-- Webes megjelenés.
-- E-mailes megjelenés.
-- Hivatkozások, tipográfia és mobilnézet ellenőrzése.
+
+Állapot: adatátadó adapter és opcionális kiadványrovat bekötve; Supabase-adatbázisba írás nincs.
+
+- [x] AGORA napi tartalom egyetlen `shard_content_items`-kompatibilis rekordba rendezése.
+- [x] Két hír, hat történelmi személyiség és a hozzájuk tartozó 18 kommentár-rész átadása.
+- [x] Eredeti cikkhivatkozások és szerkesztői QA-metaadatok megőrzése.
+- [x] Az `agora` rovat opcionális szekcióként bekerült a WORLD SHARDS kiadványépítőbe.
+- [x] Ha nincs AGORA-jelölt, a meglévő napi kiadvány összeállítása változatlanul működik.
+- [x] Az AGORA nem módosítja a kötelező rovatok minimális darabszámát.
+- [x] Nincs automatikus Supabase-írás, feldolgozás vagy publikálás.
+- [ ] Jóváhagyott JSON-rekord kézi/importfolyamaton keresztüli felvétele a `shard_content_items` táblába.
+- [ ] A teljes napi kiadványban a megjelenés és a forráshivatkozások vizuális ellenőrzése.
+
+Export (csak jóváhagyott QA-jelentéssel):
+`python agora_world_shards_adapter.py --input agora_candidates.json --editorial agora_editorial.json --qa agora_qa_report.json --edition-date YYYY-MM-DD --output agora_shard_content_item.json`
+
+Az adapter nem kapcsolódik a Supabase-hez. A rekordot csak a jóváhagyás után szabad a `shard_content_items` táblába importálni. A kiadványépítő az `agora` szekciót opcionálisan veszi fel; a többi rovat működéséhez nem szükséges AGORA-tartalom.
 
 ### M7 – Próbaüzem
 - Legalább 14 napos belső próba.
