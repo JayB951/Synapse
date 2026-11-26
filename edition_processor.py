@@ -1085,10 +1085,20 @@ def process_item(
         item["content_item_id"]
     )
 
-    generated_content = generate_content_with_retries(
-        item["section_code"],
-        source
-    )
+    if item["section_code"] in {"agora_hungary", "agora_world"}:
+        # AGORA is already generated, structured, and quality-gated upstream.
+        # Preserve its three historical figures and all nine long-form commentaries verbatim.
+        generated_content = {
+            "title": source["title"],
+            "summary": source["summary"],
+            "body": source["body"],
+        }
+        logger.info("AGORA tartalom változtatás nélkül kerül a kiadványba.")
+    else:
+        generated_content = generate_content_with_retries(
+            item["section_code"],
+            source
+        )
 
     save_processed_content(
         supabase,
