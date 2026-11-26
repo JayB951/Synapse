@@ -68,22 +68,39 @@ function getSourceRecord(item) {
 }
 
 function makeSectionImage(source, title, className, altPrefix) {
-  const imageUrl = source?.image_url;
-  if (!imageUrl) return null;
+  const metadata = source?.metadata && typeof source.metadata === "object"
+    ? source.metadata
+    : {};
+  const gallery = Array.isArray(source?.gallery_images) ? source.gallery_images : [];
+  // Older collector records may have the image only in metadata or the
+  // World Explorer gallery. Prefer the canonical column, then use those
+  // persisted fallbacks so a missing image_url column value does not hide it.
+  const candidates = [
+    { url: source?.image_url, caption: "" },
+    { url: metadata.image_url, caption: "" },
+    ...gallery.map(entry => ({
+      url: typeof entry === "string" ? entry : entry?.url,
+      caption: typeof entry === "object" ? entry?.caption : ""
+    }))
+  ];
 
-  try {
-    const url = new URL(imageUrl);
-    if (url.protocol !== "https:" && url.protocol !== "http:") return null;
+  for (const candidate of candidates) {
+    if (!candidate.url) continue;
+    try {
+      const url = new URL(candidate.url);
+      if (url.protocol !== "https:" && url.protocol !== "http:") continue;
 
-    const image = makeElement("img", className);
-    image.src = url.href;
-    image.alt = title ? `${altPrefix}: ${title}` : altPrefix;
-    image.loading = "lazy";
-    image.decoding = "async";
-    return image;
-  } catch (_) {
-    return null;
+      const image = makeElement("img", className);
+      image.src = url.href;
+      image.alt = candidate.caption || (title ? `${altPrefix}: ${title}` : altPrefix);
+      image.loading = "lazy";
+      image.decoding = "async";
+      return image;
+    } catch (_) {
+      // Ignore malformed stored URLs and try the next persisted image.
+    }
   }
+  return null;
 }
 
 function getVoterToken() {
