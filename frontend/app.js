@@ -546,8 +546,9 @@ function renderArticles(items = []) {
   }
 
   sections.forEach(([number, code, title, description]) => {
-    const sectionItems = items.filter(item => item.section_code === code)
-      .sort((a, b) => (a.position || 0) - (b.position || 0));
+    const sectionItems = items.filter(item =>
+      item.section_code === code && !(code === "research_frontier" && getAgoraContentType(item))
+    ).sort((a, b) => (a.position || 0) - (b.position || 0));
     if (!sectionItems.length) return;
 
     const group = makeElement("section", "article-group");
@@ -693,7 +694,6 @@ async function loadPublishedEdition() {
 
   if (!supabaseUrl || !anonKey || supabaseUrl.includes("IDE_") || anonKey.includes("IDE_")) {
     showStatus("A Supabase-kapcsolat konfigurálásra vár", "A nyilvános adatkapcsolat beállítása hiányzik.", "F1 · CONFIG REQUIRED");
-    renderAgora([]);
     renderAgora([]);
     renderArticles();
     if (archiveList) archiveList.replaceChildren(makeElement("p", "archive-empty", "Az archívumhoz adatbázis-kapcsolat szükséges."));
