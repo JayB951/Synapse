@@ -12,10 +12,16 @@ class IndependentCoverageTests(unittest.TestCase):
         ]}
         self.assertTrue(_has_independent_coverage(event))
 
-    def test_syndicated_duplicate_url_is_not_independent_coverage(self):
+    def test_two_publishers_may_confirm_the_same_syndicated_article_url(self):
         event = {"articles": [
             {"source_code": "a", "url": "https://wire.example/story"},
             {"source_code": "b", "url": "https://wire.example/story"},
+        ]}
+        self.assertTrue(_has_independent_coverage(event))
+
+    def test_one_publisher_is_not_independent_coverage(self):
+        event = {"articles": [
+            {"source_code": "a", "url": "https://wire.example/story"},
         ]}
         self.assertFalse(_has_independent_coverage(event))
 
