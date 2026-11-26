@@ -85,6 +85,8 @@ class InternationalNewsSelectionTests(unittest.TestCase):
         self.assertEqual(result["selected_event_id"], "world")
         self.assertEqual(result["status"], "selected")
         self.assertIn("Sport minden formája", client.calls[0][0])
+        self.assertIn("Duran Duran", client.calls[0][0])
+        self.assertIn("Budapest XII. kerület", client.calls[0][0])
         self.assertIn("kizárólag magyarországi", client.calls[0][0].lower())
 
     def test_empty_selection_is_a_valid_editorial_decision(self):
