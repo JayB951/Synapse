@@ -298,9 +298,14 @@ def collect_unsolved(supabase):
 # CLOSING - XKCD
 # --------------------------------------------------
 
-def fetch_xkcd_comic():
+def fetch_xkcd_comic(comic_number=None):
+    url = (
+        f"https://xkcd.com/{comic_number}/info.0.json"
+        if comic_number is not None
+        else XKCD_API
+    )
     response = requests.get(
-        XKCD_API,
+        url,
         headers=HEADERS,
         timeout=REQUEST_TIMEOUT,
     )
@@ -311,6 +316,11 @@ def fetch_xkcd_comic():
 
     if not data.get("num") or not data.get("img"):
         raise RuntimeError("Invalid xkcd API response.")
+
+    if comic_number is not None and int(data["num"]) != int(comic_number):
+        raise RuntimeError(
+            f"xkcd API returned comic #{data.get('num')} instead of #{comic_number}."
+        )
 
     return data
 
@@ -375,59 +385,88 @@ def build_xkcd_record(comic):
 
 
 def collect_xkcd(supabase):
-    logging.info("CLOSING: fetching latest xkcd comic.")
+    logging.info("CLOSING: finding the newest unused xkcd comic.")
 
-    comic = fetch_xkcd_comic()
-    record = build_xkcd_record(comic)
+    latest = fetch_xkcd_comic()
+    latest_number = int(latest["num"])
+    skipped = 0
 
-    existing = (
-        supabase.table("shard_content_items")
-        .select("id,image_url,status")
-        .eq("source_url", record["source_url"])
-        .limit(1)
-        .execute()
-    )
+    # xkcd publishes on selected weekdays, not every day. If the latest comic
+    # has already appeared in an edition, walk backwards through the official
+    # archive and choose the newest comic that has never been selected.
+    for offset in range(100):
+        comic_number = latest_number - offset
+        if comic_number < 1:
+            break
 
-    if existing.data:
-        existing_item = existing.data[0]
-        # The latest comic may have been stored by an earlier failed daily run.
-        # Re-activate that same record as a candidate so the edition builder can
-        # select it; do not create a duplicate xkcd record.
-        update_fields = {"status": "candidate"}
-        if record.get("image_url") and existing_item.get("image_url") != record["image_url"]:
-            update_fields["image_url"] = record["image_url"]
+        comic = latest if offset == 0 else fetch_xkcd_comic(comic_number)
+        record = build_xkcd_record(comic)
 
-        (
+        existing = (
             supabase.table("shard_content_items")
-            .update(update_fields)
-            .eq("id", existing_item["id"])
+            .select("id,image_url,status")
+            .eq("source_url", record["source_url"])
+            .limit(1)
             .execute()
         )
-        logging.info(
-            "xkcd #%s already exists; reactivated as candidate for today's edition.",
-            comic.get("num"),
-        )
 
+        if existing.data:
+            existing_item = existing.data[0]
+
+            if existing_item.get("status") == "candidate":
+                # A candidate left by an interrupted run is still unused.
+                update_fields = {}
+                if (
+                    record.get("image_url")
+                    and existing_item.get("image_url") != record["image_url"]
+                ):
+                    update_fields["image_url"] = record["image_url"]
+
+                if update_fields:
+                    (
+                        supabase.table("shard_content_items")
+                        .update(update_fields)
+                        .eq("id", existing_item["id"])
+                        .execute()
+                    )
+
+                logging.info(
+                    "xkcd #%s reused as an unselected candidate.",
+                    comic_number,
+                )
+                return {
+                    "source": "xkcd",
+                    "saved": 0,
+                    "skipped": skipped,
+                    "reactivated": 1,
+                    "comic_number": comic_number,
+                }
+
+            # selected/published records must never be returned to candidate.
+            logging.info(
+                "xkcd #%s already used (status=%s); trying the previous comic.",
+                comic_number,
+                existing_item.get("status"),
+            )
+            skipped += 1
+            continue
+
+        save_record(supabase, record)
+        logging.info(
+            "xkcd saved as the newest unused comic: #%s - %s",
+            comic_number,
+            record["title"],
+        )
         return {
             "source": "xkcd",
-            "saved": 0,
-            "skipped": 0,
-            "reactivated": 1,
+            "saved": 1,
+            "skipped": skipped,
+            "comic_number": comic_number,
         }
 
-    save_record(supabase, record)
-
-    logging.info(
-        "xkcd saved: #%s - %s",
-        comic.get("num"),
-        record["title"],
+    raise RuntimeError(
+        "No unused xkcd comic found in the latest 100 archive entries."
     )
-
-    return {
-        "source": "xkcd",
-        "saved": 1,
-        "skipped": 0,
-    }
 
 
 # --------------------------------------------------
