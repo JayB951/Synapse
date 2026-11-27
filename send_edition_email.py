@@ -153,7 +153,18 @@ def build_email_bodies(edition, items, source_by_id, rating_links_by_item=None):
     html_sections = []
     current_section = None
 
-    for item in sorted(items, key=lambda row: row["position"]):
+    def email_order_key(row):
+        section_code = row.get("section_code")
+        editor_note = row.get("editor_note")
+        if section_code == "research_frontier" and editor_note == "MAGYAR AGORA":
+            return (0, 0)
+        if section_code == "research_frontier" and editor_note == "WORLD AGORA":
+            return (0, 1)
+        return (1, row.get("position", 0))
+
+    # Keep the email's opening consistent even for editions created before
+    # the builder's AGORA-first ordering was introduced.
+    for item in sorted(items, key=email_order_key):
         section_code = item["section_code"]
         section_title = SECTION_NAMES.get(section_code, section_code)
         if section_code == "research_frontier":
