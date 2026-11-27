@@ -30,7 +30,7 @@ jobs:
           # the edition builder is idempotent and skips an already-published date.
           # Both UTC triggers cover the Budapest 02:00 window across DST and provide
           # an automatic retry if the first scheduled attempt is delayed or fails.
-          print("run=true")
+          print(f"run={'true' if now.hour >= 2 else 'false'}")
           PY
 
   daily-edition:
