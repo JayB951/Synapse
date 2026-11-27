@@ -4,7 +4,6 @@ on:
   schedule:
     # 06:15 Europe/Budapest: 04:15 UTC in summer, 05:15 UTC in winter.
     - cron: "15 4,5 * * *"
-  workflow_dispatch:
 
 permissions:
   actions: read
