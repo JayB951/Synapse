@@ -410,6 +410,8 @@ def collect_music(supabase, http_get=requests.get, edition_date=None):
 
         for track in tracks:
             if isinstance(track, dict):
+                # Preserve the exact editorial query that produced this result.
+                track["_world_shards_query"] = query
                 all_tracks.append(track)
                 topic_by_query[query] = topic
 
@@ -445,11 +447,41 @@ def collect_music(supabase, http_get=requests.get, edition_date=None):
         )
 
     if not selection:
+        # The iTunes search itself was generated from a real daily topic.
+        # If strict title/album token matching is too narrow, use the first
+        # valid result returned for that exact topic query rather than
+        # aborting the entire daily edition.
+        for track in deduplicate_tracks(all_tracks):
+            query = track.get("_world_shards_query")
+            topic = topic_by_query.get(query)
+            if (
+                topic
+                and track.get("trackName")
+                and track.get("artistName")
+                and track.get("trackViewUrl")
+            ):
+                selection = {
+                    "track": track,
+                    "topic": topic,
+                    "score": 1,
+                }
+                logger.warning(
+                    "Music of the Day: szigorú cím-egyezés nem volt; "
+                    "az iTunes témakeresésének első érvényes találatát használjuk "
+                    "('%s' – '%s').",
+                    track.get("artistName"),
+                    track.get("trackName"),
+                )
+                break
+
+    if not selection:
         raise RuntimeError(
-            "Az iTunes találatok között nem volt kellően kapcsolódó, "
-            "érvényes meghallgatási linkkel rendelkező zeneszám."
+            "Az iTunes nem adott vissza érvényes, meghallgatási oldallal "
+            "rendelkező zeneszámot egyik napi témakeresésre sem."
         )
 
+    # Internal query routing is not part of the published metadata.
+    selection["track"].pop("_world_shards_query", None)
     record = build_music_record(selection, edition_date)
     result = save_music_record(supabase, record, edition_date)
 
