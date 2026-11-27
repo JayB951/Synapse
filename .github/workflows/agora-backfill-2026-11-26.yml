@@ -13,16 +13,8 @@ name: WORLD SHARDS - AGORA backfill for edition 2026-11-26
 # Unlisted model source titles are replaced with the approved catalogue source.
 # Gemini temporary service errors receive five exponential-backoff attempts.
 
+# Historical one-time backfill: manual dispatch only.
 on:
-  push:
-    branches: [main]
-    paths:
-      - ".github/workflows/agora-backfill-2026-11-26.yml"
-      - "agora_automation.py"
-      - "agora_gemini_engine.py"
-      - "agora_world_shards_adapter.py"
-      - "edition_builder.py"
-      - "edition_processor.py"
   workflow_dispatch:
 
 permissions:
