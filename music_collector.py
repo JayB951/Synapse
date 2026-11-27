@@ -290,9 +290,12 @@ def build_music_record(selection, edition_date):
         summary_parts.append(f"Album: {album_name}")
     if release_date:
         summary_parts.append(f"Megjelenés: {str(release_date)[:10]}")
-    summary_parts.append(
-        f"Napi kapcsolódó téma: {topic.get('title') or 'World Shards'}"
-    )
+    if selection.get("is_fallback"):
+        summary_parts.append("Napi zenei ajánló – ellenőrzött iTunes-katalógusból")
+    else:
+        summary_parts.append(
+            f"Napi kapcsolódó téma: {topic.get('title') or 'World Shards'}"
+        )
 
     body = (
         f"Zeneszám: {track_name}\n"
@@ -302,8 +305,12 @@ def build_music_record(selection, edition_date):
         "A zenemű a napi kiadvány egyik témájához kapcsolódó szerkesztőségi "
         "zenei ajánlás. A kapcsolatot a dal címe vagy albuma és a napi "
         "tartalom kulcsszavai alapján választottuk ki.\n\n"
-        f"Kapcsolódó napi tartalom: {topic.get('title') or ''}\n"
-        f"Meghallgatási oldal: {source_url}\n"
+        + (
+            "A napi ajánlás egy ellenőrzött zenei katalógusból származik.\n"
+            if selection.get("is_fallback")
+            else f"Kapcsolódó napi tartalom: {topic.get('title') or ''}\n"
+        )
+        + f"Meghallgatási oldal: {source_url}\n"
         "A link az Apple/iTunes adatlapjára vezet; a teljes dal elérhetősége "
         "az adott szolgáltatástól és régiótól függ."
     )
@@ -447,41 +454,20 @@ def collect_music(supabase, http_get=requests.get, edition_date=None):
         )
 
     if not selection:
-        # The iTunes search itself was generated from a real daily topic.
-        # If strict title/album token matching is too narrow, use the first
-        # valid result returned for that exact topic query rather than
-        # aborting the entire daily edition.
-        for track in deduplicate_tracks(all_tracks):
-            query = track.get("_world_shards_query")
-            topic = topic_by_query.get(query)
-            if (
-                topic
-                and track.get("trackName")
-                and track.get("artistName")
-                and track.get("trackViewUrl")
-            ):
-                selection = {
-                    "track": track,
-                    "topic": topic,
-                    "score": 1,
-                }
-                logger.warning(
-                    "Music of the Day: szigorú cím-egyezés nem volt; "
-                    "az iTunes témakeresésének első érvényes találatát használjuk "
-                    "('%s' – '%s').",
-                    track.get("artistName"),
-                    track.get("trackName"),
-                )
-                break
-
-    if not selection:
-        # Last-resort discovery: broad music queries still return real,
-        # playable catalog entries when the day's niche topics have no
-        # usable iTunes matches. Keep the related daily topic explicit.
-        fallback_topic = search_topics[0][1]
-        for fallback_query in ("popular songs", "classic hits", "instrumental music"):
+        # Never publish the first arbitrary result of a topic search:
+        # obscure place-name/audio entries can be returned by iTunes.
+        # Fall back to established music artists and require full song metadata.
+        fallback_artists = (
+            "Queen",
+            "The Beatles",
+            "Miles Davis",
+            "Hans Zimmer",
+            "Ludovico Einaudi",
+            "Wolfgang Amadeus Mozart",
+        )
+        for fallback_query in fallback_artists:
             logger.warning(
-                "Music of the Day: általános iTunes tartalékkeresés: '%s'.",
+                "Music of the Day: előadó-alapú tartalékkeresés: '%s'.",
                 fallback_query,
             )
             try:
@@ -497,20 +483,30 @@ def collect_music(supabase, http_get=requests.get, edition_date=None):
             valid_tracks = [
                 track for track in deduplicate_tracks(fallback_tracks)
                 if isinstance(track, dict)
+                and track.get("wrapperType") == "track"
+                and track.get("kind") == "song"
                 and track.get("trackName")
                 and track.get("artistName")
                 and track.get("trackViewUrl")
+                and int(track.get("trackTimeMillis") or 0) >= 60000
+                and track.get("primaryGenreName")
             ]
             if valid_tracks:
                 selection = {
                     "track": valid_tracks[0],
-                    "topic": fallback_topic,
-                    "score": 1,
+                    "topic": {
+                        "title": "Napi zenei ajánló",
+                        "section_code": "music_of_the_day",
+                    },
+                    "score": 0,
+                    "is_fallback": True,
                 }
                 logger.warning(
-                    "Music of the Day: tartalék találat kiválasztva: '%s' – '%s'.",
+                    "Music of the Day: ellenőrzött zenei katalógusból választva: "
+                    "'%s' – '%s' (%s).",
                     selection["track"].get("artistName"),
                     selection["track"].get("trackName"),
+                    selection["track"].get("primaryGenreName"),
                 )
                 break
 
