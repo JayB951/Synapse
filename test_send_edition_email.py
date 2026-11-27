@@ -67,6 +67,13 @@ class EditionEmailTests(unittest.TestCase):
             self.assertIn(f"Teljes szöveg {number}", plain)
             self.assertIn(f"Teljes szöveg {number}", rendered)
 
+    def test_email_opens_with_hungarian_then_world_agora(self):
+        plain, rendered, _ = build_email_bodies(self.edition, self.items, {})
+        self.assertLess(plain.index("MAGYAR AGORA"), plain.index("WORLD AGORA"))
+        self.assertLess(plain.index("WORLD AGORA"), plain.index("CÍM 1"))
+        self.assertLess(rendered.index("Magyar AGORA"), rendered.index("WORLD AGORA"))
+        self.assertLess(rendered.index("WORLD AGORA"), rendered.index("Cím 1"))
+
     def test_email_separates_both_agora_sections(self):
         plain, rendered, _ = build_email_bodies(self.edition, self.items, {})
         self.assertIn("MAGYAR AGORA", plain)
