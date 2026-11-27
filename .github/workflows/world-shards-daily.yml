@@ -9,6 +9,8 @@ on:
   push:
     paths:
       - ".github/workflows/world-shards-daily.yml"
+      - "music_collector.py"
+      - "test_music_collector.py"
 
 permissions:
   contents: read
