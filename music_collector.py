@@ -352,6 +352,7 @@ def music_record_exists_for_date(supabase, edition_date):
         supabase.table("shard_content_items")
         .select("id,title,status,source_url,metadata")
         .eq("section_code", "music_of_the_day")
+        .neq("status", "rejected")
         .contains("metadata", {"edition_date": edition_date})
         .limit(1)
         .execute()
@@ -371,7 +372,7 @@ def is_valid_music_record(item):
     if not source_url.startswith(("https://music.apple.com/", "https://itunes.apple.com/")):
         return False
     # iTunes can return flag-code/place-name catalogue entries as apparent tracks.
-    if re.fullmatch(r"flag\\d+", track_name, re.IGNORECASE):
+    if re.fullmatch(r"flag\d+", track_name, re.IGNORECASE):
         return False
     return True
 
