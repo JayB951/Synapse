@@ -350,7 +350,7 @@ def build_music_record(selection, edition_date):
 def music_record_exists_for_date(supabase, edition_date):
     response = (
         supabase.table("shard_content_items")
-        .select("id,title,status")
+        .select("id,title,status,source_url,metadata")
         .eq("section_code", "music_of_the_day")
         .contains("metadata", {"edition_date": edition_date})
         .limit(1)
@@ -359,9 +359,26 @@ def music_record_exists_for_date(supabase, edition_date):
     return response.data[0] if response.data else None
 
 
+def is_valid_music_record(item):
+    """Reject malformed or obviously non-musical legacy records."""
+    metadata = item.get("metadata") or {}
+    track_name = str(metadata.get("track_name") or "").strip()
+    artist_name = str(metadata.get("artist_name") or "").strip()
+    source_url = str(item.get("source_url") or "").strip()
+
+    if not track_name or not artist_name or not source_url:
+        return False
+    if not source_url.startswith(("https://music.apple.com/", "https://itunes.apple.com/")):
+        return False
+    # iTunes can return flag-code/place-name catalogue entries as apparent tracks.
+    if re.fullmatch(r"flag\\d+", track_name, re.IGNORECASE):
+        return False
+    return True
+
+
 def save_music_record(supabase, record, edition_date):
     existing = music_record_exists_for_date(supabase, edition_date)
-    if existing:
+    if existing and existing.get("status") != "rejected":
         logger.info(
             "A mai zenei rekord már létezik (%s, %s); nincs duplikált beszúrás.",
             existing.get("id"),
@@ -384,11 +401,29 @@ def collect_music(supabase, http_get=requests.get, edition_date=None):
 
     existing = music_record_exists_for_date(supabase, edition_date)
     if existing:
-        logger.info(
-            "A mai Music of the Day már megvan: %s",
+        if is_valid_music_record(existing):
+            logger.info(
+                "A mai Music of the Day már megvan: %s",
+                existing.get("title"),
+            )
+            return {"status": "already_exists", "title": existing.get("title")}
+
+        if existing.get("status") != "candidate":
+            raise RuntimeError(
+                "A mai zenei rekord hibás, de nem candidate állapotú; "
+                "biztonsági okból nem módosítom automatikusan."
+            )
+
+        logger.warning(
+            "Hibás napi zenei rekord elutasítása és újragyűjtése: %s",
             existing.get("title"),
         )
-        return {"status": "already_exists", "title": existing.get("title")}
+        (
+            supabase.table("shard_content_items")
+            .update({"status": "rejected"})
+            .eq("id", existing["id"])
+            .execute()
+        )
 
     topics = get_daily_topics(supabase)
     if not topics:
