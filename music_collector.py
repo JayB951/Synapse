@@ -245,6 +245,8 @@ def choose_best_track(tracks, topics, excluded_track_ids=None):
             continue
         if re.fullmatch(r"flag\d+", str(track.get("trackName") or "").strip(), re.IGNORECASE):
             continue
+        if re.fullmatch(r"flag\d+", str(track.get("artistName") or "").strip(), re.IGNORECASE):
+            continue
         if not track.get("trackViewUrl"):
             continue
 
@@ -375,6 +377,8 @@ def is_valid_music_record(item):
         return False
     # iTunes can return flag-code/place-name catalogue entries as apparent tracks.
     if re.fullmatch(r"flag\d+", track_name, re.IGNORECASE):
+        return False
+    if re.fullmatch(r"flag\d+", artist_name, re.IGNORECASE):
         return False
     return True
 
