@@ -26,7 +26,11 @@ jobs:
           from datetime import datetime
           from zoneinfo import ZoneInfo
           now = datetime.now(ZoneInfo("Europe/Budapest"))
-          print(f"run={'true' if now.hour == 2 else 'false'}")
+          # GitHub scheduled runs can be delayed by several hours. Do not require an exact hour:
+          # the edition builder is idempotent and skips an already-published date.
+          # Both UTC triggers cover the Budapest 02:00 window across DST and provide
+          # an automatic retry if the first scheduled attempt is delayed or fails.
+          print("run=true")
           PY
 
   daily-edition:
