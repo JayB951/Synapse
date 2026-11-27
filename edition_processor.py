@@ -722,7 +722,7 @@ Ne használj Markdown kódblokkot a JSON körül.
 # RESPONSE PARSING
 # ============================================================
 
-def parse_generated_content(generated_text):
+def parse_generated_content(generated_text, section_code=None):
 
     text = generated_text.strip()
 
@@ -786,6 +786,28 @@ def parse_generated_content(generated_text):
                 f"Üres mező a Gemini válaszában: {field}"
             )
 
+    # Valid JSON alone is not sufficient editorial validation.
+    # Reject truncated or effectively empty output before it is saved.
+    title = data["title"]
+    summary = data["summary"]
+    body = data["body"]
+
+    if len(title) < 5 or len(title) > 180:
+        raise RuntimeError("A generált cím túl rövid vagy túl hosszú (5–180 karakter szükséges).")
+
+    if len(summary) < 25 or len(summary) > 600:
+        raise RuntimeError("A generált összefoglaló túl rövid vagy túl hosszú (25–600 karakter szükséges).")
+
+    minimum_body_length = 20 if section_code == "closing" else 120
+    if len(body) < minimum_body_length:
+        raise RuntimeError(
+            f"A generált törzsszöveg túl rövid: {len(body)} karakter; "
+            f"legalább {minimum_body_length} szükséges."
+        )
+
+    if section_code != "closing" and len([p for p in re.split(r"\\n\\s*\\n", body) if p.strip()]) < 2:
+        raise RuntimeError("A magazincikk legalább két külön bekezdésből kell álljon.")
+
     return data
 
 
@@ -818,7 +840,8 @@ def generate_content_with_retries(
         try:
 
             return parse_generated_content(
-                generated_text
+                generated_text,
+                section_code=section_code
             )
 
         except RuntimeError as error:
