@@ -779,7 +779,10 @@ async function loadPublishedEdition() {
     showStatus("Kapcsolódás a kiadásokhoz", "A publikált lapszámok ellenőrzése folyamatban…");
     const editionsResponse = await fetch(
       `${supabaseUrl}/rest/v1/shard_editions?select=id,edition_date,title,introduction,status&status=eq.published&order=edition_date.desc&limit=365`,
-      { headers }
+      {
+        headers: { ...headers, "Cache-Control": "no-cache", Pragma: "no-cache" },
+        cache: "no-store"
+      }
     );
     if (!editionsResponse.ok) throw new Error(`Kiadáslekérdezés: HTTP ${editionsResponse.status}`);
     publishedEditions = await editionsResponse.json();
