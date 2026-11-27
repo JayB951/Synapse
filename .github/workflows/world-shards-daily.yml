@@ -11,6 +11,8 @@ on:
       - ".github/workflows/world-shards-daily.yml"
       - "music_collector.py"
       - "test_music_collector.py"
+      - "shards_collector_m14.py"
+      - "edition_builder.py"
 
 permissions:
   contents: read
