@@ -475,9 +475,49 @@ def collect_music(supabase, http_get=requests.get, edition_date=None):
                 break
 
     if not selection:
+        # Last-resort discovery: broad music queries still return real,
+        # playable catalog entries when the day's niche topics have no
+        # usable iTunes matches. Keep the related daily topic explicit.
+        fallback_topic = search_topics[0][1]
+        for fallback_query in ("popular songs", "classic hits", "instrumental music"):
+            logger.warning(
+                "Music of the Day: általános iTunes tartalékkeresés: '%s'.",
+                fallback_query,
+            )
+            try:
+                fallback_tracks = fetch_itunes_tracks(
+                    fallback_query, http_get=http_get
+                )
+            except Exception:
+                logger.exception(
+                    "iTunes tartalékkeresési hiba: %s", fallback_query
+                )
+                continue
+
+            valid_tracks = [
+                track for track in deduplicate_tracks(fallback_tracks)
+                if isinstance(track, dict)
+                and track.get("trackName")
+                and track.get("artistName")
+                and track.get("trackViewUrl")
+            ]
+            if valid_tracks:
+                selection = {
+                    "track": valid_tracks[0],
+                    "topic": fallback_topic,
+                    "score": 1,
+                }
+                logger.warning(
+                    "Music of the Day: tartalék találat kiválasztva: '%s' – '%s'.",
+                    selection["track"].get("artistName"),
+                    selection["track"].get("trackName"),
+                )
+                break
+
+    if not selection:
         raise RuntimeError(
-            "Az iTunes nem adott vissza érvényes, meghallgatási oldallal "
-            "rendelkező zeneszámot egyik napi témakeresésre sem."
+            "Az iTunes egyik napi vagy tartalék keresése sem adott vissza "
+            "érvényes, meghallgatási oldallal rendelkező zeneszámot."
         )
 
     # Internal query routing is not part of the published metadata.
