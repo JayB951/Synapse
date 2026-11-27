@@ -141,6 +141,25 @@ def select_closing_items(supabase):
 def select_edition_items(supabase, edition_date):
     selected_items = []
 
+    # AGORA opens every edition: Hungarian first, international second.
+    for content_type, limit in AGORA_SECTION_LIMITS.items():
+        candidates = get_candidates(
+            supabase,
+            AGORA_DB_SECTION_CODE,
+            limit=limit,
+            edition_date=edition_date,
+            content_type=content_type,
+        )
+        chosen = candidates[:limit]
+        selected_items.extend(chosen)
+        logger.info(
+            "%s: %s / %s tartalom kiválasztva.",
+            content_type,
+            len(chosen),
+            limit,
+        )
+
+    # The remaining editorial sections follow the two AGORA opening blocks.
     for section_code, limit in SECTION_LIMITS.items():
         candidates = get_candidates(
             supabase,
@@ -159,23 +178,6 @@ def select_edition_items(supabase, edition_date):
         logger.info(
             "%s: %s / %s tartalom kiválasztva.",
             section_code,
-            len(chosen),
-            limit,
-        )
-
-    for content_type, limit in AGORA_SECTION_LIMITS.items():
-        candidates = get_candidates(
-            supabase,
-            AGORA_DB_SECTION_CODE,
-            limit=limit,
-            edition_date=edition_date,
-            content_type=content_type,
-        )
-        chosen = candidates[:limit]
-        selected_items.extend(chosen)
-        logger.info(
-            "%s: %s / %s tartalom kiválasztva.",
-            content_type,
             len(chosen),
             limit,
         )
