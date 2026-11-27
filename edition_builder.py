@@ -103,7 +103,7 @@ def select_closing_items(supabase):
         limit=100,
     )
 
-    xkcd_item = None
+    xkcd_candidates = []
     joke_item = None
 
     for item in candidates:
@@ -112,14 +112,23 @@ def select_closing_items(supabase):
         if not isinstance(metadata, dict):
             continue
 
-        if xkcd_item is None and metadata.get("comic_number") is not None:
-            xkcd_item = item
+        if metadata.get("comic_number") is not None:
+            try:
+                comic_number = int(metadata["comic_number"])
+            except (TypeError, ValueError):
+                continue
+            xkcd_candidates.append((comic_number, item))
 
         if joke_item is None and metadata.get("joke_id") is not None:
             joke_item = item
 
-        if xkcd_item and joke_item:
-            break
+    # Candidate rows can survive interrupted builds. Always prefer the newest
+    # unused comic number, independent of relevance score or collection time.
+    xkcd_item = (
+        max(xkcd_candidates, key=lambda pair: pair[0])[1]
+        if xkcd_candidates
+        else None
+    )
 
     selected = []
 
