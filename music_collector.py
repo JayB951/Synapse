@@ -243,6 +243,8 @@ def choose_best_track(tracks, topics, excluded_track_ids=None):
             continue
         if not track.get("trackName") or not track.get("artistName"):
             continue
+        if re.fullmatch(r"flag\d+", str(track.get("trackName") or "").strip(), re.IGNORECASE):
+            continue
         if not track.get("trackViewUrl"):
             continue
 
