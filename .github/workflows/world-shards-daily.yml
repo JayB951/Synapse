@@ -2,9 +2,13 @@ name: WORLD SHARDS - Daily Automatic Edition
 
 on:
   schedule:
-    # A local-time gate below makes this 02:00 Europe/Budapest in both DST seasons.
+    # UTC triggers cover 02:00 Europe/Budapest in both DST seasons.
     - cron: "0 0,1 * * *"
   workflow_dispatch:
+  # Recovery trigger: a change to this workflow automatically starts today's edition.
+  push:
+    paths:
+      - ".github/workflows/world-shards-daily.yml"
 
 permissions:
   contents: read
