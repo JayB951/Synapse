@@ -88,6 +88,7 @@ jobs:
           python music_collector.py
 
       - name: AGORA magyar es nemzetkozi tartalom teljes automatizalasa
+        timeout-minutes: 12
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
