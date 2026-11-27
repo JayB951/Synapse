@@ -61,6 +61,20 @@ class MusicCollectorTests(unittest.TestCase):
         chosen = choose_best_track([unrelated, direct], [self.topic])
         self.assertEqual(chosen["track"]["trackId"], 123)
 
+    def test_flag_code_catalogue_entry_is_not_selected(self):
+        flag_track = dict(
+            self.track,
+            trackName="Flag098",
+            artistName="Heard Island and McDonald Islands",
+        )
+        flag_topic = dict(
+            self.topic,
+            title="Flag098 Heard Island and McDonald Islands",
+            summary="Flag098",
+            body="",
+        )
+        self.assertIsNone(choose_best_track([flag_track], [flag_topic]))
+
     def test_duplicate_tracks_are_removed(self):
         duplicate = dict(self.track)
         self.assertEqual(
