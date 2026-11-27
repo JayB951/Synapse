@@ -18,7 +18,7 @@ from supabase import create_client
 
 VERSION = "0.4.1"
 
-MODEL_NAME = "gemini-3.5-flash-lite"
+MODEL_NAME = os.getenv("GEMINI_MODEL", "gemini-3.5-flash-lite")
 
 GEMINI_URL = (
     "https://generativelanguage.googleapis.com/v1beta/models/"
@@ -805,7 +805,7 @@ def parse_generated_content(generated_text, section_code=None):
             f"legalább {minimum_body_length} szükséges."
         )
 
-    if section_code != "closing" and len([p for p in re.split(r"\\n\\s*\\n", body) if p.strip()]) < 2:
+    if section_code != "closing" and len([p for p in re.split(r"\n\s*\n", body) if p.strip()]) < 2:
         raise RuntimeError("A magazincikk legalább két külön bekezdésből kell álljon.")
 
     return data
@@ -858,8 +858,11 @@ def generate_content_with_retries(
 
 FONTOS JAVÍTÁS:
 Az előző válaszod nem volt érvényes JSON.
-Most kizárólag érvényes JSON objektumot adj vissza,
+Most érvényes JSON objektumot adj vissza,
 a title, summary és body mezőkkel.
+A cím 5–180, az összefoglaló 25–600 karakter legyen.
+A törzsszöveg legalább 120 karakterből és legalább két bekezdésből álljon
+(a Closing rovat kivételével, ahol legalább 20 karakter szükséges).
 Ne írj semmilyen szöveget a JSON elé vagy mögé.
 """
 
