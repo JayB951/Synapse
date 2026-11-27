@@ -8,6 +8,7 @@ from music_collector import (
     fetch_itunes_tracks,
     music_record_exists_for_date,
     score_track,
+    is_valid_music_record,
 )
 
 
@@ -85,6 +86,28 @@ class MusicCollectorTests(unittest.TestCase):
         self.assertEqual(record["metadata"]["edition_date"], "2026-11-25")
         self.assertFalse(record["metadata"]["full_track_downloaded"])
 
+    def test_flag_code_placeholder_is_rejected_as_music(self):
+        bad_record = {
+            "title": "Heard Island and McDonald Islands – Flag098",
+            "source_url": "https://music.apple.com/us/album/example/123",
+            "metadata": {
+                "track_name": "Flag098",
+                "artist_name": "Heard Island and McDonald Islands",
+                "edition_date": "2026-11-27",
+            },
+        }
+        good_record = {
+            "title": "Queen – Bohemian Rhapsody",
+            "source_url": "https://music.apple.com/us/album/bohemian-rhapsody/123",
+            "metadata": {
+                "track_name": "Bohemian Rhapsody",
+                "artist_name": "Queen",
+                "edition_date": "2026-11-27",
+            },
+        }
+        self.assertFalse(is_valid_music_record(bad_record))
+        self.assertTrue(is_valid_music_record(good_record))
+
     def test_idempotency_lookup_uses_edition_date(self):
         class FakeResponse:
             data = [{"id": "existing-1", "title": "Existing song", "status": "candidate"}]
@@ -103,6 +126,10 @@ class MusicCollectorTests(unittest.TestCase):
 
             def contains(self, key, value):
                 self.calls.append(("contains", key, value))
+                return self
+
+            def neq(self, key, value):
+                self.calls.append(("neq", key, value))
                 return self
 
             def limit(self, value):
