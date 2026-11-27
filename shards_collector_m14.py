@@ -382,7 +382,7 @@ def collect_xkcd(supabase):
 
     existing = (
         supabase.table("shard_content_items")
-        .select("id,image_url")
+        .select("id,image_url,status")
         .eq("source_url", record["source_url"])
         .limit(1)
         .execute()
@@ -390,24 +390,29 @@ def collect_xkcd(supabase):
 
     if existing.data:
         existing_item = existing.data[0]
+        # The latest comic may have been stored by an earlier failed daily run.
+        # Re-activate that same record as a candidate so the edition builder can
+        # select it; do not create a duplicate xkcd record.
+        update_fields = {"status": "candidate"}
         if record.get("image_url") and existing_item.get("image_url") != record["image_url"]:
-            (
-                supabase.table("shard_content_items")
-                .update({"image_url": record["image_url"]})
-                .eq("id", existing_item["id"])
-                .execute()
-            )
-            logging.info("xkcd #%s image URL updated.", comic.get("num"))
-        else:
-            logging.info(
-                "xkcd #%s already exists. Skipping.",
-                comic.get("num"),
-            )
+            update_fields["image_url"] = record["image_url"]
+
+        (
+            supabase.table("shard_content_items")
+            .update(update_fields)
+            .eq("id", existing_item["id"])
+            .execute()
+        )
+        logging.info(
+            "xkcd #%s already exists; reactivated as candidate for today's edition.",
+            comic.get("num"),
+        )
 
         return {
             "source": "xkcd",
             "saved": 0,
-            "skipped": 1,
+            "skipped": 0,
+            "reactivated": 1,
         }
 
     save_record(supabase, record)
