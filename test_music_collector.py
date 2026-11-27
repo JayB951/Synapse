@@ -75,6 +75,13 @@ class MusicCollectorTests(unittest.TestCase):
         )
         self.assertIsNone(choose_best_track([flag_track], [flag_topic]))
 
+        reversed_flag_track = dict(
+            self.track,
+            trackName="Heard Island and McDonald Islands",
+            artistName="Flag098",
+        )
+        self.assertIsNone(choose_best_track([reversed_flag_track], [flag_topic]))
+
     def test_duplicate_tracks_are_removed(self):
         duplicate = dict(self.track)
         self.assertEqual(
