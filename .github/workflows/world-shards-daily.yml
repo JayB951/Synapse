@@ -8,6 +8,8 @@ on:
   workflow_dispatch:
   # Recovery trigger: a change to this workflow automatically starts today's edition.
   push:
+    branches:
+      - main
     paths:
       - ".github/workflows/world-shards-daily.yml"
       - "music_collector.py"
