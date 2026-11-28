@@ -1007,8 +1007,8 @@ def parse_generated_content(generated_text, section_code=None):
     # Validate its compact sections before composing the legacy display_body field.
     if section_code == "research_frontier":
         title = data["title"]
-        summary = data["summary"]
         data["summary"] = " ".join(data["summary"].split())
+        summary = data["summary"]
         for field in ("novelty", "challenge", "synthesis"):
             data[field] = " ".join(clean_display_text(data[field]).split())
             if not data[field]:
@@ -1031,7 +1031,7 @@ def parse_generated_content(generated_text, section_code=None):
         if sentence_count(summary) != 1:
             raise RuntimeError("A kutatás jelentősége pontosan egy mondat legyen.")
         if not 4 <= sentence_count(data["novelty"]) <= 5:
-            raise RuntimeError("Az újdonság bemutatása 3–5 mondat legyen.")
+            raise RuntimeError("Az újdonság bemutatása 4–5 mondat legyen.")
         if not 1 <= sentence_count(data["challenge"]) <= 3:
             raise RuntimeError("A kritikai kihívás 1–3 mondat legyen.")
         if sentence_count(data["synthesis"]) != 1:
