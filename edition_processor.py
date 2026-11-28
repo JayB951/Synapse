@@ -332,10 +332,16 @@ SECTION_STYLES = {
     "art_of_the_day": {
         "name": "Art of the Day",
         "description": (
-            "Művészeti alkotás bemutatása. "
-            "Mutasd be az alkotót, a mű keletkezését, "
-            "a technikát és az alkotás művészeti jelentőségét. "
-            "Legyen érdekes és közérthető."
+            "Készíts tartalmas, önálló magyar művészeti magazincikket a konkrét "
+            "alkotásról. Mutasd be az alkotót és a pályájának a mű szempontjából "
+            "releváns hátterét, a keletkezés idejét és körülményeit, a felhasznált "
+            "technikát és anyagokat, a mű vizuális felépítését, valamint a "
+            "művészettörténeti jelentőségét. Ne általános műelemzést írj: minden "
+            "bekezdés kapcsolódjon ehhez az alkotáshoz. A forrásban nem szereplő "
+            "életrajzi, történelmi, datálási vagy ikonográfiai részletet ne állíts "
+            "tényként; bizonytalanságot jelezz, értelmezést pedig különíts el a "
+            "dokumentált információtól. Ha kevés az adat, inkább írj kevesebbet, "
+            "de pontosan. A szöveg legyen élvezetes, részletes és közérthető."
         )
     },
 
@@ -529,6 +535,11 @@ def build_source_text(source):
     metadata_fields = [
         "artist",
         "artist_name",
+        "date_display",
+        "place_of_origin",
+        "style_title",
+        "classification_title",
+        "dimensions",
         "album_name",
         "release_date",
         "genre",
@@ -873,6 +884,74 @@ A question mezőben add meg a pontos megválaszolatlan kérdést; elutasításko
         raise RuntimeError("Az Unsolved AI-szerkesztő elutasította a cikket: " + str(verdict.get("reason", "Nem konkrét, elgondolkodtató megoldatlan rejtély.")))
     logger.info("Unsolved AI-szerkesztő elfogadta: %s", verdict["question"])
     return verdict
+
+
+def review_art_content(source, generated):
+    """Second-pass editorial gate for factual, specific and substantive art writing."""
+    schema = {
+        "type": "OBJECT",
+        "properties": {
+            "source_fidelity": {"type": "BOOLEAN"},
+            "artist_context_grounded": {"type": "BOOLEAN"},
+            "creation_and_technique_grounded": {"type": "BOOLEAN"},
+            "visual_analysis_responsible": {"type": "BOOLEAN"},
+            "significance_explained": {"type": "BOOLEAN"},
+            "specific_and_substantive": {"type": "BOOLEAN"},
+            "reason": {"type": "STRING"}
+        },
+        "required": [
+            "source_fidelity", "artist_context_grounded",
+            "creation_and_technique_grounded", "visual_analysis_responsible",
+            "significance_explained", "specific_and_substantive", "reason"
+        ],
+        "propertyOrdering": [
+            "source_fidelity", "artist_context_grounded",
+            "creation_and_technique_grounded", "visual_analysis_responsible",
+            "significance_explained", "specific_and_substantive", "reason"
+        ]
+    }
+    prompt = f"""
+Szigorú művészettörténeti magazinszerkesztő vagy. Ellenőrizd az Art of the Day
+elkészült magyar cikkét az alábbi múzeumi forrás alapján.
+A cikk kizárólag a megadott konkrét műről szólhat.
+Ellenőrizd külön:
+- source_fidelity: nem változtatja meg és nem állítja túl a forrásban szereplő tényeket;
+- artist_context_grounded: az alkotó életrajzi és pályaadatai megalapozottak;
+- creation_and_technique_grounded: a keletkezési idő, hely, technika és anyag nem kitalált;
+- visual_analysis_responsible: a képi értelmezés konkrét, és nem ad elő bizonytalan szimbolikát vagy részletet bizonyított tényként;
+- significance_explained: megmagyarázza, miért érdekes vagy jelentős a mű, üres közhelyek nélkül;
+- specific_and_substantive: részletes, koherens, legalább négy érdemi bekezdésből álló magyar cikk, nem általános sablonszöveg.
+A forrásban hiányzó információ nem pótolható kitalált dátummal, történettel, megrendelővel,
+ikonográfiai jelentéssel vagy művészettörténeti besorolással. Az értelmezés lehet önálló,
+de világosan értelmezésként jelenjen meg. Kétség esetén a megfelelő ellenőrzést jelöld false-ra.
+FORRÁS:
+{build_source_text(source)}
+GENERÁLT CÍM: {generated.get("title", "")}
+ÖSSZEFOGLALÓ: {generated.get("summary", "")}
+CIKK:
+{generated.get("body", "")}
+A reason mezőben röviden és konkrétan nevezd meg a hibát, vagy az elfogadás okát.
+"""
+    raw = call_gemini(prompt, response_schema=schema)
+    try:
+        verdict = json.loads(raw)
+    except (TypeError, json.JSONDecodeError) as error:
+        raise RuntimeError(f"Az Art of the Day szerkesztői bírálata nem értelmezhető: {error}")
+    return verdict
+
+
+def art_content_passes(verdict):
+    if not isinstance(verdict, dict):
+        return False
+    checks = (
+        "source_fidelity",
+        "artist_context_grounded",
+        "creation_and_technique_grounded",
+        "visual_analysis_responsible",
+        "significance_explained",
+        "specific_and_substantive",
+    )
+    return all(verdict.get(key) is True for key in checks)
 
 
 def is_xkcd_source(source):
@@ -1313,6 +1392,36 @@ Készíts új fordítást. Őrizd meg a teljes jelentést és a csattanó logik�
                     + str(verdict.get("reason", "Nem megfelelő magyarítás vagy elveszett csattanó."))
                 )
         logger.info("JokeAPI magyar fordítás minőségi ellenőrzése sikeres.")
+
+    if item["section_code"] == "art_of_the_day":
+        verdict = review_art_content(source, generated_content)
+        if not art_content_passes(verdict):
+            logger.warning(
+                "Art of the Day minőségellenőrzése javítást kért: %s",
+                verdict.get("reason", "A cikk nem felelt meg a szerkesztési feltételeknek.")
+                if isinstance(verdict, dict) else "Értelmezhetetlen bírálat.",
+            )
+            repair_prompt = build_prompt(item["section_code"], source) + f"""
+
+MŰVÉSZETI SZERKESZTŐI JAVÍTÁS:
+Az előző cikket a második szerkesztői ellenőrzés elutasította:
+{verdict.get("reason", "A cikk pontatlan, általános vagy nem eléggé megalapozott.") if isinstance(verdict, dict) else "A bírálat hibás volt."}
+Írd újra a cikket. Javítsd a konkrét hibát, és kizárólag a forrásból megalapozható
+adatokat kezeld tényként. A képi értelmezést különítsd el a dokumentált tényektől.
+Ne találj ki életrajzi, történelmi, datálási vagy ikonográfiai részleteket.
+"""
+            repaired_text = call_gemini(repair_prompt)
+            generated_content = parse_generated_content(
+                repaired_text,
+                section_code=item["section_code"]
+            )
+            verdict = review_art_content(source, generated_content)
+            if not art_content_passes(verdict):
+                raise RuntimeError(
+                    "Az Art of the Day cikk a javítás után sem ment át a minőségi ellenőrzésen: "
+                    + str(verdict.get("reason", "Nem megfelelő művészeti cikk."))
+                )
+        logger.info("Art of the Day magyar cikk minőségi ellenőrzése sikeres.")
 
     if item["section_code"] == "unsolved":
         review_unsolved_content(source, generated_content)
