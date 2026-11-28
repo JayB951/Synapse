@@ -2,15 +2,21 @@ name: WORLD SHARDS - Matrix Error Watchdog
 
 on:
   schedule:
-    # 06:15 Europe/Budapest: 04:15 UTC in summer, 05:15 UTC in winter.
-    - cron: "15 4,5 * * *"
+    # Napi tartalékellenőrzés: 06:15 Budapest (05:15 UTC télen).
+    - cron: "15 5 * * *"
+  workflow_dispatch:
+  workflow_run:
+    workflows:
+      - WORLD SHARDS - Daily Automatic Edition
+    types:
+      - completed
 
 permissions:
   actions: read
   contents: read
 
 concurrency:
-  group: world-shards-matrix-watchdog
+  group: world-shards-matrix-watchdog-${{ github.event.workflow_run.id || github.run_id }}
   cancel-in-progress: false
 
 jobs:
@@ -18,13 +24,13 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Check whether today's edition was delivered
+      - name: Ellenőrzés – publikáció és e-mail ténylegesen megtörtént-e
         id: check
         env:
           GH_TOKEN: ${{ github.token }}
           REPOSITORY: ${{ github.repository }}
         run: |
-          python - <<'PY'
+          python - <<'PY' >> "$GITHUB_OUTPUT"
           import json
           import os
           import urllib.request
@@ -33,14 +39,6 @@ jobs:
 
           tz = ZoneInfo("Europe/Budapest")
           now = datetime.now(tz)
-          if os.getenv("GITHUB_EVENT_NAME") == "schedule" and not (
-              now.hour == 6 and now.minute >= 15
-          ):
-              print("Not the 06:15 Budapest watchdog window; no action.")
-              with open(os.environ["GITHUB_OUTPUT"], "a") as out:
-                  out.write("alert=false\n")
-              raise SystemExit(0)
-
           repo = os.environ["REPOSITORY"]
           token = os.environ["GH_TOKEN"]
           api = "https://api.github.com/repos/" + repo
@@ -57,7 +55,6 @@ jobs:
               with urllib.request.urlopen(request, timeout=20) as response:
                   return json.loads(response.read().decode("utf-8"))
 
-          today = now.date()
           runs = get_json(
               api + "/actions/workflows/world-shards-daily.yml/runs"
               "?branch=main&per_page=30"
@@ -68,59 +65,85 @@ jobs:
               stamp = run.get("run_started_at") or run.get("created_at")
               if not stamp:
                   continue
-              started = datetime.fromisoformat(stamp.replace("Z", "+00:00")).astimezone(tz)
-              if started.date() == today:
+              started = datetime.fromisoformat(
+                  stamp.replace("Z", "+00:00")
+              ).astimezone(tz)
+              if started.date() == now.date():
                   todays.append(run)
 
-          successful = False
-          latest = max(todays, key=lambda item: item.get("run_number", 0), default=None)
-          failure_name = None
-          run_url = ""
+          latest = max(
+              todays,
+              key=lambda item: (
+                  item.get("run_number", 0),
+                  item.get("run_attempt", 1),
+              ),
+              default=None,
+          )
 
-          for run in todays:
-              if run.get("status") != "completed" or run.get("conclusion") != "success":
-                  continue
-              jobs = get_json(run["url"] + "/jobs").get("jobs", [])
-              daily = next((job for job in jobs if job.get("name") == "daily-edition"), None)
-              if daily and daily.get("status") == "completed" and daily.get("conclusion") == "success":
-                  successful = True
-                  break
-
-          if successful:
-              print("Today's SHARDS daily edition completed successfully.")
-              with open(os.environ["GITHUB_OUTPUT"], "a") as out:
-                  out.write("alert=false\n")
+          if latest and latest.get("status") in ("queued", "in_progress"):
+              print("alert=false")
+              print("A napi kiadás fut; a lezáró workflow_run esemény ellenőrzi az eredményt.")
               raise SystemExit(0)
+
+          delivered = False
+          failure_name = "A napi automatikus kiadás ma nem indult el"
+          run_url = ""
 
           if latest:
               run_url = latest.get("html_url", "")
-              if latest.get("status") != "completed":
-                  failure_name = "A napi SHARDS-futás 06:15-kor még folyamatban volt"
-              else:
+              if latest.get("conclusion") == "success":
                   jobs = get_json(latest["url"] + "/jobs").get("jobs", [])
-                  failed = []
+                  daily = next(
+                      (job for job in jobs if job.get("name") == "daily-edition"),
+                      None,
+                  )
+                  if daily:
+                      steps = {
+                          step.get("name"): step.get("conclusion")
+                          for step in daily.get("steps", [])
+                      }
+                      publication = steps.get(
+                          "Teljessegi ellenorzes es automatikus publikacio"
+                      )
+                      email = steps.get("Teljes napi kiadás e-mailben")
+                      delivered = publication == "success" and email == "success"
+                      if not delivered:
+                          if publication != "success":
+                              failure_name = (
+                                  "A kiadvány publikációja nem fejeződött be sikeresen"
+                              )
+                          else:
+                              failure_name = (
+                                  "A teljes napi kiadás e-mail-küldése nem fejeződött be"
+                              )
+                  else:
+                      failure_name = "A napi kiadási feladat nem futott le"
+              else:
+                  failure_name = (
+                      "A napi automatikus futás hibával vagy megszakítással zárult: "
+                      + str(latest.get("conclusion") or latest.get("status"))
+                  )
+                  jobs = get_json(latest["url"] + "/jobs").get("jobs", [])
                   for job in jobs:
                       for step in job.get("steps", []):
-                          if step.get("conclusion") == "failure":
-                              failed.append(step.get("name") or job.get("name") or "Ismeretlen lépés")
-                      if job.get("conclusion") == "failure" and not any(
-                          item.get("conclusion") == "failure" for item in job.get("steps", [])
-                      ):
-                          failed.append(job.get("name") or "Napi kiadási folyamat")
-                  failure_name = failed[0] if failed else (
-                      "A napi SHARDS-futás hibával vagy megszakítással zárult"
-                  )
-          else:
-              failure_name = "A napi automatikus SHARDS-futás nem indult el"
+                          if step.get("conclusion") in ("failure", "cancelled"):
+                              failure_name = step.get("name") or failure_name
+                              break
+                      if job.get("conclusion") in ("failure", "cancelled"):
+                          break
 
-          with open(os.environ["GITHUB_OUTPUT"], "a") as out:
-              out.write("alert=true\n")
-              out.write("failure_name=" + failure_name.replace("\n", " ") + "\n")
-              out.write("run_url=" + run_url + "\n")
+          if delivered:
+              print("alert=false")
+              print("A mai publikáció és a teljes kiadás e-mailje is sikeres.")
+              raise SystemExit(0)
+
+          print("alert=true")
+          print("failure_name=" + failure_name.replace("\n", " "))
+          print("run_url=" + run_url)
           print("MATRIX ALERT: " + failure_name)
           PY
 
-      - name: Send HIBA A MATRIXBAN email
+      - name: HIBA A MÁTRIXBAN értesítő e-mail küldése
         if: steps.check.outputs.alert == 'true'
         env:
           MAIL_USERNAME: ${{ secrets.MAIL_USERNAME }}
@@ -136,31 +159,34 @@ jobs:
           from email.message import EmailMessage
           from zoneinfo import ZoneInfo
 
-          sender = os.environ["MAIL_USERNAME"]
-          password = os.environ["MAIL_PASSWORD"]
-          recipient = os.environ["NOTIFY_EMAIL"]
-          if not sender or not password or not recipient:
-              raise RuntimeError(
-                  "Hiányzó SMTP-beállítás: MAIL_USERNAME, MAIL_PASSWORD vagy "
-                  "WORLD_SHARDS_NOTIFY_EMAIL."
-              )
+          sender = os.environ.get("MAIL_USERNAME", "")
+          password = os.environ.get("MAIL_PASSWORD", "")
+          recipient = os.environ.get("NOTIFY_EMAIL", "")
+          missing = [
+              name for name, value in (
+                  ("MAIL_USERNAME", sender),
+                  ("MAIL_PASSWORD", password),
+                  ("WORLD_SHARDS_NOTIFY_EMAIL", recipient),
+              ) if not value
+          ]
+          if missing:
+              raise RuntimeError("Hiányzó SMTP-beállítás: " + ", ".join(missing))
 
           today = datetime.now(ZoneInfo("Europe/Budapest")).strftime("%Y-%m-%d")
           issue = os.environ.get("FAILURE_NAME", "Ismeretlen napi futási hiba")
           run_url = os.environ.get("RUN_URL", "")
           message = EmailMessage()
-          message["Subject"] = f"HIBA A MÁTRIXBAN! – SHARDS – {today}"
+          message["Subject"] = f"HIBA A MÁTRIXBAN! – WORLD SHARDS – {today}"
           message["From"] = sender
           message["To"] = recipient
           body = (
               "HIBA A MÁTRIXBAN!\n\n"
-              f"{issue}\n\n"
-              "- ez a hiba akadályozza a mai lapszám megjelenését.\n\n"
-              "A SHARDS napi kiadása 06:15-ig nem jutott el sikeres, "
-              "befejezett publikációig és e-mail-küldésig.\n"
+              + issue
+              + "\n\nA mai WORLD SHARDS kiadás publikációja és teljes e-mailes "
+              "kézbesítése nem igazolható.\n"
           )
           if run_url:
-              body += "\nA hibás futás részletei: " + run_url + "\n"
+              body += "\nA futás részletei: " + run_url + "\n"
           body += "\nAutomatikus rendszerértesítés – WORLD SHARDS"
           message.set_content(body)
 
@@ -168,5 +194,5 @@ jobs:
               smtp.login(sender, password)
               smtp.send_message(message)
 
-          print("HIBA A MATRIXBAN notification sent.")
+          print("HIBA A MÁTRIXBAN értesítés elküldve.")
           PY
