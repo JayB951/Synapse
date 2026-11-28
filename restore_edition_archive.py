@@ -9,8 +9,12 @@ import logging
 import os
 from datetime import datetime
 from pathlib import Path
-from urllib.parse import urlencode
-from urllib.request import Request, urlopen
+from urllib.parse import urlencode, urlparse
+from urllib.request import (
+    HTTPRedirectHandler,
+    Request,
+    build_opener,
+)
 from zipfile import ZipFile
 
 from zoneinfo import ZoneInfo
@@ -18,6 +22,17 @@ from zoneinfo import ZoneInfo
 LOGGER = logging.getLogger("world-shards-archive-restore")
 TIMEZONE = ZoneInfo("Europe/Budapest")
 API_ROOT = "https://api.github.com"
+
+
+class SafeGitHubRedirectHandler(HTTPRedirectHandler):
+    """Do not forward the GitHub bearer token to a different host on artifact redirects."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        redirected = super().redirect_request(req, fp, code, msg, headers, newurl)
+        if redirected and urlparse(req.full_url).netloc != urlparse(newurl).netloc:
+            redirected.remove_header("Authorization")
+            redirected.remove_header("authorization")
+        return redirected
 
 
 def api_get(url, token):
@@ -30,7 +45,8 @@ def api_get(url, token):
             "User-Agent": "world-shards-reliability",
         },
     )
-    with urlopen(request, timeout=30) as response:
+    opener = build_opener(SafeGitHubRedirectHandler)
+    with opener.open(request, timeout=30) as response:
         return response.read()
 
 
