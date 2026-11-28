@@ -41,6 +41,8 @@ on:
       - "test_music_collector.py"
       - "test_agora_automation.py"
       - "restore_edition_archive.py"
+      - "sync_fallback_store.py"
+      - ".github/workflows/world-shards-daily.yml"
       - "resilient_storage.py"
       - "tests/test_resilient_storage.py"
       - "tests/test_restore_edition_archive.py"
