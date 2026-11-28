@@ -96,7 +96,10 @@ class SQLiteFallbackStore:
                     continue
                 payload = json.loads(row["payload"])
                 if row["table_name"] == "shard_edition_items":
-                    raw_date = edition_dates.get(str(payload.get("edition_id")))
+                    raw_date = (
+                        edition_dates.get(str(payload.get("edition_id")))
+                        or payload.get("created_at")
+                    )
                 elif row["table_name"] == "shard_content_items":
                     raw_date = payload.get("collected_at") or payload.get("created_at")
                 elif row["table_name"] == "publications":
