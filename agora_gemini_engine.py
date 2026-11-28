@@ -371,6 +371,30 @@ def simulate_historical_figure(event, profile, client):
         "szereplőire, számaira, helyszíneire és következményeire reagálj; legalább három "
         "konkrét, a híranyagban szereplő részletet dolgozz fel. Tilos általános, bármely "
         "hírre ráhúzható társadalomelméleti bevezetőt vagy ismétlődő közhelyet írni. "
+        "NE elégedj meg azzal, hogy a hír fontos, kérdéseket vet fel, átláthatóságra, "
+        "felelősségre vagy a közbizalomra van szükség. Ne puhítsd fel a következtetést "
+        "udvarias, semmitmondó formulákkal. Ne légy automatikusan semleges vagy "
+        "kiegyensúlyozott: a történeti személy dokumentált elveiből következő, akár "
+        "kemény és vitatható ítéletet is fogalmazz meg, ha a tények ezt indokolják. "
+        "Ne gyárts tényt, szándékot vagy bizonyítatlan vádat; különítsd el a bizonyított "
+        "tényt, az abból levont következtetést és a feltételes kockázatot. Ha a hír "
+        "hatalmi vagy intézményi döntésről szól, nevezd meg, ki döntött, ki nyerhet "
+        "befolyást, milyen ellensúly vagy garancia gyengülhet, ki ellenőrzi a döntéshozót, "
+        "és milyen konkrét következménye lehet mindennek a polgárokra. Ha a hír "
+        "személyi kinevezésről vagy vezetőváltásról szól, vizsgáld meg a kinevezés "
+        "módját, az intézményi függés kockázatát és a tényleges függetlenség mércéjét; "
+        "ne kezeld a formális jogi státuszt a tényleges függetlenség bizonyítékaként. "
+        "A gondolkodó karaktere legyen felismerhető az érvelésből, ne csak a neve "
+        "szerepeljen a szöveg fölött: Montesquieu az ellensúlyokat és a hatalmi ágak "
+        "összefonódását kérje számon; Machiavelli tárja fel a hatalom megszerzésének, "
+        "megtartásának és intézményi beágyazásának módszereit; Cicero a közjó, a "
+        "köztársasági erény és a tisztségviselő erkölcsi-jogi felelőssége felől ítéljen. "
+        "Ezek irányjelző példák, nem kötelező szereplők és nem szó szerinti történeti "
+        "idézetek. A három kiválasztott személy ne ugyanazt a mérsékelt tanulságot "
+        "mondja el háromféleképpen: legyen köztük valódi nézőpontkülönbség, akár "
+        "nyílt ellentmondás is. Minden rész tartalmazzon legalább egy konkrét, "
+        "a hír alapján levont éles következtetést, egy megnevezett kockázatot vagy "
+        "érdekellentétet, és egy kellemetlen, de releváns kérdést a felelősök felé. "
         "A terjedelem maradjon legalább 60 szó, de minden mondatnak legyen közvetlen "
         "kapcsolata az eseménnyel. Történelmi "
         "állításnál kizárólag a profilban megadott dokumentációra hivatkozhatsz; "
@@ -404,6 +428,13 @@ def simulate_historical_figure(event, profile, client):
         ],
         "allowed_historical_source_titles": source_titles,
         "provocative_question_requirement": "A személy saját műveiből, szakmájából, életművéből és ismert tetteiből fakadó, a konkrét eseményre célzott, kifejezetten provokatív, akár polgárpukkasztó kérdés. Ne általános retorikai kérdés legyen; pontosan egy kérdés.",
+        "editorial_depth_requirements": [
+            "Ne csak a téma általános jelentőségét ismertesd: fejtsd ki a konkrét ügy mögötti intézményi, politikai, erkölcsi vagy társadalmi mechanizmust.",
+            "Ne használj automatikus, udvarias közhelyeket a felelősségről, átláthatóságról és közbizalomról konkrét következtetés nélkül.",
+            "Mutasd meg, hogy a kiválasztott gondolkodó milyen kellemetlen következtetésre jutna a hír tényeiből, és miért.",
+            "A három személy nézőpontja legyen karakteresen különböző; a nézetkülönbségeket ne simítsd el.",
+            "A bizonyított tényeket, az értelmezést és a feltételes kockázatot világosan válaszd szét; ne állíts bizonyítatlan jogsértést vagy szándékot."
+        ],
     }
     result = client.generate_json(system, payload, SIMULATION_SCHEMA)
     sections = result.get("sections")
@@ -475,8 +506,13 @@ def simulate_historical_figure(event, profile, client):
     except GeminiError as validation_error:
         for repair_attempt in range(3):
             repair_system = system + (
-                " KÖTELEZŐ JAVÍTÁS: az előző válasz nem teljesítette a mondatszerkezeti "
-                "követelményt. Írd újra mindhárom részt úgy, hogy mindegyik legalább négy "
+                " KÖTELEZŐ JAVÍTÁS: az előző válasz nem teljesítette a szerkezeti vagy "
+                "tartalmi minőségi követelményt. A javítás során ne csak a mondatszerkezetet "
+                "javítsd: dolgozd ki a konkrét esemény mögötti hatalmi/intézményi/erkölcsi "
+                "mechanizmust, nevezz meg egy érdemi kockázatot és fogalmazz meg éles, "
+                "a történeti személy saját gondolkodásából következő ítéletet. Kerüld a "
+                "semmitmondó, udvarias közhelyeket; a három nézőpont legyen eltérő. "
+                "Írd újra mindhárom részt úgy, hogy mindegyik legalább négy "
                 "különálló, teljes összetett mondatból és legalább 60 szóból álljon. "
                 "Minden mondat külön, ponttal lezárt mondat legyen, és mindegyik tartalmazzon "
                 "kötőszót vagy alárendelő kapcsolatot. Ne rövidíts, ne vond össze a mondatokat. "
