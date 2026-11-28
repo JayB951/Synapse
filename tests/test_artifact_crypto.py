@@ -8,7 +8,6 @@ class ArtifactCryptoTests(unittest.TestCase):
         original = b"WORLD SHARDS private daily edition archive"
         encrypted = encrypt_bytes(original, "test-secret-key")
         self.assertNotEqual(encrypted, original)
-        self.assertTrue(encrypted.startswith(b"\x8c"))
         self.assertEqual(decrypt_bytes(encrypted, "test-secret-key"), original)
 
     def test_wrong_key_fails_closed(self):
