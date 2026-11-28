@@ -24,9 +24,7 @@ from datetime import date
 from urllib.parse import quote
 
 import requests
-from supabase import create_client
-
-
+from resilient_storage import create_resilient_client
 VERSION = "0.3.0"
 
 WIKIPEDIA_API = "https://en.wikipedia.org/w/api.php"
@@ -109,7 +107,7 @@ def get_supabase_client():
             "Missing SUPABASE_URL or SUPABASE_SECRET_KEY."
         )
 
-    return create_client(url, key)
+    return create_resilient_client(url, key)
 
 
 def clean_text(value):
