@@ -604,6 +604,51 @@ def build_prompt(
         section_code == "closing"
         and (metadata.get("source_provider") == "JokeAPI" or metadata.get("joke_id") is not None)
     )
+    is_xkcd = (
+        section_code == "closing"
+        and (metadata.get("source_provider") == "xkcd" or metadata.get("comic_number") is not None)
+    )
+    if is_xkcd:
+        comic_title = clean_source_text(metadata.get("comic_title") or original_title)
+        alt_text = clean_source_text(metadata.get("alt_text") or metadata.get("alt") or "")
+        transcript = clean_source_text(metadata.get("transcript") or "")
+        transcript_rule = (
+            "A rendelkezésre álló transcript teljes szövegét fordítsd le az ÁTIRAT részben, "
+            "a szereplők és a sorrend megtartásával."
+            if transcript else
+            "NINCS TRANSCRIPT. Ne találj ki párbeszédet, szereplőt vagy képen nem látható eseményt; "
+            "kizárólag az alt text fordítását add meg."
+        )
+        body_format = (
+            '"KÉP LEÍRÁSA:\\n[A teljes magyar alt text]\\n\\nÁTIRAT:\\n[A teljes magyar transcript]"'
+            if transcript else
+            '"KÉP LEÍRÁSA:\\n[A teljes magyar alt text]"'
+        )
+        return f"""
+A WORLD SHARDS magyar magazin xkcd-szerkesztője vagy. A képregény eredeti képe változatlanul jelenik meg; a feladatod kizárólag a hozzá tartozó szöveg pontos, természetes magyarítása.
+Ne írj hosszú magazincikket, ne magyarázd túl a poént, és ne találj ki semmit, ami a forrásban nem szerepel.
+EREDETI CÍM: {comic_title}
+EREDETI ALT TEXT: {alt_text}
+EREDETI TRANSCRIPT: {transcript or "Nincs elérhető transcript."}
+
+KÖTELEZŐ SZABÁLYOK:
+1. A title az eredeti képregénycím rövid, természetes magyar fordítása legyen; ne tartalmazza a sorszámot.
+2. A summary egy rövid, 1–2 mondatos magyar kedvcsináló vagy kontextus legyen. Ne lője le a poént, ne ismételje a címet, és ne tegyen hozzá forrás nélküli tényt.
+3. A body első része pontosan a „KÉP LEÍRÁSA:” címkével kezdődjön, majd az eredeti alt text teljes, hű magyar fordítása következzen. Ez a szöveg a kép akadálymentes alternatív leírása is, ezért ne hagyj ki belőle vizuálisan fontos részletet.
+4. {transcript_rule}
+5. {("A body második része pontosan az „ÁTIRAT:” címkével kezdődjön, majd a teljes magyar átirat következzen." if transcript else "Ne adj hozzá ÁTIRAT részt, mert nincs hozzá eredeti forrás.")}
+6. A képregény humorát csak akkor magyarázd meg külön, ha az eredeti alt text és transcript alapján valóban szükséges; a magyarázat ne helyettesítse a fordítást.
+7. Ne állítsd, hogy a képen valami látható, ha ezt a forrás nem támasztja alá.
+
+Kizárólag ezt a JSON-struktúrát add vissza:
+{{
+  "title": "A képregény magyar címe",
+  "summary": "Rövid magyar kedvcsináló",
+  "body": {body_format}
+}}
+Ne használj Markdown kódblokkot.
+"""
+
     if is_jokeapi:
         joke_type = metadata.get("joke_type", "single")
         structure = (
@@ -828,6 +873,28 @@ A question mezőben add meg a pontos megválaszolatlan kérdést; elutasításko
         raise RuntimeError("Az Unsolved AI-szerkesztő elutasította a cikket: " + str(verdict.get("reason", "Nem konkrét, elgondolkodtató megoldatlan rejtély.")))
     logger.info("Unsolved AI-szerkesztő elfogadta: %s", verdict["question"])
     return verdict
+
+
+def is_xkcd_source(source):
+    metadata = source.get("metadata") or {}
+    return metadata.get("source_provider") == "xkcd" or metadata.get("comic_number") is not None
+
+
+def validate_xkcd_translation(source, generated):
+    """Require a faithful Hungarian alt-text translation and, when available, transcript."""
+    metadata = source.get("metadata") or {}
+    alt_text = clean_source_text(metadata.get("alt_text") or metadata.get("alt") or "")
+    transcript = clean_source_text(metadata.get("transcript") or "")
+    body = clean_display_text(generated.get("body", ""))
+    match = re.match(r"^KÉP LEÍRÁSA:\s*(.+?)(?=\n\s*\nÁTIRAT:|$)", body, re.IGNORECASE | re.DOTALL)
+    if not alt_text or not match or not match.group(1).strip():
+        raise RuntimeError("Az xkcd-feldolgozásból hiányzik a teljes magyar képleírás.")
+    transcript_match = re.search(r"(?:^|\n\s*\n)ÁTIRAT:\s*(.+)$", body, re.IGNORECASE | re.DOTALL)
+    if transcript and (not transcript_match or not transcript_match.group(1).strip()):
+        raise RuntimeError("Az xkcd eredeti transcriptje nem került át a magyar feldolgozásba.")
+    if not transcript and transcript_match:
+        raise RuntimeError("Az xkcd-hez nem tartozó transcriptet a feldolgozás kitalálta.")
+    return True
 
 
 def review_joke_translation(source, generated):
@@ -1216,6 +1283,9 @@ def process_item(
             item["section_code"],
             source
         )
+
+    if is_xkcd_source(source):
+        validate_xkcd_translation(source, generated_content)
 
     if is_jokeapi_source(source):
         verdict = review_joke_translation(source, generated_content)

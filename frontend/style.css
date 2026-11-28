@@ -120,3 +120,10 @@
 .agora-source-link:hover{color:#f0d39b;border-color:currentColor}
 .agora-empty{color:var(--muted);font-size:13px;padding:18px 0}
 @media(max-width:760px){.agora-opening{margin-bottom:56px;padding-top:24px}.agora-opening-heading{align-items:flex-start;flex-direction:column;gap:12px}.agora-columns{grid-template-columns:1fr}.agora-column{padding:21px}.agora-news-title{font-size:20px}}
+
+
+/* xkcd: accessible translated description, transcript and license attribution */
+.xkcd-text-heading{font:600 11px 'DM Mono',monospace;letter-spacing:1px;color:var(--gold);margin:24px 0 8px}
+.xkcd-text-paragraph{font:15px/1.8 Georgia,serif;color:#d5dde6;margin:0 0 12px;white-space:pre-wrap}
+.xkcd-license-credit{font:11px/1.6 'DM Sans',sans-serif;color:#b8c3cf}
+.xkcd-license-link{margin-top:0}
