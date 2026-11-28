@@ -406,7 +406,7 @@ function renderResearchFrontierBody(container, body) {
     "SZINTÉZIS": "research-synthesis"
   };
   blocks.forEach(block => {
-    const match = block.match(/^([^\n]+)\n\n([\\s\\S]*)$/);
+    const match = block.match(/^([^\n]+)\n\n([\s\S]*)$/);
     if (!match || !labels[match[1]]) {
       if (block.trim()) container.append(makeElement("p", "reader-paragraph", block.trim()));
       return;
