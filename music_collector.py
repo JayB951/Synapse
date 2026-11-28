@@ -2,7 +2,7 @@
 WORLD SHARDS – Music of the Day Collector
 Version: M1.5.2 / 0.2.0
 
-A napi kiadvány kiválasztott témáihoz keres kapcsolódó zeneművet
+Önálló, műfajilag rotáló zenei ajánlót választ
 az ingyenes, API-kulcs nélküli iTunes Search API segítségével.
 
 Nem tölt le és nem tárol hangfájlt.
@@ -18,7 +18,7 @@ from zoneinfo import ZoneInfo
 
 import requests
 from resilient_storage import create_resilient_client
-VERSION = "M1.5.1 / 0.1.0"
+VERSION = "M1.5.2 / 0.2.0"
 TIMEZONE = ZoneInfo("Europe/Budapest")
 ITUNES_SEARCH_URL = "https://itunes.apple.com/search"
 REQUEST_TIMEOUT = 25
