@@ -13,6 +13,8 @@ A program nem módosítja a SYNAPSE rekordokat.
 import os
 import re
 import html
+import json
+import time
 from datetime import datetime, timezone
 
 import requests
@@ -24,20 +26,17 @@ from resilient_storage import create_resilient_client
 VERSION = "M1.2 / 0.1.0"
 
 SYNAPSE_LIMIT = 25
-ART_LIMIT = 20
+ART_LIMIT = 50
+ART_SEARCH_QUERIES_PER_RUN = 2
 REQUEST_TIMEOUT = 30
 
 ART_API_URL = "https://api.artic.edu/api/v1/artworks/search"
 
 ART_SEARCH_TERMS = [
-    "landscape",
-    "portrait",
-    "still life",
-    "architecture",
-    "nature",
-    "mythology",
-    "animal",
-    "abstract",
+    "painting", "sculpture", "landscape", "portrait", "still life",
+    "architecture", "mythology", "religion", "animals", "flowers",
+    "city", "history", "daily life", "abstract", "printmaking",
+    "textile", "ceramics", "drawing", "decorative arts", "seascape",
 ]
 
 
@@ -186,9 +185,124 @@ def collect_research(client):
 # ART OF THE DAY – ART INSTITUTE OF CHICAGO
 # ============================================================
 
-def get_art_search_term():
+def get_art_search_terms():
+    """Return two rotating themes; the offset cycles through each theme's results."""
     day_number = now_utc().timetuple().tm_yday
-    return ART_SEARCH_TERMS[day_number % len(ART_SEARCH_TERMS)]
+    first = (day_number - 1) % len(ART_SEARCH_TERMS)
+    second = (first + 7) % len(ART_SEARCH_TERMS)
+    return [ART_SEARCH_TERMS[first], ART_SEARCH_TERMS[second]]
+
+
+def get_art_search_term():
+    """Backward-compatible single daily theme."""
+    return get_art_search_terms()[0]
+
+
+def score_artwork(artwork):
+    """Rank records by the completeness and editorial usefulness of their metadata."""
+    score = 0
+    title = str(artwork.get("title") or "").strip().casefold()
+    if title and title not in {"untitled", "unknown", "no title"}:
+        score += 12
+    if artwork.get("artist_display") or artwork.get("artist_title"):
+        score += 18
+    if artwork.get("date_display"):
+        score += 10
+    if artwork.get("medium_display") or artwork.get("medium"):
+        score += 10
+    description = clean_html(
+        artwork.get("description") or artwork.get("short_description")
+    ) or ""
+    if len(description) >= 300:
+        score += 22
+    elif len(description) >= 100:
+        score += 16
+    elif description:
+        score += 8
+    if artwork.get("place_of_origin"):
+        score += 7
+    if artwork.get("style_title"):
+        score += 7
+    if artwork.get("classification_title"):
+        score += 7
+    if artwork.get("dimensions"):
+        score += 3
+    return score
+
+
+def build_artwork_record(artwork, search_term):
+    """Convert one Art Institute API result into a complete, image-ready candidate."""
+    if not isinstance(artwork, dict) or artwork.get("is_public_domain") is not True:
+        return None
+
+    artwork_id = artwork.get("id")
+    title = clean_html(artwork.get("title"))
+    image_id = artwork.get("image_id")
+    if not artwork_id or not title or not image_id:
+        return None
+
+    artist = clean_html(
+        artwork.get("artist_display") or artwork.get("artist_title")
+    )
+    date_display = clean_html(artwork.get("date_display"))
+    medium = clean_html(
+        artwork.get("medium_display") or artwork.get("medium")
+    )
+    description = clean_html(
+        artwork.get("description") or artwork.get("short_description")
+    )
+    place_of_origin = clean_html(artwork.get("place_of_origin"))
+    style = clean_html(artwork.get("style_title"))
+    classification = clean_html(artwork.get("classification_title"))
+    dimensions = clean_html(artwork.get("dimensions"))
+    image_url = (
+        f"https://www.artic.edu/iiif/2/{image_id}/full/843,/0/default.jpg"
+    )
+    source_url = f"https://www.artic.edu/artworks/{artwork_id}"
+
+    summary_parts = []
+    if artist:
+        summary_parts.append(f"Művész: {artist}")
+    if date_display:
+        summary_parts.append(f"Keletkezés: {date_display}")
+    if place_of_origin:
+        summary_parts.append(f"Eredet: {place_of_origin}")
+    if medium:
+        summary_parts.append(f"Technika és anyag: {medium}")
+    if description:
+        summary_parts.append(description)
+
+    quality_score = score_artwork(artwork)
+    return {
+        "section_code": "art_of_the_day",
+        "title": title,
+        "summary": " ".join(summary_parts) or None,
+        "image_url": image_url,
+        "source_name": "Art Institute of Chicago",
+        "source_url": source_url,
+        "source_language": "en",
+        "status": "candidate",
+        "relevance_score": quality_score,
+        "metadata": {
+            "origin": "Art Institute of Chicago API",
+            "artwork_id": artwork_id,
+            "artist": artist,
+            "date_display": date_display,
+            "medium": medium,
+            "description": description,
+            "place_of_origin": place_of_origin,
+            "style_title": style,
+            "classification_title": classification,
+            "dimensions": dimensions,
+            "image_id": image_id,
+            "image_url": image_url,
+            "is_public_domain": True,
+            "metadata_license": "CC0",
+            "description_license": "CC BY 4.0",
+            "search_term": search_term,
+            "quality_score": quality_score,
+        },
+    }
 
 
 def collect_art(client):
@@ -197,125 +311,75 @@ def collect_art(client):
     print("ART OF THE DAY – ART INSTITUTE OF CHICAGO")
     print("=" * 65)
 
-    search_term = get_art_search_term()
+    day_number = now_utc().timetuple().tm_yday
+    search_terms = get_art_search_terms()
+    page_offset = (((day_number - 1) // len(ART_SEARCH_TERMS)) % 10) * ART_LIMIT
+    print("Keresési témák:", ", ".join(search_terms))
+    print("Keresési offset:", page_offset)
 
-    print("Keresési téma:", search_term)
-
-    params = {
-        "q": search_term,
-        "limit": ART_LIMIT,
-        "fields": (
-            "id,title,artist_title,date_display,medium,"
-            "description,image_id,is_public_domain"
-        ),
-        "query[term][is_public_domain]": "true",
-    }
-
-    headers = {
-        "AIC-User-Agent": "WORLD-SHARDS/0.1",
-    }
-
-    response = requests.get(
-        ART_API_URL,
-        params=params,
-        headers=headers,
-        timeout=REQUEST_TIMEOUT,
+    fields = (
+        "id,title,artist_title,artist_display,date_display,medium_display,"
+        "description,short_description,image_id,is_public_domain,"
+        "place_of_origin,style_title,classification_title,dimensions,thumbnail"
     )
-
-    response.raise_for_status()
-
-    artworks = response.json().get("data", [])
+    public_domain_with_image = {
+        "bool": {
+            "filter": [
+                {"term": {"is_public_domain": True}},
+                {"exists": {"field": "image_id"}},
+            ]
+        }
+    }
 
     inserted = 0
     skipped = 0
+    seen_ids = set()
+    total_returned = 0
 
-    for artwork in artworks:
-        if not artwork.get("is_public_domain"):
-            skipped += 1
-            continue
+    for term_index, search_term in enumerate(search_terms):
+        if term_index:
+            # The museum asks API consumers to self-throttle requests.
+            time.sleep(1)
 
-        artwork_id = artwork.get("id")
-        title = artwork.get("title")
-
-        if not artwork_id or not title:
-            skipped += 1
-            continue
-
-        source_url = (
-            f"https://www.artic.edu/artworks/{artwork_id}"
-        )
-
-        image_id = artwork.get("image_id")
-
-        image_url = (
-            f"https://www.artic.edu/iiif/2/{image_id}"
-            "/full/843,/0/default.jpg"
-            if image_id else None
-        )
-
-        description = clean_html(
-            artwork.get("description")
-        )
-
-        artist = artwork.get("artist_title")
-
-        summary_parts = []
-
-        if artist:
-            summary_parts.append(f"Művész: {artist}")
-
-        if artwork.get("date_display"):
-            summary_parts.append(
-                f"Keletkezés: {artwork['date_display']}"
-            )
-
-        if artwork.get("medium"):
-            summary_parts.append(
-                f"Technika: {artwork['medium']}"
-            )
-
-        if description:
-            summary_parts.append(description)
-
-        item = {
-            "section_code": "art_of_the_day",
-            "title": title,
-            "summary": " ".join(summary_parts) or None,
-            "image_url": image_url,
-            "source_name": "Art Institute of Chicago",
-            "source_url": source_url,
-            "source_language": "en",
-            "status": "candidate",
-            "metadata": {
-                "origin": "Art Institute of Chicago API",
-                "artwork_id": artwork_id,
-                "artist": artist,
-                "date_display": artwork.get("date_display"),
-                "medium": artwork.get("medium"),
-                "image_url": image_url,
-                "is_public_domain": True,
-                "metadata_license": "CC0",
-                "description_license": "CC BY 4.0",
-                "search_term": search_term,
-            },
+        params = {
+            "q": search_term,
+            "from": page_offset,
+            "size": ART_LIMIT,
+            "fields": fields,
+            "query": json.dumps(public_domain_with_image, separators=(",", ":")),
         }
+        response = requests.get(
+            ART_API_URL,
+            params=params,
+            headers={"AIC-User-Agent": "WORLD-SHARDS/1.0"},
+            timeout=REQUEST_TIMEOUT,
+        )
+        response.raise_for_status()
+        artworks = response.json().get("data", [])
+        total_returned += len(artworks)
 
-        result = save_content(client, item)
+        for artwork in artworks:
+            item = build_artwork_record(artwork, search_term)
+            if not item:
+                skipped += 1
+                continue
+            artwork_id = item["metadata"]["artwork_id"]
+            if artwork_id in seen_ids:
+                skipped += 1
+                continue
+            seen_ids.add(artwork_id)
 
-        if result == "inserted":
-            inserted += 1
-            print("ÚJ:", title[:85])
-        else:
-            skipped += 1
+            result = save_content(client, item)
+            if result == "inserted":
+                inserted += 1
+                print("ÚJ:", item["title"][:85], f"(minőségi pont: {item['relevance_score']})")
+            else:
+                skipped += 1
 
-    print("API által visszaadott művek:", len(artworks))
-    print("Új tartalom:", inserted)
-    print("Már létezett / kihagyva:", skipped)
-
-    return {
-        "inserted": inserted,
-        "skipped": skipped,
-    }
+    print("API által visszaadott művek:", total_returned)
+    print("Új, képpel rendelkező közkincs művek:", inserted)
+    print("Már létezett / hiányos / kihagyva:", skipped)
+    return {"inserted": inserted, "skipped": skipped}
 
 
 # ============================================================
