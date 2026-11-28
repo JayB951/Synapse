@@ -65,6 +65,7 @@ def simulation_response():
              "source_titles": ["Beszélgetések"]},
         ],
         "historical_disclosure": "Hipotetikus rekonstrukció.",
+        "provocative_question": "Ha a döntéshozók saját biztonságukat a közjó elé helyezik, milyen jogon várnak engedelmességet az állampolgároktól?",
         "direct_quote_used": False,
     }
 
