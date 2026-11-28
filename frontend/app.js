@@ -547,18 +547,20 @@ function renderAgora(items = []) {
       if (references.length) {
         const sourceList = makeElement("div", "agora-sources");
         sourceList.append(makeElement("span", "agora-sources-label", "FELHASZNÁLT HÍRFORRÁSOK"));
-        references.forEach(reference => {
-          if (!reference?.url) return;
+        const representativeReference = references.find(reference => {
           try {
-            const url = new URL(reference.url);
-            if (url.protocol !== "https:" && url.protocol !== "http:") return;
-            const link = makeElement("a", "agora-source-link", reference.publisher || reference.title || "Eredeti cikk");
-            link.href = url.href;
-            link.target = "_blank";
-            link.rel = "noopener noreferrer";
-            sourceList.append(link);
-          } catch (_) {}
+            const url = new URL(reference?.url || "");
+            return url.protocol === "https:" || url.protocol === "http:";
+          } catch (_) { return false; }
         });
+        if (representativeReference) {
+          const url = new URL(representativeReference.url);
+          const link = makeElement("a", "agora-source-link", representativeReference.publisher || representativeReference.title || "Eredeti cikk");
+          link.href = url.href;
+          link.target = "_blank";
+          link.rel = "noopener noreferrer";
+          sourceList.append(link);
+        }
         if (sourceList.querySelector("a")) column.append(sourceList);
       }
     }
