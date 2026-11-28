@@ -427,6 +427,7 @@ class ResilientQuery:
                     self.client.store.cache_remote(self.table_name, remote_rows)
                     remote_read_succeeded = True
                 except Exception:
+                    self.client.local_fallback_used = True
                     LOGGER.exception(
                         "Supabase-olvasási hiba (%s); SQLite tartalék használata.",
                         self.table_name,
@@ -462,6 +463,7 @@ class ResilientQuery:
                         self.client.store.mark_synced(self.table_name, row["id"], row)
                     return SimpleNamespace(data=saved)
                 except Exception:
+                    self.client.local_fallback_used = True
                     LOGGER.exception(
                         "Supabase-%s hiba (%s); rekordok helyi SQLite-ba mentve.",
                         self.operation, self.table_name,
@@ -482,6 +484,7 @@ class ResilientQuery:
                         self.client.store.mark_synced(self.table_name, row["id"], row)
                     return SimpleNamespace(data=rows)
                 except Exception:
+                    self.client.local_fallback_used = True
                     LOGGER.exception(
                         "Supabase-update hiba (%s); módosítás helyi SQLite-ba kerül.",
                         self.table_name,
@@ -521,6 +524,7 @@ class ResilientQuery:
                         self.client.store.mark_delete_synced(self.table_name, record_id)
                     return SimpleNamespace(data=rows)
                 except Exception:
+                    self.client.local_fallback_used = True
                     LOGGER.exception(
                         "Supabase-delete hiba (%s); törlési jelölés helyben rögzítve.",
                         self.table_name,
@@ -552,6 +556,7 @@ class ResilientSupabaseClient:
     def __init__(self, remote=None, store=None):
         self.remote = remote
         self.store = store or SQLiteFallbackStore()
+        self.local_fallback_used = remote is None
         if self.remote is not None:
             self.sync_pending()
 
@@ -576,6 +581,7 @@ class ResilientSupabaseClient:
                     item["table_name"], item["record_id"],
                 )
             except Exception:
+                self.local_fallback_used = True
                 LOGGER.warning(
                     "Helyi rekord visszaszinkronizálása még nem sikerült: %s/%s",
                     item["table_name"], item["record_id"],
@@ -588,6 +594,7 @@ class ResilientSupabaseClient:
                 ).execute()
                 self.store.mark_delete_synced(item["table_name"], item["record_id"])
             except Exception:
+                self.local_fallback_used = True
                 LOGGER.warning(
                     "Helyi törlés visszaszinkronizálása még nem sikerült: %s/%s",
                     item["table_name"], item["record_id"],
