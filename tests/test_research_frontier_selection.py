@@ -54,6 +54,11 @@ class FakeClient:
 
 
 class ResearchFrontierSelectionTests(unittest.TestCase):
+    def test_daily_edition_reserves_six_papers_and_seventeen_items(self):
+        self.assertEqual(builder.SECTION_LIMITS["research_frontier"], 6)
+        self.assertEqual(builder.BASE_EXPECTED_ITEMS, 15)
+        self.assertEqual(builder.EXPECTED_ITEMS, 17)
+
     def test_deduplication_uses_doi_even_when_landing_urls_differ(self):
         client = FakeClient("10.1234/same-paper")
         publication = {

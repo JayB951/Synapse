@@ -10,7 +10,7 @@ VERSION = "0.1.0"
 TIMEZONE = ZoneInfo("Europe/Budapest")
 
 SECTION_LIMITS = {
-    "research_frontier": 5,
+    "research_frontier": 6,
     "art_of_the_day": 1,
     "the_thinker": 1,
     "battlefield": 1,
@@ -21,7 +21,7 @@ SECTION_LIMITS = {
 }
 
 CLOSING_LIMIT = 2
-# Both AGORA sections are required for every new 16-item edition.
+# Both AGORA sections are required for every new 17-item edition.
 AGORA_SECTION_LIMITS = {
     "agora_hungary": 1,
     "agora_world": 1,
@@ -381,7 +381,11 @@ def add_music_to_existing_edition(supabase, edition, edition_date):
             "A mai kiadvány nem draft státuszú; automatikus módosítás leállítva."
         )
 
-    allowed_existing_counts = {BASE_EXPECTED_ITEMS - 1, BASE_EXPECTED_ITEMS}
+    allowed_existing_counts = {
+        BASE_EXPECTED_ITEMS - 2,
+        BASE_EXPECTED_ITEMS - 1,
+        BASE_EXPECTED_ITEMS,
+    }
     if len(existing_items) not in allowed_existing_counts:
         raise RuntimeError(
             f"A meglévő kiadvány {len(existing_items)} elemet tartalmaz; "
@@ -599,6 +603,108 @@ def add_agora_to_existing_edition(supabase, edition, edition_date):
     )
 
 
+def add_research_to_existing_edition(supabase, edition):
+    """Backfill the sixth SYNAPSE paper into an existing draft, without touching published issues."""
+    if edition.get("status") != "draft":
+        raise RuntimeError("Research Frontier csak draft kiadványhoz egészíthető ki.")
+
+    response = (
+        supabase.table("shard_edition_items")
+        .select("id,section_code,position,content_item_id,editor_note")
+        .eq("edition_id", edition["id"])
+        .order("position")
+        .execute()
+    )
+    existing_items = response.data or []
+    existing_research = [
+        item for item in existing_items
+        if item.get("section_code") == "research_frontier"
+        and item.get("editor_note") not in AGORA_EDITOR_NOTES.values()
+    ]
+    if len(existing_research) >= SECTION_LIMITS["research_frontier"]:
+        if len(existing_research) > SECTION_LIMITS["research_frontier"]:
+            raise RuntimeError("A meglévő draftban a Research Frontier rovat elemszáma meghaladja a hatot.")
+        logger.info("A draft Research Frontier rovata már hat publikációt tartalmaz.")
+        return
+
+    missing_count = SECTION_LIMITS["research_frontier"] - len(existing_research)
+    existing_ids = {
+        item.get("content_item_id") for item in existing_items
+        if item.get("content_item_id")
+    }
+    candidates = [
+        item for item in get_candidates(supabase, "research_frontier", limit=25)
+        if item.get("id") not in existing_ids
+        and (item.get("metadata") or {}).get("content_type") not in AGORA_SECTION_LIMITS
+    ]
+    chosen = choose_research_candidates(candidates, limit=missing_count)
+    if len(chosen) != missing_count:
+        raise RuntimeError(
+            f"A draft kiegészítéséhez {missing_count} további SYNAPSE-publikáció szükséges, "
+            f"de csak {len(chosen)} választható ki. A kiadvány változatlan maradt."
+        )
+
+    if existing_research:
+        insert_position = max(item["position"] for item in existing_research) + 1
+    else:
+        agora_positions = [
+            item["position"] for item in existing_items
+            if item.get("editor_note") in AGORA_EDITOR_NOTES.values()
+        ]
+        insert_position = max(agora_positions, default=0) + 1
+
+    shifted = []
+    try:
+        for item in sorted(
+            [row for row in existing_items if row["position"] >= insert_position],
+            key=lambda row: row["position"],
+            reverse=True,
+        ):
+            supabase.table("shard_edition_items").update(
+                {"position": item["position"] + len(chosen)}
+            ).eq("id", item["id"]).execute()
+            shifted.append((item["id"], item["position"]))
+
+        links = [{
+            "edition_id": edition["id"],
+            "content_item_id": item["id"],
+            "section_code": "research_frontier",
+            "position": insert_position + offset,
+            "editor_note": "SYNAPSE – Research Frontier kiegészítés",
+            "processing_status": "pending",
+        } for offset, item in enumerate(chosen)]
+        inserted = supabase.table("shard_edition_items").insert(links).execute()
+        if len(inserted.data or []) != len(links):
+            raise RuntimeError("Nem minden új Research Frontier-publikáció került a draftba.")
+    except Exception:
+        inserted_ids = [
+            row.get("id") for row in (inserted.data or [])
+        ] if "inserted" in locals() else []
+        if inserted_ids:
+            supabase.table("shard_edition_items").delete().in_("id", inserted_ids).execute()
+        for item_id, old_position in sorted(shifted, key=lambda pair: pair[1]):
+            supabase.table("shard_edition_items").update(
+                {"position": old_position}
+            ).eq("id", item_id).execute()
+        raise
+
+    supabase.table("shard_content_items").update(
+        {"status": "selected"}
+    ).in_("id", [item["id"] for item in chosen]).execute()
+
+    metadata = edition.get("metadata") or {}
+    if not isinstance(metadata, dict):
+        metadata = {}
+    metadata.update({
+        "planned_item_count": len(existing_items) + len(chosen),
+        "research_frontier_backfill": True,
+    })
+    supabase.table("shard_editions").update(
+        {"metadata": metadata}
+    ).eq("id", edition["id"]).execute()
+    logger.info("A Research Frontier draft kiegészült %s publikációval.", len(chosen))
+
+
 def create_edition(supabase, edition_date, planned_item_count=EXPECTED_ITEMS):
     date_object = datetime.strptime(edition_date, "%Y-%m-%d").date()
     formatted_date = date_object.strftime("%Y. %m. %d.")
@@ -726,6 +832,7 @@ def main():
             edition_date,
         )
         add_agora_to_existing_edition(supabase, existing, edition_date)
+        add_research_to_existing_edition(supabase, existing)
         return
 
     selected_items = select_edition_items(supabase, edition_date)

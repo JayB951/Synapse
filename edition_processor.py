@@ -41,7 +41,20 @@ RETRY_DELAYS = {
 MAX_OUTPUT_TOKENS = 4096
 MAX_SOURCE_LENGTH = 12000
 
-EXPECTED_ITEMS = 16
+RESEARCH_FRONTIER_SCHEMA = {
+    "type": "OBJECT",
+    "properties": {
+        "title": {"type": "STRING"},
+        "summary": {"type": "STRING"},
+        "novelty": {"type": "STRING"},
+        "challenge": {"type": "STRING"},
+        "synthesis": {"type": "STRING"},
+    },
+    "required": ["title", "summary", "novelty", "challenge", "synthesis"],
+    "propertyOrdering": ["title", "summary", "novelty", "challenge", "synthesis"],
+}
+
+EXPECTED_ITEMS = 17
 
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_SECRET_KEY = os.getenv("SUPABASE_SECRET_KEY")
@@ -725,31 +738,58 @@ Ne használj Markdown kódblokkot.
 
     if section_code == "research_frontier":
         return f"""
-A WORLD SHARDS magyar tudományos szerkesztője vagy. A feladatod a megadott tudományos publikáció
-igényes, közérthető, de szakmailag pontos magyar bemutatása.
+A WORLD SHARDS magyar tudományos szerkesztője és kritikai elemzője vagy.
+A feladatod nem hagyományos magazincikk, hanem a megadott tudományos publikáció
+öt elemű, tömör, karakteres szerkesztőségi értelmezése.
 
-A FORRÁSANYAGBAN szereplő bibliográfiai adatok és absztrakt:
+FORRÁSANYAG (a SYNAPSE által gyűjtött publikációs rekord):
 {source_text}
 
-KÖTELEZŐ SZERKESZTÉSI SZABÁLYOK:
-1. A cikk kizárólag a megadott publikációról szóljon. Ne helyettesítsd általános témájú ismeretterjesztő esszével.
-2. Mutasd be a kutatási kérdést vagy célt, a módszert, a legfontosabb eredményeket és azok jelentőségét, de csak akkor, ha ezek a forrásanyagból ténylegesen megismerhetők.
-3. Ha az absztrakt nem közöl részletes módszert, mintanagyságot, mérési körülményt, eredményt vagy korlátot, ne találd ki. Röviden jelezd, hogy az elérhető összefoglaló erre nem tér ki.
-4. Ne állítsd, hogy a teljes tanulmányt elolvastad. A rendelkezésre álló absztraktból nem ismert részleteket ne pótold általános tudásból.
-5. Különítsd el a kutatók eredményeit, azok értelmezését és a lehetséges következményeket. Korrelációt ne nevezz oksági kapcsolatnak.
-6. Ne találj ki szerzőt, intézményt, folyóiratot, idézetet, statisztikai adatot, hivatkozást vagy tudományos konszenzust.
-7. A szerzők, a folyóirat, az év, a publikáció típusa és a DOI csak a megadott metaadatok alapján jelenhet meg.
-8. A szöveg legyen informatív és részletes, de ne legyen fölöslegesen terjengős. A bizonytalanságot világosan jelezd.
-9. A cím természetes magyar cím legyen; a summary rövid, figyelemfelkeltő, de pontos összefoglaló.
-10. A törzsszöveg logikus, jól tagolt, legalább négy tartalmi bekezdésből álljon, amennyiben a forrásanyag ezt lehetővé teszi.
+KÖTELEZŐ KIMENETI SZERKEZET:
 
-Kizárólag ezt a JSON-struktúrát add vissza:
+1. title: A publikáció természetes, pontos magyar címe.
+2. summary: PONTOSAN EGY MONDAT, amely megválaszolja: miért jelentős ez a kutatás,
+   és egyetlen tömör állításban összefoglalja a lényegét. Ne általánosíts, ne dicsérd
+   automatikusan a kutatást, és ne ismételd meg pusztán a címet.
+3. novelty: EGYETLEN bekezdés, 4–5 mondatban. Pontosan fejtsd ki, mi az újdonság
+   a korábbi tudományos nézőponthoz, megközelítéshez vagy a forrásban megnevezett
+   korábbi kutatásokhoz képest. Ne állítsd, hogy a munka elsőként tett valamit,
+   ha ezt a forrás nem támasztja alá. Ha a forrás nem ismertet korábbi kutatást vagy
+   közvetlen összehasonlítást, ezt mondd ki, és az újdonságot csak a bemutatott
+   módszerből, adatokból vagy eredményből vezesd le.
+4. challenge: 1–3 mondatos, határozott és intellektuálisan éles kritikai kihívás.
+   Kérdőjelezd meg a kutatás megközelítésének legsebezhetőbb pontját: például a
+   módszertani választást, a feltételezéseket, az oksági értelmezést, az általánosíthatóságot,
+   a mérés érvényességét vagy a következtetések erejét. Ne udvariaskodó, üres
+   „további kutatás szükséges” formulát írj. A kritika legyen konkrét és erős,
+   de kizárólag a forrásból megállapítható korlátokra épüljön. Ha az absztrakt
+   nem közöl elég módszertani részletet, éppen ezt tedd a kritika központi kérdésévé;
+   ne találj ki hibát.
+5. synthesis: PONTOSAN EGY MONDAT, amely összesűríti a kritikai kihívást és
+   a SYNAPSE-forrásban ténylegesen bemutatott eredményt: mi az, amit a kutatás
+   valóban alátámaszt, és mi az, amit még nem bizonyít.
+
+TUDOMÁNYOS ÉS FORRÁSHŰSÉGI KORLÁTOK:
+- Kizárólag a megadott publikációs rekordból és absztraktból dolgozz; ne használj
+  külső tudást a hiányzó tények pótlására.
+- Ne állítsd, hogy a teljes tanulmányt elolvastad.
+- Ne találj ki mintanagyságot, módszertani részletet, statisztikát, korábbi kutatást,
+  szerzői állítást, intézményt vagy tudományos konszenzust.
+- Különítsd el a szerzők által közölt eredményt a saját kritikai értelmezéstől.
+- Korrelációt ne nevezz oksági kapcsolatnak; egy korlátozott mintából ne vezess le
+  általános érvényű következtetést.
+- Ha a forrás nem ad alapot egy erős állításhoz, fogalmazz világosan a bizonytalanságról.
+- A summary, novelty, challenge és synthesis mezők mind magyarul készüljenek.
+
+KIZÁRÓLAG EZT A JSON-STRUKTÚRÁT ADD VISSZA:
 {{
   "title": "A publikáció magyar címe",
-  "summary": "Rövid magyar összefoglaló",
-  "body": "A kutatás magyar nyelvű, forráshű bemutatása"
+  "summary": "A kutatás jelentőségét egy mondatban összefoglaló állítás.",
+  "novelty": "A korábbi megközelítéshez viszonyított újdonság 4–5 mondatban.",
+  "challenge": "A kutatás legfontosabb kritikai kihívása 1–3 mondatban.",
+  "synthesis": "A kritika és a forrás tényleges eredményének egymondatos szintézise."
 }}
-Ne használj Markdown kódblokkot.
+Ne használj Markdown kódblokkot vagy a JSON-on kívüli magyarázatot.
 """
 
     if is_jokeapi:
@@ -933,11 +973,11 @@ def parse_generated_content(generated_text, section_code=None):
             "A Gemini válasza nem JSON objektum."
         )
 
-    required_fields = [
-        "title",
-        "summary",
-        "body"
-    ]
+    required_fields = (
+        ["title", "summary", "novelty", "challenge", "synthesis"]
+        if section_code == "research_frontier"
+        else ["title", "summary", "body"]
+    )
 
     for field in required_fields:
 
@@ -962,6 +1002,41 @@ def parse_generated_content(generated_text, section_code=None):
             raise RuntimeError(
                 f"Üres mező a Gemini válaszában: {field}"
             )
+
+    # Research Frontier has a deliberately structured editorial output.
+    # Validate its compact sections before composing the legacy display_body field.
+    if section_code == "research_frontier":
+        title = data["title"]
+        data["summary"] = " ".join(data["summary"].split())
+        summary = data["summary"]
+        for field in ("novelty", "challenge", "synthesis"):
+            data[field] = " ".join(clean_display_text(data[field]).split())
+            if not data[field]:
+                raise RuntimeError(f"Üres Research Frontier mező: {field}")
+
+        if len(title) < 5 or len(title) > 180:
+            raise RuntimeError("A Research Frontier címe 5–180 karakter közötti legyen.")
+        if len(summary) < 25 or len(summary) > 400:
+            raise RuntimeError("A kutatás jelentőségének összefoglalója 25–400 karakter legyen.")
+        if len(data["novelty"]) < 80 or len(data["novelty"]) > 900:
+            raise RuntimeError("Az újdonság bemutatása 80–900 karakter közötti legyen.")
+        if len(data["challenge"]) < 35 or len(data["challenge"]) > 500:
+            raise RuntimeError("A kritikai kihívás 35–500 karakter közötti legyen.")
+        if len(data["synthesis"]) < 25 or len(data["synthesis"]) > 300:
+            raise RuntimeError("A szintézis 25–300 karakter közötti legyen.")
+
+        def sentence_count(value):
+            return len([part for part in re.split(r"(?<=[.!?])\s+(?=[A-ZÁÉÍÓÖŐÚÜŰ0-9])", value.strip()) if part])
+
+        if sentence_count(summary) != 1:
+            raise RuntimeError("A kutatás jelentősége pontosan egy mondat legyen.")
+        if not 4 <= sentence_count(data["novelty"]) <= 5:
+            raise RuntimeError("Az újdonság bemutatása 4–5 mondat legyen.")
+        if not 1 <= sentence_count(data["challenge"]) <= 3:
+            raise RuntimeError("A kritikai kihívás 1–3 mondat legyen.")
+        if sentence_count(data["synthesis"]) != 1:
+            raise RuntimeError("A szintézis pontosan egy mondat legyen.")
+        return data
 
     # Valid JSON alone is not sufficient editorial validation.
     # Reject truncated or effectively empty output before it is saved.
@@ -1222,7 +1297,12 @@ def generate_content_with_retries(
         )
 
         generated_text = call_gemini(
-            prompt
+            prompt,
+            response_schema=(
+                RESEARCH_FRONTIER_SCHEMA
+                if section_code == "research_frontier"
+                else None
+            )
         )
 
         try:
@@ -1242,17 +1322,14 @@ def generate_content_with_retries(
 
             if attempt <= JSON_RETRY_LIMIT:
 
-                prompt += """
-
-FONTOS JAVÍTÁS:
-Az előző válaszod nem volt érvényes JSON.
-Most érvényes JSON objektumot adj vissza,
-a title, summary és body mezőkkel.
-A cím 5–180, az összefoglaló 25–600 karakter legyen.
-A törzsszöveg legalább 120 karakterből és legalább két bekezdésből álljon
-(a Closing rovat kivételével, ahol legalább 20 karakter szükséges).
-Ne írj semmilyen szöveget a JSON elé vagy mögé.
-"""
+                prompt += (
+                    "\n\nJAVÍTSD A KIMENETET: kizárólag érvényes JSON-t adj vissza. "
+                    "A Research Frontier esetén pontosan title, summary, novelty, "
+                    "challenge és synthesis mezőket használj, és tartsd be az "
+                    "egymondatos, 4–5 mondatos, illetve legfeljebb 3 mondatos "
+                    "terjedelmi korlátokat. Más rovatnál maradjon a title, summary, body "
+                    "struktúra. Ne írj a JSON elé vagy mögé semmit."
+                )
 
     raise RuntimeError(
         f"A Gemini többszöri próbálkozás után sem adott "
@@ -1270,10 +1347,18 @@ def save_processed_content(
     generated_content
 ):
 
+    display_body = generated_content.get("body")
+    if "novelty" in generated_content:
+        display_body = (
+            "MI AZ ÚJDONSÁG?\n\n" + generated_content["novelty"]
+            + "\n\nKRITIKAI KIHÍVÁS\n\n" + generated_content["challenge"]
+            + "\n\nSZINTÉZIS\n\n" + generated_content["synthesis"]
+        )
+
     update_data = {
         "display_title": generated_content["title"],
         "display_summary": generated_content["summary"],
-        "display_body": generated_content["body"],
+        "display_body": display_body,
         "processing_status": "completed",
         "processed_at": datetime.now(
             timezone.utc
@@ -1646,7 +1731,7 @@ def process_edition(
         if completed == total:
 
             logger.info(
-                "Mind a 16 tartalom elkészült."
+                "Mind a 17 tartalom elkészült."
             )
 
             logger.info(
@@ -1751,7 +1836,7 @@ def process_edition(
         ):
 
             logger.info(
-                "Mind a 16 tartalom elkészült."
+                "Mind a 17 tartalom elkészült."
             )
 
             logger.info(
@@ -1860,7 +1945,7 @@ def main():
         )
 
         logger.info(
-            "Mind a 16 tartalom sikeresen feldolgozva."
+            "Mind a 17 tartalom sikeresen feldolgozva."
         )
 
         logger.info(

@@ -1,6 +1,6 @@
 """
 WORLD SHARDS – Automatic publication gate
-Only publishes today's Budapest-local draft when all 16 expected items are complete.
+Only publishes today's Budapest-local draft when all 17 expected items are complete.
 """
 import json
 import logging
@@ -12,7 +12,7 @@ from zoneinfo import ZoneInfo
 
 from resilient_storage import create_resilient_client
 EXPECTED_COUNTS = {
-    "research_frontier": 7,
+    "research_frontier": 8,
     "art_of_the_day": 1,
     "the_thinker": 1,
     "battlefield": 1,
@@ -151,7 +151,7 @@ def main():
 
     positions = sorted(item.get("position") for item in items)
     if positions != list(range(1, EXPECTED_TOTAL + 1)):
-        raise RuntimeError("A pozíciók nem folytonosak 1–16 között. A kiadás draft marad.")
+        raise RuntimeError("A pozíciók nem folytonosak 1–17 között. A kiadás draft marad.")
 
     incomplete = []
     for item in items:

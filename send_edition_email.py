@@ -1,7 +1,7 @@
 """Send the complete, verified WORLD SHARDS edition by email.
 
 This script is read-only with respect to Supabase. It sends only today's
-Budapest-local edition after confirming its published status and all 16
+Budapest-local edition after confirming its published status and all 17
 processed content records, including both AGORA sections.
 """
 import base64
@@ -24,7 +24,7 @@ from zoneinfo import ZoneInfo
 from resilient_storage import create_resilient_client
 TIMEZONE = ZoneInfo("Europe/Budapest")
 EXPECTED_COUNTS = {
-    "research_frontier": 7,
+    "research_frontier": 8,
     "art_of_the_day": 1,
     "the_thinker": 1,
     "battlefield": 1,
@@ -67,7 +67,7 @@ def validate_edition(edition, items, require_published=True):
         raise RuntimeError(f"Az e-mail nem küldhető: hibás rovateloszlás: {dict(counts)}.")
     positions = [item.get("position") for item in items]
     if sorted(positions) != list(range(1, EXPECTED_TOTAL + 1)):
-        raise RuntimeError("Az e-mail nem küldhető: a pozíciók nem folytonosak 1–16 között.")
+        raise RuntimeError("Az e-mail nem küldhető: a pozíciók nem folytonosak 1–17 között.")
     for item in items:
         if (
             item.get("processing_status") != "completed"
