@@ -9,6 +9,7 @@ from zipfile import ZipFile
 from zoneinfo import ZoneInfo
 
 import restore_edition_archive
+from urllib.request import Request
 
 
 class RestoreEditionArchiveTests(unittest.TestCase):
@@ -87,6 +88,23 @@ class RestoreEditionArchiveTests(unittest.TestCase):
 
         self.assertEqual(restored["edition"]["edition_date"], today)
         return result, outputs
+
+    def test_artifact_redirect_does_not_forward_github_bearer_token(self):
+        handler = restore_edition_archive.SafeGitHubRedirectHandler()
+        request = Request(
+            "https://api.github.com/repos/JayB951/Synapse/actions/artifacts/1/zip",
+            headers={"Authorization": "Bearer test-secret"},
+        )
+        redirected = handler.redirect_request(
+            request,
+            None,
+            302,
+            "Found",
+            {},
+            "https://signed-artifact-storage.example/blob.zip",
+        )
+        self.assertNotIn("Authorization", redirected.headers)
+        self.assertNotIn("authorization", redirected.headers)
 
     def test_restores_archive_and_sent_receipt(self):
         result, outputs = self._run_restore(include_receipt=True)
