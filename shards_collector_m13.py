@@ -237,7 +237,7 @@ def is_valid_thinker_article(page):
     # Biographical and catalogue-style pages are not suitable as the daily
     # subject, even when the person's name is associated with philosophy.
     if re.search(
-        r"\\b(philosopher|philosophers|biography|bibliography|"
+        r"\b(philosopher|philosophers|biography|bibliography|"
         r"list of works|life of)\\b",
         title,
         re.I,
@@ -245,7 +245,7 @@ def is_valid_thinker_article(page):
         return False
 
     subject = re.search(
-        r"\\b(paradox|thought experiment|problem|dilemma|theory|principle|"
+        r"\b(paradox|thought experiment|problem|dilemma|theory|principle|"
         r"argument|ethics|ethical|epistemology|consciousness|free will|justice|"
         r"liberty|knowledge|truth|morality|mind|existentialism|nihilism|stoicism|"
         r"absurdism|determinism|utilitarianism|social contract|categorical imperative|"
@@ -257,7 +257,7 @@ def is_valid_thinker_article(page):
         re.I,
     )
     philosophical_context = re.search(
-        r"\\b(philosoph(?:y|ical|er|ers)|ethic(?:s|al)|moral(?:ity)?|"
+        r"\b(philosoph(?:y|ical|er|ers)|ethic(?:s|al)|moral(?:ity)?|"
         r"epistemolog(?:y|ical)|metaphysic(?:s|al)|normative|thought experiment|"
         r"philosophical argument|free will|personal identity|the nature of knowledge)\\b",
         extract[:1800],
