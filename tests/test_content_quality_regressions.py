@@ -49,7 +49,9 @@ def test_fundamentals_requires_a_concrete_concept():
     assert m13.is_valid_fundamentals_article(page(
         "Conservation of energy",
         "In physics, conservation of energy is the principle that the total "
-        "energy of an isolated system remains constant."
+        "energy of an isolated system remains constant. This conservation law "
+        "provides a powerful constraint when analyzing physical processes, "
+        "including motion, heat transfer and transformations between energy forms."
     ))
     assert not m13.is_valid_fundamentals_article(page(
         "Physics",
@@ -75,7 +77,9 @@ def test_unsolved_requires_a_specific_case_not_a_general_mystery_topic():
     assert not m14.is_unsolved_candidate(page(
         "A general history article",
         "The identity of one minor participant is unknown, but the subject "
-        "of this article is otherwise well documented and resolved."
+        "of this article is otherwise well documented and resolved. "
+        "The available evidence establishes the broader historical context, "
+        "and the article does not identify a continuing mystery about the event."
     ))
 
 
@@ -179,9 +183,9 @@ def test_music_picker_can_exclude_recent_tracks():
     topic = {"title": "The Bulge campaign", "summary": "Battle of the Bulge"}
     tracks = [
         {"trackId": 1, "trackName": "Bulge", "artistName": "Artist",
-         "collectionName": "The Bulge", "trackViewUrl": "https://example.com/1"},
+         "collectionName": "The Bulge", "primaryGenreName": "Rock", "trackViewUrl": "https://example.com/1"},
         {"trackId": 2, "trackName": "Bulge", "artistName": "Artist",
-         "collectionName": "The Bulge", "trackViewUrl": "https://example.com/2"},
+         "collectionName": "The Bulge", "primaryGenreName": "Rock", "trackViewUrl": "https://example.com/2"},
     ]
     chosen = music.choose_best_track(tracks, [topic], excluded_track_ids={"1"})
     assert chosen is not None
