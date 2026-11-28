@@ -207,6 +207,19 @@ def main():
         write_github_output(archive_ready=True, archive_path=archive_path, published=False)
         return
 
+    if getattr(supabase, "local_fallback_used", False):
+        logger.warning(
+            "A kiadás teljes egészében elkészült és helyben megőrződött, "
+            "de a Supabase szinkron még függőben van; a frontend publikáció később áll helyre."
+        )
+        write_github_output(
+            archive_ready=True,
+            archive_path=archive_path,
+            published=False,
+            db_degraded=True,
+        )
+        return
+
     logger.info(
         "AUTOMATIKUS PUBLIKÁLÁS SIKERES: %s – %s (%s/%s elem).",
         edition["title"], edition["edition_date"], len(items), EXPECTED_TOTAL
