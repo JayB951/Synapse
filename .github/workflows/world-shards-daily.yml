@@ -100,29 +100,37 @@ jobs:
           SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
         run: python sync_fallback_store.py
 
-      - name: Alap tartalmak gyujtese
+      - name: Mai kiadas publikacios allapotanak ellenorzese
+        id: published_check
         if: steps.restore.outputs.archive_found != 'true'
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+        run: python skip_published_edition.py
+
+      - name: Alap tartalmak gyujtese
+        if: steps.restore.outputs.archive_found != 'true' && steps.published_check.outputs.already_published != 'true'
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
         run: python shards_collector.py
 
       - name: M1.3 rovatok gyujtese
-        if: steps.restore.outputs.archive_found != 'true'
+        if: steps.restore.outputs.archive_found != 'true' && steps.published_check.outputs.already_published != 'true'
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
         run: python shards_collector_m13.py
 
       - name: M1.4 Unsolved es Closing gyujtes
-        if: steps.restore.outputs.archive_found != 'true'
+        if: steps.restore.outputs.archive_found != 'true' && steps.published_check.outputs.already_published != 'true'
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
         run: python shards_collector_m14.py
 
       - name: Music of the Day gyujtese es tesztek
-        if: steps.restore.outputs.archive_found != 'true'
+        if: steps.restore.outputs.archive_found != 'true' && steps.published_check.outputs.already_published != 'true'
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
@@ -131,7 +139,7 @@ jobs:
           python music_collector.py
 
       - name: AGORA magyar es nemzetkozi tartalom teljes automatizalasa
-        if: steps.restore.outputs.archive_found != 'true'
+        if: steps.restore.outputs.archive_found != 'true' && steps.published_check.outputs.already_published != 'true'
         timeout-minutes: 12
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
@@ -141,7 +149,7 @@ jobs:
         run: python agora_automation.py
 
       - name: Napi kiadas osszeallitasa
-        if: steps.restore.outputs.archive_found != 'true'
+        if: steps.restore.outputs.archive_found != 'true' && steps.published_check.outputs.already_published != 'true'
         id: edition_builder
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
@@ -149,7 +157,7 @@ jobs:
         run: python edition_builder.py
 
       - name: Magyar tartalomfeldolgozas
-        if: steps.restore.outputs.archive_found != 'true' && steps.edition_builder.outputs.already_published != 'true'
+        if: steps.restore.outputs.archive_found != 'true' && steps.published_check.outputs.already_published != 'true' && steps.edition_builder.outputs.already_published != 'true'
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
@@ -158,7 +166,7 @@ jobs:
 
       - name: Teljessegi ellenorzes es automatikus publikacio
         id: publish
-        if: steps.restore.outputs.archive_found != 'true' && steps.edition_builder.outputs.already_published != 'true'
+        if: steps.restore.outputs.archive_found != 'true' && steps.published_check.outputs.already_published != 'true' && steps.edition_builder.outputs.already_published != 'true'
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
