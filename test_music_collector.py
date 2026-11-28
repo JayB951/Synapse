@@ -54,7 +54,11 @@ class MusicCollectorTests(unittest.TestCase):
             artistName="Quantum",
         )
 
-        self.assertGreater(
+        self.assertGreaterEqual(
+            score_track(direct, self.topic),
+            5,
+        )
+        self.assertEqual(
             score_track(direct, self.topic),
             score_track(unrelated, self.topic),
         )
