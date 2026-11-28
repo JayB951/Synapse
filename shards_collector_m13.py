@@ -238,7 +238,7 @@ def is_valid_thinker_article(page):
     # subject, even when the person's name is associated with philosophy.
     if re.search(
         r"\b(philosopher|philosophers|biography|bibliography|"
-        r"list of works|life of)\\b",
+        r"list of works|life of)\b",
         title,
         re.I,
     ):
@@ -252,14 +252,14 @@ def is_valid_thinker_article(page):
         r"veil of ignorance|trolley|ship of theseus|chinese room|brain in a vat|"
         r"experience machine|simulation argument|problem of evil|problem of induction|"
         r"hard problem|personal identity|dualism|materialism|idealism|skepticism|"
-        r"scepticism|virtue ethics|natural law|state of nature|original position)\\b",
+        r"scepticism|virtue ethics|natural law|state of nature|original position)\b",
         title,
         re.I,
     )
     philosophical_context = re.search(
         r"\b(philosoph(?:y|ical|er|ers)|ethic(?:s|al)|moral(?:ity)?|"
         r"epistemolog(?:y|ical)|metaphysic(?:s|al)|normative|thought experiment|"
-        r"philosophical argument|free will|personal identity|the nature of knowledge)\\b",
+        r"philosophical argument|free will|personal identity|the nature of knowledge)\b",
         extract[:1800],
         re.I,
     )
