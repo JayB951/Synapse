@@ -1,6 +1,7 @@
 import importlib.util
 import json
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 
 
@@ -144,7 +145,7 @@ class ResearchFrontierTests(unittest.TestCase):
             "challenge": "Az absztrakt nem részletezi az adatforrások kiválasztását, ezért a regionális különbségek robusztussága ebből nem ítélhető meg.",
             "synthesis": "A tanulmány regionális mintázatokat tesz láthatóvá, de az absztrakt önmagában nem igazolja azok módszertani robusztusságát."
         }
-        with unittest.mock.patch.object(
+        with patch.object(
             processor,
             "call_gemini",
             return_value=json.dumps(generated, ensure_ascii=False),
