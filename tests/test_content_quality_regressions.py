@@ -246,6 +246,10 @@ def test_the_thinker_editorial_gate_requires_every_quality_dimension():
         "substantive_hungarian_article": True,
     }
     assert processor.thinker_content_passes(accepted)
+    valid_article = {"body": "\\n\\n".join(f"Bekezdés {index}." for index in range(5))}
+    assert processor.thinker_content_passes(accepted, valid_article)
+    invalid_article = {"body": "\\n\\n".join(f"Bekezdés {index}." for index in range(4))}
+    assert not processor.thinker_content_passes(accepted, invalid_article)
     accepted["counterargument_present"] = False
     assert not processor.thinker_content_passes(accepted)
     assert not processor.thinker_content_passes(None)
