@@ -9,6 +9,7 @@ from zipfile import ZipFile
 from zoneinfo import ZoneInfo
 
 import restore_edition_archive
+from artifact_crypto import encrypt_bytes
 from urllib.request import Request
 
 
@@ -25,21 +26,21 @@ class RestoreEditionArchiveTests(unittest.TestCase):
         buffer = io.BytesIO()
         with ZipFile(buffer, "w") as bundle:
             bundle.writestr(
-                f"edition-{today}.json",
-                json.dumps(archive),
+                f"edition-{today}.json.gpg",
+                encrypt_bytes(json.dumps(archive).encode("utf-8"), "test-secret"),
             )
             bundle.writestr(
-                "world-shards-fallback.sqlite3",
-                b"SQLite format 3\x00test-database",
+                "world-shards-fallback.sqlite3.gpg",
+                encrypt_bytes(b"SQLite format 3\x00test-database", "test-secret"),
             )
             if include_receipt:
                 bundle.writestr(
-                    "delivery-receipt.json",
-                    json.dumps({
+                    "delivery-receipt.json.gpg",
+                    encrypt_bytes(json.dumps({
                         "edition_date": today,
                         "status": "sent",
                         "sent_at": "2026-11-28T07:00:00+00:00",
-                    }),
+                    }).encode("utf-8"), "test-secret"),
                 )
         return today, buffer.getvalue()
 
@@ -63,6 +64,7 @@ class RestoreEditionArchiveTests(unittest.TestCase):
             output_path = os.path.join(directory, "github-output.txt")
             with patch.dict(os.environ, {
                 "GH_TOKEN": "test-token",
+                "SUPABASE_SECRET_KEY": "test-secret",
                 "GITHUB_REPOSITORY": "JayB951/Synapse",
                 "GITHUB_REF_NAME": "main",
                 "GITHUB_RUN_ID": "101",
