@@ -55,10 +55,7 @@ logger = logging.getLogger("world-shards-email")
 def get_supabase_client():
     url = os.getenv("SUPABASE_URL")
     key = os.getenv("SUPABASE_SECRET_KEY")
-    if not url or not key:
-        raise RuntimeError("Hiányzó SUPABASE_URL vagy SUPABASE_SECRET_KEY.")
     return create_resilient_client(url, key)
-
 
 def validate_edition(edition, items, require_published=True):
     if not edition or (require_published and edition.get("status") != "published"):
