@@ -16,7 +16,7 @@ class EditionEmailTests(unittest.TestCase):
             "introduction": "Napi bevezető",
         }
         counts = {
-            "research_frontier": 7,
+            "research_frontier": 8,
             "art_of_the_day": 1,
             "the_thinker": 1,
             "battlefield": 1,
@@ -75,7 +75,7 @@ class EditionEmailTests(unittest.TestCase):
             with patch.dict(os.environ, {"WORLD_SHARDS_ARCHIVE_DIR": directory}):
                 edition, items, sources = load_local_archive()
         self.assertEqual(edition["edition_date"], today)
-        self.assertEqual(len(items), 16)
+        self.assertEqual(len(items), 17)
         self.assertEqual(sources, {})
 
     def test_delivery_receipt_is_written_after_success(self):
@@ -122,10 +122,10 @@ class EditionEmailTests(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             validate_edition(self.edition, broken)
 
-    def test_email_contains_all_sixteen_full_bodies(self):
+    def test_email_contains_all_seventeen_full_bodies(self):
         plain, rendered, date_label = build_email_bodies(self.edition, self.items, {})
         self.assertEqual(date_label, "2026. 11. 26.")
-        for number in range(1, 17):
+        for number in range(1, 18):
             self.assertIn(f"Teljes szöveg {number}", plain)
             self.assertIn(f"Teljes szöveg {number}", rendered)
 
