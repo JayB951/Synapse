@@ -620,7 +620,7 @@ def build_prompt(
             "kizárólag az alt text fordítását add meg."
         )
         body_format = (
-            '"KÉP LEÍRÁSA:\\n[A teljes magyar alt text]\\n\\nÁTIRAT:\\n[A teljes magyar transcript]"
+            '"KÉP LEÍRÁSA:\\n[A teljes magyar alt text]\\n\\nÁTIRAT:\\n[A teljes magyar transcript]"'
             if transcript else
             '"KÉP LEÍRÁSA:\\n[A teljes magyar alt text]"'
         )
@@ -647,7 +647,7 @@ Kizárólag ezt a JSON-struktúrát add vissza:
   "body": {body_format}
 }}
 Ne használj Markdown kódblokkot.
-\"\"\"
+"""
 
     if is_jokeapi:
         joke_type = metadata.get("joke_type", "single")
