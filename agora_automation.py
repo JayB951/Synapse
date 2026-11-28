@@ -153,12 +153,12 @@ def automated_quality_gate(pipeline, editorial, now=None):
 
 
 def get_supabase_client():
-    from supabase import create_client
+    from resilient_storage import create_resilient_client
     url = os.getenv("SUPABASE_URL")
     key = os.getenv("SUPABASE_SECRET_KEY")
     if not url or not key:
         raise RuntimeError("Hiányzó SUPABASE_URL vagy SUPABASE_SECRET_KEY.")
-    return create_client(url, key)
+    return create_resilient_client(url, key)
 
 
 def get_recent_agora_events(supabase, limit=12, exclude_edition_date=None):
