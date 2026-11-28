@@ -127,3 +127,14 @@
 .xkcd-text-paragraph{font:15px/1.8 Georgia,serif;color:#d5dde6;margin:0 0 12px;white-space:pre-wrap}
 .xkcd-license-credit{font:11px/1.6 'DM Sans',sans-serif;color:#b8c3cf}
 .xkcd-license-link{margin-top:0}
+
+
+/* Research Frontier – structured editorial analysis */
+.research-editorial-block{margin:30px 0 34px;padding:22px 24px;border:1px solid var(--line);background:linear-gradient(145deg,rgba(20,31,45,.72),rgba(14,21,31,.55))}
+.research-editorial-heading{margin:0 0 13px;color:var(--gold);font:10px 'DM Mono',monospace;letter-spacing:1.5px}
+.research-editorial-copy{margin:0;color:#d5dde6;font:15px/1.9 Georgia,serif;white-space:pre-wrap}
+.research-challenge{border-left:3px solid rgba(211,154,145,.75);background:linear-gradient(145deg,rgba(75,35,39,.2),rgba(14,21,31,.7))}
+.research-challenge .research-editorial-heading{color:#d39a91}
+.research-synthesis{border-color:rgba(197,166,107,.35);background:rgba(197,166,107,.055)}
+.research-synthesis .research-editorial-copy{color:#f0dfbd;font-weight:600}
+@media(max-width:760px){.research-editorial-block{padding:18px;margin:24px 0}.research-editorial-copy{font-size:14px}}
