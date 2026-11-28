@@ -50,6 +50,7 @@ on:
       - "edition_processor.py"
       - "frontend/app.js"
       - "tests/test_research_frontier.py"
+      - "tests/test_content_quality_regressions.py"
       - "agora_automation.py"
       - "test_music_collector.py"
       - "test_agora_automation.py"
