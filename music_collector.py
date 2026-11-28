@@ -17,9 +17,7 @@ from urllib.parse import quote
 from zoneinfo import ZoneInfo
 
 import requests
-from supabase import create_client
-
-
+from resilient_storage import create_resilient_client
 VERSION = "M1.5.1 / 0.1.0"
 TIMEZONE = ZoneInfo("Europe/Budapest")
 ITUNES_SEARCH_URL = "https://itunes.apple.com/search"
@@ -68,7 +66,7 @@ def get_supabase_client():
     key = os.getenv("SUPABASE_SECRET_KEY")
     if not url or not key:
         raise RuntimeError("Hiányzó SUPABASE_URL vagy SUPABASE_SECRET_KEY.")
-    return create_client(url, key)
+    return create_resilient_client(url, key)
 
 
 def tokenize(value):
