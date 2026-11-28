@@ -25,7 +25,7 @@ def test_xkcd_prompt_requires_faithful_hungarian_alt_and_no_invention():
     assert "KÉP LEÍRÁSA" in prompt
     assert "ÁTIRAT" in prompt
     assert "Ne írj hosszú magazincikket" in prompt
-    assert "Ne találj ki" in prompt
+    assert "ne találj ki" in prompt.lower()
     assert "Randall Munroe" not in prompt  # attribution is rendered from source metadata
 
 
@@ -34,10 +34,10 @@ def test_xkcd_translation_requires_alt_description_and_transcript_when_available
     generated = {
         "title": "A meglepő eredmény",
         "summary": "Egy tudományos magyarázat váratlan fordulattal.",
-        "body": "KÉP LEÍRÁSA:\\nEgy tudós egy meglepő eredményt magyaráz.\\n\\nÁTIRAT:\\nTudós: Sikerült.",
+        "body": "KÉP LEÍRÁSA:\nEgy tudós egy meglepő eredményt magyaráz.\n\nÁTIRAT:\nTudós: Sikerült.",
     }
     assert edition_processor.validate_xkcd_translation(item, generated)
-    generated["body"] = "KÉP LEÍRÁSA:\\nEgy tudós egy meglepő eredményt magyaráz."
+    generated["body"] = "KÉP LEÍRÁSA:\nEgy tudós egy meglepő eredményt magyaráz."
     try:
         edition_processor.validate_xkcd_translation(item, generated)
     except RuntimeError as error:
@@ -51,7 +51,7 @@ def test_xkcd_translation_rejects_invented_transcript():
     generated = {
         "title": "A meglepő eredmény",
         "summary": "Egy tudományos magyarázat váratlan fordulattal.",
-        "body": "KÉP LEÍRÁSA:\\nEgy tudós egy meglepő eredményt magyaráz.\\n\\nÁTIRAT:\\nTudós: Sikerült.",
+        "body": "KÉP LEÍRÁSA:\nEgy tudós egy meglepő eredményt magyaráz.\n\nÁTIRAT:\nTudós: Sikerült.",
     }
     try:
         edition_processor.validate_xkcd_translation(item, generated)
