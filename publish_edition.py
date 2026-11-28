@@ -1,6 +1,6 @@
 """
 WORLD SHARDS – Automatic publication gate
-Only publishes today's Budapest-local draft when all 16 expected items are complete.
+Only publishes today's Budapest-local draft when all 17 expected items are complete.
 """
 import json
 import logging
@@ -12,7 +12,7 @@ from zoneinfo import ZoneInfo
 
 from resilient_storage import create_resilient_client
 EXPECTED_COUNTS = {
-    "research_frontier": 7,
+    "research_frontier": 8,
     "art_of_the_day": 1,
     "the_thinker": 1,
     "battlefield": 1,
