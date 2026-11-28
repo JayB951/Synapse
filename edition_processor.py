@@ -1833,7 +1833,7 @@ A mai párhuzam legyen konkrét és indokolt. Tartsd be az 5–7 bekezdéses sze
                 section_code=item["section_code"]
             )
             verdict = review_thinker_content(source, generated_content)
-            if not thinker_content_passes(verdict):
+            if not thinker_content_passes(verdict, generated_content):
                 raise RuntimeError(
                     "A The Thinker cikk a javítás után sem ment át a minőségi ellenőrzésen: "
                     + str(verdict.get("reason", "Nem megfelelő filozófiai cikk."))
