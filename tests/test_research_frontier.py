@@ -66,6 +66,8 @@ class ResearchFrontierTests(unittest.TestCase):
         self.assertIn("challenge", prompt.lower())
         self.assertIn("synthesis", prompt.lower())
         self.assertIn("teljes tanulmányt elolvastad", prompt.lower())
+        self.assertIn("korrelációt ne nevezz oksági kapcsolatnak", prompt.lower())
+        self.assertIn("külön a szerzők által közölt eredményeket", prompt.lower())
         self.assertIn("általános tudományos", prompt.lower())
         self.assertIn("nem szükséges internetes keresés", prompt.lower())
         self.assertIn("ne találj ki szerzőt", prompt.lower())
