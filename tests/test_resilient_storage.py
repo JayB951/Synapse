@@ -10,10 +10,12 @@ class FakeRemoteQuery:
         self.table_name = table
         self.operation = "select"
         self.payload = None
+        self.fields = "*"
         self.filters = []
 
     def select(self, fields="*"):
         self.operation = "select"
+        self.fields = fields or "*"
         return self
 
     def insert(self, payload):
@@ -74,9 +76,14 @@ class FakeRemoteQuery:
 
         rows = self.remote.tables.setdefault(self.table_name, [])
         if self.operation == "select":
-            return type("Response", (), {
-                "data": [dict(row) for row in rows if self._matches(row)]
-            })()
+            selected = [dict(row) for row in rows if self._matches(row)]
+            if self.fields.strip() != "*":
+                fields = [field.strip() for field in self.fields.split(",")]
+                selected = [
+                    {field: row.get(field) for field in fields}
+                    for row in selected
+                ]
+            return type("Response", (), {"data": selected})()
 
         if self.operation in {"insert", "upsert"}:
             values = self.payload if isinstance(self.payload, list) else [self.payload]
@@ -154,6 +161,42 @@ class ResilientStorageTests(unittest.TestCase):
         self.assertEqual(result.data[0]["title"], "Local candidate")
         self.assertEqual(result.data[0]["status"], "candidate")
         self.assertTrue(self.client.local_fallback_used)
+
+    def test_remote_projection_keeps_rows_filtered_by_unselected_columns(self):
+        self.remote.tables["shard_content_items"] = [{
+            "id": "projected-1",
+            "title": "Research candidate",
+            "status": "candidate",
+            "section_code": "research_frontier",
+        }]
+
+        result = (
+            self.client.table("shard_content_items")
+            .select("id,title,status")
+            .eq("section_code", "research_frontier")
+            .eq("status", "candidate")
+            .execute()
+        )
+        self.assertEqual(len(result.data), 1)
+        self.assertEqual(result.data[0]["id"], "projected-1")
+        self.assertNotIn("section_code", result.data[0])
+
+    def test_remote_projection_keeps_edition_found_by_date_filter(self):
+        self.remote.tables["shard_editions"] = [{
+            "id": "edition-projected",
+            "edition_date": "2026-11-28",
+            "status": "published",
+        }]
+
+        result = (
+            self.client.table("shard_editions")
+            .select("id,status")
+            .eq("edition_date", "2026-11-28")
+            .limit(1)
+            .execute()
+        )
+        self.assertEqual(result.data[0]["status"], "published")
+        self.assertNotIn("edition_date", result.data[0])
 
     def test_update_fallback_overrides_stale_remote_reads(self):
         self.remote.tables["shard_content_items"] = [{
