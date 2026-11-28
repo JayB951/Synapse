@@ -8,6 +8,7 @@ import json
 import logging
 import os
 import sqlite3
+from contextlib import contextmanager
 import uuid
 from pathlib import Path
 from types import SimpleNamespace
@@ -42,10 +43,18 @@ class SQLiteFallbackStore:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self._initialize()
 
+    @contextmanager
     def _connect(self):
         connection = sqlite3.connect(str(self.path), timeout=30)
         connection.row_factory = sqlite3.Row
-        return connection
+        try:
+            yield connection
+            connection.commit()
+        except Exception:
+            connection.rollback()
+            raise
+        finally:
+            connection.close()
 
     def _initialize(self):
         with self._connect() as connection:
