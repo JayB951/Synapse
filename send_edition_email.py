@@ -397,7 +397,7 @@ def save_delivery_receipt(edition):
     receipt_path = archive_dir / "delivery-receipt.json"
     temporary_path = receipt_path.with_suffix(".json.tmp")
     temporary_path.write_text(
-        json.dumps(receipt, ensure_ascii=False, indent=2) + "\\n",
+        json.dumps(receipt, ensure_ascii=False, indent=2) + "\n",
         encoding="utf-8",
     )
     temporary_path.replace(receipt_path)
