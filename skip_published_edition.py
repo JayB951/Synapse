@@ -18,7 +18,15 @@ def is_published_today(client, edition_date):
         .limit(1)
         .execute()
     )
-    return bool(response.data)
+    if not response.data:
+        return False
+    status = str(response.data[0].get("status") or "").strip().lower()
+    LOGGER.info(
+        "Mai kiadás azonosítva: %s; státusz=%s",
+        response.data[0].get("id"),
+        status or "ismeretlen",
+    )
+    return status == "published"
 
 
 def main():
