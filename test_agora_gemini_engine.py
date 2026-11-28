@@ -171,6 +171,17 @@ class GeminiEngineTests(unittest.TestCase):
         self.assertTrue(result["mandatory_disclosures"]["hypothetical_reconstruction"])
         self.assertFalse(result["mandatory_disclosures"]["direct_quote_used"])
 
+    def test_simulator_prompt_demands_persona_specific_critical_analysis(self):
+        client = FakeClient([simulation_response()])
+        simulate_historical_figure(EVENT, PROFILE, client)
+        system, payload, _ = client.calls[0]
+        self.assertIn("NE elégedj meg azzal", system)
+        self.assertIn("kemény és vitatható ítéletet", system)
+        self.assertIn("Machiavelli", system)
+        self.assertIn("valódi nézőpontkülönbség", system)
+        self.assertIn("editorial_depth_requirements", payload)
+        self.assertIn("bizonyítatlan jogsértést", " ".join(payload["editorial_depth_requirements"]))
+
     def test_simulator_regenerates_short_commentary_before_failing(self):
         invalid = simulation_response()
         invalid["sections"][0]["draft_text"] = "Ez egy túl rövid mondat."
