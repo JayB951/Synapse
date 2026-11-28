@@ -35,6 +35,8 @@ on:
       - main
     paths:
       - "publish_edition.py"
+      - "skip_published_edition.py"
+      - "tests/test_skip_published_edition.py"
       - "send_edition_email.py"
       - "shards_collector.py"
       - "shards_collector_m13.py"
