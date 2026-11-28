@@ -76,7 +76,7 @@ class ResearchFrontierTests(unittest.TestCase):
             "novelty": (
                 "A tanulmány globális megfigyelési adatokat kapcsol össze regionális elemzéssel. "
                 "Ez a megközelítés a korábbi általános trendeknél részletesebb képet ad. "
-                "Az absztrakt nem nevez meg közvetlenül összehasonlított korábbi tanulmányt."
+                "Az absztrakt nem nevez meg közvetlenül összehasonlított korábbi tanulmányt. "
                 "Ezért az újdonságot nem lehet közvetlen elsőbbségi állításként kezelni."
             ),
             "challenge": (
@@ -96,7 +96,7 @@ class ResearchFrontierTests(unittest.TestCase):
         self.assertIn("novelty", parsed)
         self.assertIn("challenge", parsed)
         self.assertIn("synthesis", parsed)
-        self.assertNotIn("\\n", parsed["novelty"])
+        self.assertNotIn("\n", parsed["novelty"])
         self.assertNotIn("body", parsed)
 
     def test_research_frontier_rejects_overlong_critical_challenge(self):
