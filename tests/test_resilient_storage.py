@@ -12,6 +12,7 @@ class FakeRemoteQuery:
         self.payload = None
         self.fields = "*"
         self.filters = []
+        self.row_range = None
 
     def select(self, fields="*"):
         self.operation = "select"
@@ -55,6 +56,10 @@ class FakeRemoteQuery:
     def limit(self, value):
         return self
 
+    def range(self, start, end):
+        self.row_range = (start, end)
+        return self
+
     def _matches(self, row):
         for operation, field, value in self.filters:
             if operation == "eq" and row.get(field) != value:
@@ -77,6 +82,9 @@ class FakeRemoteQuery:
         rows = self.remote.tables.setdefault(self.table_name, [])
         if self.operation == "select":
             selected = [dict(row) for row in rows if self._matches(row)]
+            if self.row_range is not None:
+                start, end = self.row_range
+                selected = selected[start:end + 1]
             if self.fields.strip() != "*":
                 fields = [field.strip() for field in self.fields.split(",")]
                 selected = [
@@ -142,6 +150,37 @@ class ResilientStorageTests(unittest.TestCase):
 
     def tearDown(self):
         self.temp.cleanup()
+
+    def test_remote_select_supports_inclusive_range(self):
+        self.remote.tables["publications"] = [
+            {"id": f"paper-{index}", "title": f"Paper {index}"}
+            for index in range(5)
+        ]
+        rows = (
+            self.client.table("publications")
+            .select("id,title")
+            .range(2, 3)
+            .execute()
+            .data
+        )
+        self.assertEqual([row["id"] for row in rows], ["paper-2", "paper-3"])
+
+    def test_local_fallback_select_supports_inclusive_range(self):
+        for index in range(5):
+            self.store.save_local(
+                "publications",
+                {"id": f"paper-{index}", "title": f"Paper {index}"},
+                pending=False,
+            )
+        self.remote.fail_reads = True
+        rows = (
+            self.client.table("publications")
+            .select("id,title")
+            .range(1, 2)
+            .execute()
+            .data
+        )
+        self.assertEqual([row["id"] for row in rows], ["paper-1", "paper-2"])
 
     def test_insert_falls_back_to_sqlite_and_is_readable(self):
         self.remote.fail_writes = True
