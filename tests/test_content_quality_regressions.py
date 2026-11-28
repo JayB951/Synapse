@@ -210,7 +210,9 @@ def test_the_thinker_collector_accepts_specific_philosophical_problems_only():
         "History of Philosophy",
         "The history of philosophy is the study of philosophical ideas across "
         "different periods, traditions and thinkers. It examines the development "
-        "of philosophical schools, methods, texts and debates across world history."
+        "of philosophical schools, methods, texts and debates across world history. "
+        "It is a broad historical field rather than one specific philosophical problem."
+
     ))
     assert not m13.is_valid_thinker_article(page(
         "The Theory of Everything",
