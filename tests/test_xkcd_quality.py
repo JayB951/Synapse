@@ -46,6 +46,27 @@ def test_xkcd_translation_requires_alt_description_and_transcript_when_available
         raise AssertionError("Missing translated transcript must be rejected")
 
 
+def test_xkcd_prompt_preserves_transcript_speaker_lines():
+    item = source(transcript="Scientist 1: First line.\nScientist 2: Second line.")
+    prompt = edition_processor.build_prompt("closing", item)
+    assert "Scientist 1: First line.\nScientist 2: Second line." in prompt
+
+
+def test_xkcd_translation_rejects_flattened_transcript_lines():
+    item = source(transcript="Scientist 1: First line.\nScientist 2: Second line.")
+    generated = {
+        "title": "Két tudós",
+        "summary": "Két megszólalás.",
+        "body": "KÉP LEÍRÁSA:\nKét tudós beszél.\n\nÁTIRAT:\nKutató 1: Első sor. Kutató 2: Második sor.",
+    }
+    try:
+        edition_processor.validate_xkcd_translation(item, generated)
+    except RuntimeError as error:
+        assert "tagolása" in str(error).lower()
+    else:
+        raise AssertionError("Flattened transcript speaker lines must be rejected")
+
+
 def test_xkcd_translation_rejects_invented_transcript():
     item = source(transcript="")
     generated = {

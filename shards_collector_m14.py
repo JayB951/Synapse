@@ -21,7 +21,7 @@ import re
 import html
 import logging
 from datetime import date
-from urllib.parse import quote
+from urllib.parse import quote, urlparse
 
 import requests
 from resilient_storage import create_resilient_client
@@ -112,6 +112,18 @@ def clean_text(value):
     value = re.sub(r"\s+", " ", value)
 
     return value.strip()
+
+
+def clean_multiline_text(value):
+    """Clean source text while preserving transcript line and paragraph breaks."""
+    if not value:
+        return ""
+    value = html.unescape(str(value))
+    value = re.sub(r"<[^>]+>", " ", value)
+    lines = [re.sub(r"[ \t]+", " ", line).strip() for line in value.splitlines()]
+    cleaned = "\n".join(lines)
+    cleaned = re.sub(r"\n{3,}", "\n\n", cleaned)
+    return cleaned.strip()
 
 
 def content_exists_by_url(supabase, source_url):
@@ -342,13 +354,26 @@ def fetch_xkcd_comic(comic_number=None):
 
 
 def build_xkcd_record(comic):
-    comic_number = comic.get("num")
+    try:
+        comic_number = int(comic.get("num"))
+    except (TypeError, ValueError):
+        raise RuntimeError("Invalid xkcd comic number.")
+    if comic_number < 1:
+        raise RuntimeError("Invalid xkcd comic number.")
+
     title = clean_text(comic.get("title", ""))
-
     alt_text = clean_text(comic.get("alt", ""))
-    transcript = clean_text(comic.get("transcript", ""))
+    transcript = clean_multiline_text(comic.get("transcript", ""))
 
-    image_url = comic.get("img", "")
+    image_url = str(comic.get("img", "")).strip()
+    image = urlparse(image_url)
+    if not title:
+        raise RuntimeError(f"xkcd #{comic_number} has no title.")
+    if not alt_text:
+        raise RuntimeError(f"xkcd #{comic_number} has no alternative text.")
+    if image.scheme != "https" or image.hostname != "imgs.xkcd.com":
+        raise RuntimeError(f"xkcd #{comic_number} has an invalid image URL.")
+
     source_url = f"https://xkcd.com/{comic_number}/"
 
     body_parts = [

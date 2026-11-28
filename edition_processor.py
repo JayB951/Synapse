@@ -271,6 +271,18 @@ def clean_source_text(value):
     return text.strip()
 
 
+def clean_multiline_source_text(value):
+    """Normalize transcript whitespace without flattening speaker turns."""
+    if value is None:
+        return ""
+    text = html.unescape(str(value))
+    text = re.sub(r"<[^>]+>", " ", text)
+    lines = [re.sub(r"[ \t]+", " ", line).strip() for line in text.splitlines()]
+    text = "\n".join(lines)
+    text = re.sub(r"\n{3,}", "\n\n", text)
+    return text.strip()
+
+
 def clean_display_text(value):
 
     if value is None:
@@ -624,7 +636,7 @@ def build_prompt(
     if is_xkcd:
         comic_title = clean_source_text(metadata.get("comic_title") or original_title)
         alt_text = clean_source_text(metadata.get("alt_text") or metadata.get("alt") or "")
-        transcript = clean_source_text(metadata.get("transcript") or "")
+        transcript = clean_multiline_source_text(metadata.get("transcript") or "")
         transcript_rule = (
             "A rendelkezésre álló transcript teljes szövegét fordítsd le az ÁTIRAT részben, "
             "a szereplők és a sorrend megtartásával."
@@ -1015,7 +1027,7 @@ def validate_xkcd_translation(source, generated):
     """Require a faithful Hungarian alt-text translation and, when available, transcript."""
     metadata = source.get("metadata") or {}
     alt_text = clean_source_text(metadata.get("alt_text") or metadata.get("alt") or "")
-    transcript = clean_source_text(metadata.get("transcript") or "")
+    transcript = clean_multiline_source_text(metadata.get("transcript") or "")
     body = clean_display_text(generated.get("body", ""))
     match = re.match(r"^KÉP LEÍRÁSA:\s*(.+?)(?=\n\s*\nÁTIRAT:|$)", body, re.IGNORECASE | re.DOTALL)
     if not alt_text or not match or not match.group(1).strip():
@@ -1023,6 +1035,15 @@ def validate_xkcd_translation(source, generated):
     transcript_match = re.search(r"(?:^|\n\s*\n)ÁTIRAT:\s*(.+)$", body, re.IGNORECASE | re.DOTALL)
     if transcript and (not transcript_match or not transcript_match.group(1).strip()):
         raise RuntimeError("Az xkcd eredeti transcriptje nem került át a magyar feldolgozásba.")
+    if transcript_match and transcript:
+        source_lines = [line for line in transcript.splitlines() if line.strip()]
+        translated_lines = [
+            line for line in transcript_match.group(1).splitlines() if line.strip()
+        ]
+        if len(source_lines) > 1 and len(source_lines) != len(translated_lines):
+            raise RuntimeError(
+                "Az xkcd átirat megszólalásainak sortörései vagy tagolása elvesztek."
+            )
     if not transcript and transcript_match:
         raise RuntimeError("Az xkcd-hez nem tartozó transcriptet a feldolgozás kitalálta.")
     return True
