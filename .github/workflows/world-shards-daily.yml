@@ -8,6 +8,8 @@ on:
   workflow_dispatch:
   # Recovery trigger: a change to this workflow automatically starts today's edition.
   push:
+    branches:
+      - main
     paths:
       - ".github/workflows/world-shards-daily.yml"
       - "music_collector.py"
@@ -17,6 +19,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 concurrency:
   group: world-shards-daily-edition
@@ -57,30 +60,41 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Korabbi napi archívum es kezbesitesi allapot visszaallitasa
+        id: restore
+        env:
+          GH_TOKEN: ${{ github.token }}
+          WORLD_SHARDS_ARCHIVE_DIR: world-shards-archive
+        run: python restore_edition_archive.py
+
       - name: Fuggosegek telepitese
         run: |
           python -m pip install --upgrade pip
           python -m pip install --no-cache-dir -r requirements.txt
 
       - name: Alap tartalmak gyujtese
+        if: steps.restore.outputs.archive_found != 'true'
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
         run: python shards_collector.py
 
       - name: M1.3 rovatok gyujtese
+        if: steps.restore.outputs.archive_found != 'true'
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
         run: python shards_collector_m13.py
 
       - name: M1.4 Unsolved es Closing gyujtes
+        if: steps.restore.outputs.archive_found != 'true'
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
         run: python shards_collector_m14.py
 
       - name: Music of the Day gyujtese es tesztek
+        if: steps.restore.outputs.archive_found != 'true'
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
@@ -89,6 +103,7 @@ jobs:
           python music_collector.py
 
       - name: AGORA magyar es nemzetkozi tartalom teljes automatizalasa
+        if: steps.restore.outputs.archive_found != 'true'
         timeout-minutes: 12
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
@@ -98,6 +113,7 @@ jobs:
         run: python agora_automation.py
 
       - name: Napi kiadas osszeallitasa
+        if: steps.restore.outputs.archive_found != 'true'
         id: edition_builder
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
@@ -105,60 +121,39 @@ jobs:
         run: python edition_builder.py
 
       - name: Magyar tartalomfeldolgozas
-        if: steps.edition_builder.outputs.already_published != 'true'
+        if: steps.restore.outputs.archive_found != 'true' && steps.edition_builder.outputs.already_published != 'true'
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: python edition_processor.py
 
-      - name: SMTP hitelesites ellenorzese publikacio elott
-        if: steps.edition_builder.outputs.already_published != 'true'
-        env:
-          MAIL_USERNAME: ${{ secrets.MAIL_USERNAME }}
-          MAIL_PASSWORD: ${{ secrets.MAIL_PASSWORD }}
-          NOTIFY_EMAIL: ${{ secrets.WORLD_SHARDS_NOTIFY_EMAIL }}
-        run: |
-          python - <<'PY'
-          import os
-          import smtplib
-
-          sender = os.getenv("MAIL_USERNAME")
-          password = os.getenv("MAIL_PASSWORD")
-          recipient = os.getenv("NOTIFY_EMAIL")
-          missing = [
-              name for name, value in (
-                  ("MAIL_USERNAME", sender),
-                  ("MAIL_PASSWORD", password),
-                  ("WORLD_SHARDS_NOTIFY_EMAIL", recipient),
-              )
-              if not value
-          ]
-          if missing:
-              raise RuntimeError("Hiányzó e-mail beállítás: " + ", ".join(missing))
-
-          with smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=30) as smtp:
-              smtp.login(sender, password)
-
-          print("SMTP-hitelesítés sikeres; a kiadás publikálható és küldhető.")
-          PY
-
       - name: Teljessegi ellenorzes es automatikus publikacio
         id: publish
-        if: steps.edition_builder.outputs.already_published != 'true'
+        if: steps.restore.outputs.archive_found != 'true' && steps.edition_builder.outputs.already_published != 'true'
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
         run: python publish_edition.py
 
       - name: Teljes napi kiadás e-mailben
-        if: success() && steps.publish.outputs.published == 'true'
+        if: success() && (steps.restore.outputs.archive_found == 'true' || steps.publish.outputs.archive_ready == 'true') && steps.restore.outputs.delivery_sent != 'true'
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
           MAIL_USERNAME: ${{ secrets.MAIL_USERNAME }}
           MAIL_PASSWORD: ${{ secrets.MAIL_PASSWORD }}
           NOTIFY_EMAIL: ${{ secrets.WORLD_SHARDS_NOTIFY_EMAIL }}
+          WORLD_SHARDS_ARCHIVE_DIR: world-shards-archive
         run: |
           python -m unittest test_send_edition_email.py -v
           python send_edition_email.py
+
+      - name: Ellenorzott napi archívum megőrzése
+        if: always() && (steps.restore.outputs.archive_found == 'true' || steps.publish.outputs.archive_ready == 'true')
+        uses: actions/upload-artifact@v4
+        with:
+          name: world-shards-edition-${{ github.run_id }}
+          path: world-shards-archive/
+          if-no-files-found: error
+          retention-days: 90

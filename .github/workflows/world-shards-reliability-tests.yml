@@ -1,0 +1,59 @@
+name: WORLD SHARDS - Reliability Regression Tests
+
+on:
+  push:
+    branches:
+      - "critical-reliability-*"
+    paths:
+      - "publish_edition.py"
+      - "send_edition_email.py"
+      - "restore_edition_archive.py"
+      - "tests/test_restore_edition_archive.py"
+      - "test_send_edition_email.py"
+      - "tests/test_publish_edition.py"
+      - ".github/workflows/world-shards-reliability-tests.yml"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "publish_edition.py"
+      - "send_edition_email.py"
+      - "restore_edition_archive.py"
+      - "tests/test_restore_edition_archive.py"
+      - "test_send_edition_email.py"
+      - "tests/test_publish_edition.py"
+      - ".github/workflows/world-shards-reliability-tests.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  reliability-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Repository checkout
+        uses: actions/checkout@v4
+
+      - name: Python setup
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install --no-cache-dir -r requirements.txt
+
+      - name: Compile Python sources
+        run: python -m compileall -q .
+
+      - name: Publication safety tests
+        run: python -m unittest discover -s tests -p "test_publish_edition.py" -v
+
+      - name: Email archive and delivery tests
+        run: python -m unittest test_send_edition_email.py -v
+
+      - name: Artifact restore and outbox tests
+        run: python -m unittest discover -s tests -p "test_restore_edition_archive.py" -v

@@ -2,8 +2,10 @@
 WORLD SHARDS – Automatic publication gate
 Only publishes today's Budapest-local draft when all 16 expected items are complete.
 """
+import json
 import logging
 import os
+from pathlib import Path
 from collections import Counter
 from datetime import datetime
 from zoneinfo import ZoneInfo
@@ -42,6 +44,59 @@ def get_client():
     if not url or not key:
         raise RuntimeError("Hiányzó SUPABASE_URL vagy SUPABASE_SECRET_KEY.")
     return create_client(url, key)
+
+
+def write_github_output(**values):
+    output_path = os.getenv("GITHUB_OUTPUT")
+    if not output_path:
+        return
+    with open(output_path, "a", encoding="utf-8") as output:
+        for key, value in values.items():
+            output.write(f"{key}={str(value).lower() if isinstance(value, bool) else value}\n")
+
+
+def save_local_archive(edition, items, supabase):
+    """Persist the complete validated edition before attempting the DB status change."""
+    content_ids = list(dict.fromkeys(
+        item["content_item_id"] for item in items if item.get("content_item_id")
+    ))
+    source_by_id = {}
+    if content_ids:
+        try:
+            response = (
+                supabase.table("shard_content_items")
+                .select("id,source_name,source_url,image_url,metadata")
+                .in_("id", content_ids)
+                .execute()
+            )
+            source_by_id = {str(row["id"]): row for row in (response.data or [])}
+        except Exception:
+            # Article bodies remain complete in shard_edition_items. Missing source
+            # decoration must not prevent preserving or emailing the edition.
+            logger.exception(
+                "A forrás-metaadatok lekérése nem sikerült; "
+                "a tartalmi archívum ezek nélkül is elkészül."
+            )
+
+    archive = {
+        "schema_version": 1,
+        "archive_type": "world_shards_edition",
+        "archived_at": datetime.now(TIMEZONE).isoformat(),
+        "edition": edition,
+        "items": items,
+        "source_by_id": source_by_id,
+    }
+    archive_dir = Path(os.getenv("WORLD_SHARDS_ARCHIVE_DIR", "world-shards-archive"))
+    archive_dir.mkdir(parents=True, exist_ok=True)
+    archive_path = archive_dir / f"edition-{edition['edition_date']}.json"
+    temporary_path = archive_path.with_suffix(".json.tmp")
+    temporary_path.write_text(
+        json.dumps(archive, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    temporary_path.replace(archive_path)
+    logger.info("A teljes, ellenőrzött kiadás helyi archívumba mentve: %s", archive_path)
+    return str(archive_path)
 
 
 def main():
@@ -122,38 +177,45 @@ def main():
             + ". A kiadás draft marad."
         )
 
-    # Conditional update prevents accidental re-publication or status races.
-    update_response = (
-        supabase.table("shard_editions")
-        .update({"status": "published"})
-        .eq("id", edition_id)
-        .eq("status", "draft")
-        .execute()
-    )
-    if not update_response.data:
-        raise RuntimeError("A publikálási státuszváltás nem igazolható; ellenőrizd a kiadást.")
+    # A teljes, ellenőrzött kiadás előbb helyi archívumba kerül.
+    # Így a DB-státuszváltás hibája nem semmisíti meg a kész magazint.
+    archive_path = save_local_archive(edition, items, supabase)
+    write_github_output(archive_ready=True, archive_path=archive_path, published=False)
 
-    verify_response = (
-        supabase.table("shard_editions")
-        .select("id,status,edition_date,title")
-        .eq("id", edition_id)
-        .limit(1)
-        .execute()
-    )
-    if not verify_response.data or verify_response.data[0].get("status") != "published":
-        raise RuntimeError("A publikálás utáni visszaellenőrzés sikertelen.")
+    try:
+        update_response = (
+            supabase.table("shard_editions")
+            .update({"status": "published"})
+            .eq("id", edition_id)
+            .eq("status", "draft")
+            .execute()
+        )
+        if not update_response.data:
+            raise RuntimeError("A publikálási státuszváltás nem igazolható.")
+
+        verify_response = (
+            supabase.table("shard_editions")
+            .select("id,status,edition_date,title")
+            .eq("id", edition_id)
+            .limit(1)
+            .execute()
+        )
+        if not verify_response.data or verify_response.data[0].get("status") != "published":
+            raise RuntimeError("A publikálás utáni visszaellenőrzés sikertelen.")
+    except Exception as exc:
+        logger.exception(
+            "A Supabase publikációs státuszváltása nem sikerült; "
+            "a teljes helyi archívum megmaradt, e-mailes tartalék útvonal használható: %s",
+            exc,
+        )
+        write_github_output(archive_ready=True, archive_path=archive_path, published=False)
+        return
 
     logger.info(
         "AUTOMATIKUS PUBLIKÁLÁS SIKERES: %s – %s (%s/%s elem).",
         edition["title"], edition["edition_date"], len(items), EXPECTED_TOTAL
     )
-
-    # A workflow csak tényleges, visszaellenőrzött publikálás után küldhet e-mailt.
-    github_output = os.getenv("GITHUB_OUTPUT")
-    if github_output:
-        with open(github_output, "a", encoding="utf-8") as output:
-            output.write("published=true\n")
-
+    write_github_output(archive_ready=True, archive_path=archive_path, published=True)
 
 if __name__ == "__main__":
     main()

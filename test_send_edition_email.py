@@ -1,8 +1,12 @@
 import unittest
 from urllib.parse import urlparse, parse_qs
 import uuid
+import os
+import json
+import tempfile
+from unittest.mock import patch
 from datetime import datetime, timezone
-from send_edition_email import build_email_bodies, build_rating_links, validate_edition
+from send_edition_email import build_email_bodies, build_rating_links, validate_edition, send_email, load_local_archive, save_delivery_receipt
 
 class EditionEmailTests(unittest.TestCase):
     def setUp(self):
@@ -49,6 +53,64 @@ class EditionEmailTests(unittest.TestCase):
         draft = dict(self.edition, status="draft")
         with self.assertRaises(RuntimeError):
             validate_edition(draft, self.items)
+
+    def test_accepts_complete_draft_for_local_archive_delivery(self):
+        draft = dict(self.edition, status="draft")
+        validate_edition(draft, self.items, require_published=False)
+
+    def test_loads_complete_local_archive_without_supabase(self):
+        from send_edition_email import TIMEZONE
+        today = datetime.now(TIMEZONE).date().isoformat()
+        archive = {
+            "schema_version": 1,
+            "archive_type": "world_shards_edition",
+            "edition": dict(self.edition, edition_date=today, status="draft"),
+            "items": self.items,
+            "source_by_id": {},
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            archive_path = os.path.join(directory, f"edition-{today}.json")
+            with open(archive_path, "w", encoding="utf-8") as handle:
+                json.dump(archive, handle)
+            with patch.dict(os.environ, {"WORLD_SHARDS_ARCHIVE_DIR": directory}):
+                edition, items, sources = load_local_archive()
+        self.assertEqual(edition["edition_date"], today)
+        self.assertEqual(len(items), 16)
+        self.assertEqual(sources, {})
+
+    def test_delivery_receipt_is_written_after_success(self):
+        from send_edition_email import TIMEZONE
+        today = datetime.now(TIMEZONE).date().isoformat()
+        edition = dict(self.edition, edition_date=today)
+        with tempfile.TemporaryDirectory() as directory, patch.dict(
+            os.environ, {"WORLD_SHARDS_ARCHIVE_DIR": directory}
+        ):
+            save_delivery_receipt(edition)
+            with open(os.path.join(directory, "delivery-receipt.json"), encoding="utf-8") as handle:
+                receipt = json.load(handle)
+        self.assertEqual(receipt["edition_date"], today)
+        self.assertEqual(receipt["status"], "sent")
+
+    def test_retries_transient_smtp_connection_failure(self):
+        class FakeSMTP:
+            def __enter__(self):
+                return self
+            def __exit__(self, exc_type, exc, tb):
+                return False
+            def login(self, sender, password):
+                return None
+            def send_message(self, message):
+                return None
+
+        with patch.dict(os.environ, {
+            "MAIL_USERNAME": "sender@example.org",
+            "MAIL_PASSWORD": "test-password",
+            "NOTIFY_EMAIL": "reader@example.org",
+        }), patch("send_edition_email.smtplib.SMTP_SSL",
+                 side_effect=[OSError("temporary network issue"), FakeSMTP()]) as smtp, \
+             patch("send_edition_email.time.sleep"):
+            self.assertTrue(send_email("plain", "<p>html</p>", "2026. 11. 28."))
+            self.assertEqual(smtp.call_count, 2)
 
     def test_rejects_missing_article(self):
         with self.assertRaises(RuntimeError):
