@@ -19,6 +19,8 @@ from zipfile import ZipFile
 
 from zoneinfo import ZoneInfo
 
+from artifact_crypto import decrypt_bytes
+
 LOGGER = logging.getLogger("world-shards-archive-restore")
 TIMEZONE = ZoneInfo("Europe/Budapest")
 API_ROOT = "https://api.github.com"
@@ -65,6 +67,10 @@ def restore_today_archive():
     repository = os.getenv("GITHUB_REPOSITORY")
     branch = os.getenv("GITHUB_REF_NAME")
     current_run = os.getenv("GITHUB_RUN_ID")
+    encryption_key = (
+        os.getenv("WORLD_SHARDS_FALLBACK_ENCRYPTION_KEY")
+        or os.getenv("SUPABASE_SECRET_KEY")
+    )
     if not all((token, repository, branch, current_run)):
         LOGGER.warning("GitHub artifact-visszaállítás kihagyva: hiányzó Actions-környezet.")
         write_outputs(archive_found=False, delivery_sent=False, sqlite_found=False)
@@ -106,12 +112,16 @@ def restore_today_archive():
                             sqlite_member = next(
                                 (
                                     name for name in bundle.namelist()
-                                    if Path(name).name == "world-shards-fallback.sqlite3"
+                                    if Path(name).name == "world-shards-fallback.sqlite3.gpg"
                                 ),
                                 None,
                             )
                             if sqlite_member:
-                                sqlite_bytes = bundle.read(sqlite_member)
+                                if not encryption_key:
+                                    raise RuntimeError("Hiányzik az artifact visszafejtési kulcs.")
+                                sqlite_bytes = decrypt_bytes(
+                                    bundle.read(sqlite_member), encryption_key
+                                )
                                 if sqlite_bytes.startswith(b"SQLite format 3\x00"):
                                     sqlite_path = Path(os.getenv(
                                         "WORLD_SHARDS_SQLITE_PATH",
@@ -129,12 +139,16 @@ def restore_today_archive():
                             archive_member = next(
                                 (
                                     name for name in bundle.namelist()
-                                    if Path(name).name == f"edition-{today}.json"
+                                    if Path(name).name == f"edition-{today}.json.gpg"
                                 ),
                                 None,
                             )
                             if archive_member:
-                                archive = json.loads(bundle.read(archive_member))
+                                if not encryption_key:
+                                    raise RuntimeError("Hiányzik az artifact visszafejtési kulcs.")
+                                archive = json.loads(
+                                    decrypt_bytes(bundle.read(archive_member), encryption_key)
+                                )
                                 edition = archive.get("edition") or {}
                                 if (
                                     archive.get("archive_type") == "world_shards_edition"
@@ -155,12 +169,14 @@ def restore_today_archive():
                                     receipt_member = next(
                                         (
                                             name for name in bundle.namelist()
-                                            if Path(name).name == "delivery-receipt.json"
+                                            if Path(name).name == "delivery-receipt.json.gpg"
                                         ),
                                         None,
                                     )
                                     if receipt_member:
-                                        receipt = json.loads(bundle.read(receipt_member))
+                                        receipt = json.loads(
+                                            decrypt_bytes(bundle.read(receipt_member), encryption_key)
+                                        )
                                         if (
                                             receipt.get("edition_date") == today
                                             and receipt.get("status") == "sent"
