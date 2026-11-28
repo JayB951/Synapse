@@ -128,7 +128,7 @@ jobs:
 
       - name: Teljessegi ellenorzes es automatikus publikacio
         id: publish
-        if: steps.edition_builder.outputs.already_published != 'true'
+        if: steps.restore.outputs.archive_found != 'true' && steps.edition_builder.outputs.already_published != 'true'
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
