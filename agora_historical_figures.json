@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0.0",
-  "description": "Curated catalogue of historical thinkers and practitioners. Hungarian profiles receive priority for Hungarian AGORA stories when directly relevant; this is not an exclusive nationality filter.",
+  "description": "Curated catalogue of historical thinkers and practitioners. Hungarian profiles receive priority for Hungarian AGORA stories when directly relevant; international profiles remain eligible whenever their documented expertise is more relevant.",
   "figures": [
     {
       "id": "aristotle",
@@ -1004,6 +1004,113 @@
       ],
       "limits": "A 19. századi háborús és katasztrófa-segélyezés szervezeti körülményei eltérnek a mai mentőszolgálati és kórházi rendszerektől.",
       "role": "amerikai ápolónő és humanitárius segélyezési szervező"
+    },
+    {
+      "id": "bibo_istvan",
+      "name": "Bibó István",
+      "nationality": "magyar",
+      "lifespan": "1911–1979",
+      "era": "20. századi Magyarország és Közép-Európa",
+      "domains": [
+        "political_philosophy",
+        "law",
+        "political_science",
+        "history"
+      ],
+      "topics": [
+        "democracy",
+        "rule_of_law",
+        "nationalism",
+        "political_culture",
+        "state_institutions",
+        "central_europe",
+        "sovereignty",
+        "bureaucracy"
+      ],
+      "keywords": [
+        "Bibó",
+        "demokrácia",
+        "jogállam",
+        "nacionalizmus",
+        "politikai kultúra",
+        "államhatalom",
+        "közigazgatás",
+        "Kelet-Európa",
+        "szuverenitás",
+        "democracy",
+        "rule of law",
+        "nationalism",
+        "political culture",
+        "bureaucracy"
+      ],
+      "core_ideas": [
+        "A demokratikus politikai kultúra, a félelem nélküli közélet és az intézményi felelősség összefüggéseit elemezte; különös figyelmet fordított a kelet-közép-európai államfejlődés torzulásaira és a nacionalizmus politikai következményeire."
+      ],
+      "works": [
+        {
+          "title": "A kelet-európai kisállamok nyomorúsága",
+          "url": "https://mek.oszk.hu/02000/02043/html/194.html",
+          "type": "primary_text"
+        },
+        {
+          "title": "A demokratikus Magyarország államformája",
+          "url": "https://mek.oszk.hu/02000/02043/fulszoveg.html",
+          "type": "primary_text"
+        }
+      ],
+      "limits": "Gondolatai a 20. századi európai és magyar politikai tapasztalatokból indulnak ki; nem kezelhetők minden mai intézményi helyzet közvetlen receptjeként.",
+      "role": "magyar jogtudós, politikai gondolkodó és közíró"
+    },
+    {
+      "id": "eotvos_jozsef",
+      "name": "Eötvös József",
+      "nationality": "magyar",
+      "lifespan": "1813–1871",
+      "era": "19. századi Magyarország és Európa",
+      "domains": [
+        "political_philosophy",
+        "law",
+        "public_administration",
+        "literature"
+      ],
+      "topics": [
+        "rule_of_law",
+        "liberty",
+        "equality",
+        "separation_of_powers",
+        "centralization",
+        "state_institutions",
+        "nationality",
+        "education"
+      ],
+      "keywords": [
+        "Eötvös",
+        "szabadság",
+        "egyenlőség",
+        "hatalommegosztás",
+        "központosítás",
+        "állam",
+        "alkotmány",
+        "nemzetiség",
+        "oktatás",
+        "liberty",
+        "equality",
+        "separation of powers",
+        "centralization",
+        "constitution"
+      ],
+      "core_ideas": [
+        "A szabadság, egyenlőség és nemzetiség modern eszméinek állami következményeit vizsgálta; az egyéni szabadság intézményi biztosítékait, a hatalom korlátozását és a túlzott központosítás veszélyeit hangsúlyozta."
+      ],
+      "works": [
+        {
+          "title": "A XIX. század uralkodó eszméinek befolyása az álladalomra",
+          "url": "https://real-eod.mtak.hu/8556/",
+          "type": "primary_text"
+        }
+      ],
+      "limits": "A 19. századi liberális államelmélet fogalmait saját történeti környezetükben kell értelmezni; nézetei nem azonosak a mai liberalizmus minden irányzatával.",
+      "role": "magyar politikai gondolkodó, író és államférfi"
     }
   ]
 }
