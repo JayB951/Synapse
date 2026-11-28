@@ -125,7 +125,7 @@ class XkcdNoRepeatTests(unittest.TestCase):
         record = shards_collector_m14.build_xkcd_record({
             **comic(3330),
             "alt": "A precise visual description.",
-            "transcript": "Character 1: Hello.\\nCharacter 2: Goodbye.",
+            "transcript": "Character 1: Hello.\nCharacter 2: Goodbye.",
         })
         metadata = record["metadata"]
         self.assertEqual(metadata["alt_text"], "A precise visual description.")
