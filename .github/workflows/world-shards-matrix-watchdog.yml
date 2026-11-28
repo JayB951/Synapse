@@ -2,9 +2,9 @@ name: WORLD SHARDS - Matrix Error Watchdog
 
 on:
   schedule:
-    # Önálló napi ellenőrzés: 08:00 Budapest télen (07:00 UTC).
-    # Nem függ a napi kiadás workflow_run eseményétől.
-    - cron: "0 7 * * *"
+    # Budapest 06:05: UTC 04:05 nyári időszámításkor, 05:05 téli időszámításkor.
+    # A helyi időkapu miatt a két UTC triggerből naponta csak az egyik riaszt.
+    - cron: "5 4,5 * * *"
   workflow_dispatch:
 
 permissions:
@@ -35,6 +35,14 @@ jobs:
 
           tz = ZoneInfo("Europe/Budapest")
           now = datetime.now(tz)
+
+          # A cron két UTC időpontot fed le a nyári/téli óraátállítás miatt.
+          # Csak a helyi 06:05-ös futás végez ellenőrzést.
+          if now.hour != 6:
+              print("alert=false")
+              print("Nem a 06:05-ös budapesti ellenőrzési időpont; kihagyva.")
+              raise SystemExit(0)
+
           repo = os.environ["REPOSITORY"]
           token = os.environ["GH_TOKEN"]
           api = "https://api.github.com/repos/" + repo
@@ -53,7 +61,7 @@ jobs:
 
           runs = get_json(
               api + "/actions/workflows/world-shards-daily.yml/runs"
-              "?branch=main&per_page=30"
+              "?branch=main&per_page=100"
           ).get("workflow_runs", [])
 
           todays = []
@@ -67,25 +75,57 @@ jobs:
               if started.date() == now.date():
                   todays.append(run)
 
-          latest = max(
-              todays,
+          todays.sort(
               key=lambda item: (
                   item.get("run_number", 0),
                   item.get("run_attempt", 1),
               ),
-              default=None,
+              reverse=True,
           )
 
-          delivered = False
+          delivered_run = None
+          latest = todays[0] if todays else None
           failure_name = "A napi automatikus kiadás ma nem indult el"
-          run_url = ""
+          run_url = latest.get("html_url", "") if latest else ""
+
+          # Nem csak a legutolsó futást nézzük: egy későbbi idempotens
+          # újrapróbálkozás kihagyhatja a publikációt/e-mailt, miközben
+          # egy korábbi mai futás már sikeresen kézbesítette a kiadást.
+          for run in todays:
+              if run.get("status") != "completed" or run.get("conclusion") != "success":
+                  continue
+              jobs = get_json(run["url"] + "/jobs").get("jobs", [])
+              daily = next(
+                  (job for job in jobs if job.get("name") == "daily-edition"),
+                  None,
+              )
+              if not daily:
+                  continue
+              steps = {
+                  step.get("name"): step.get("conclusion")
+                  for step in daily.get("steps", [])
+              }
+              if (
+                  steps.get("Teljessegi ellenorzes es automatikus publikacio") == "success"
+                  and steps.get("Teljes napi kiadás e-mailben") == "success"
+              ):
+                  delivered_run = run
+                  break
+
+          if delivered_run:
+              print("alert=false")
+              print(
+                  "A mai kiadás publikációja és teljes e-mailes küldése sikeres: "
+                  + delivered_run.get("html_url", "")
+              )
+              raise SystemExit(0)
 
           if latest:
               run_url = latest.get("html_url", "")
               if latest.get("status") in ("queued", "in_progress"):
                   failure_name = (
-                      "A napi kiadás a 08:00-s ellenőrzéskor még nem fejeződött be "
-                      "(beragadt vagy túllépte a megengedett futási időt)"
+                      "A napi kiadás 06:05-kor még fut; a reggeli kézbesítési határidő "
+                      "nem teljesült"
                   )
               elif latest.get("conclusion") == "success":
                   jobs = get_json(latest["url"] + "/jobs").get("jobs", [])
@@ -98,20 +138,10 @@ jobs:
                           step.get("name"): step.get("conclusion")
                           for step in daily.get("steps", [])
                       }
-                      publication = steps.get(
-                          "Teljessegi ellenorzes es automatikus publikacio"
-                      )
-                      email = steps.get("Teljes napi kiadás e-mailben")
-                      delivered = publication == "success" and email == "success"
-                      if not delivered:
-                          if publication != "success":
-                              failure_name = (
-                                  "A kiadvány publikációja nem fejeződött be sikeresen"
-                              )
-                          else:
-                              failure_name = (
-                                  "A teljes napi kiadás e-mail-küldése nem fejeződött be"
-                              )
+                      if steps.get("Teljessegi ellenorzes es automatikus publikacio") != "success":
+                          failure_name = "A kiadvány publikációja nem fejeződött be sikeresen"
+                      else:
+                          failure_name = "A teljes napi kiadás e-mail-küldése nem fejeződött be"
                   else:
                       failure_name = "A napi kiadási feladat nem futott le"
               else:
@@ -128,13 +158,8 @@ jobs:
                       if job.get("conclusion") in ("failure", "cancelled"):
                           break
 
-          if delivered:
-              print("alert=false")
-              print("A mai publikáció és a teljes kiadás e-mailje is sikeres.")
-              raise SystemExit(0)
-
           print("alert=true")
-          print("failure_name=" + failure_name.replace("\n", " "))
+          print("failure_name=" + failure_name.replace("\\n", " "))
           print("run_url=" + run_url)
           print("MATRIX ALERT: " + failure_name)
           PY
