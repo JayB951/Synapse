@@ -16,9 +16,7 @@ import html
 from datetime import datetime, timezone
 
 import requests
-from supabase import create_client
-
-
+from resilient_storage import create_resilient_client
 # ============================================================
 # BEÁLLÍTÁSOK
 # ============================================================
@@ -56,7 +54,7 @@ def get_supabase_client():
             "Hiányzó SUPABASE_URL vagy SUPABASE_SECRET_KEY."
         )
 
-    return create_client(url, key)
+    return create_resilient_client(url, key)
 
 
 def clean_html(value):
