@@ -60,6 +60,10 @@ def build_content_item(pipeline, editorial, qa_report, edition_date):
             "score": event.get("score"),
             "source_count": len({item.get("source_code") for item in sources if item.get("source_code")}),
             "sources": sources,
+            "article_summaries": [
+                {"title": article.get("title"), "summary": article.get("summary")}
+                for article in articles if article.get("title") or article.get("summary")
+            ],
         })
         body_parts.extend([f"## {'Magyarország' if scope == 'hungary' else 'Nemzetközi'} esemény",
                            title])
