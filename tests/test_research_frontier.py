@@ -1,4 +1,5 @@
 import importlib.util
+import unittest
 from pathlib import Path
 
 
@@ -41,7 +42,8 @@ def research_source():
     }
 
 
-def test_research_frontier_source_text_includes_bibliography_and_topics():
+class ResearchFrontierTests(unittest.TestCase):
+    def test_source_text_includes_bibliography_and_topics(self):
     source_text = processor.build_source_text(research_source())
 
     assert "DOI: 10.1234/example.2026" in source_text
@@ -55,7 +57,7 @@ def test_research_frontier_source_text_includes_bibliography_and_topics():
     assert "Témaköri kifejezések: ocean warming" in source_text
 
 
-def test_research_frontier_prompt_requires_source_bounded_scientific_reporting():
+    def test_prompt_requires_source_bounded_scientific_reporting(self):
     prompt = processor.build_prompt("research_frontier", research_source())
 
     assert "ne találd ki" in prompt.lower()
@@ -65,7 +67,7 @@ def test_research_frontier_prompt_requires_source_bounded_scientific_reporting()
     assert "Journal of Climate Research" in prompt
 
 
-def test_non_research_prompt_does_not_use_research_frontier_template():
+    def test_non_research_prompt_does_not_use_research_frontier_template(self):
     prompt = processor.build_prompt(
         "the_thinker",
         {
