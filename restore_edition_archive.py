@@ -96,7 +96,7 @@ def restore_today_archive():
                             )
                             if sqlite_member:
                                 sqlite_bytes = bundle.read(sqlite_member)
-                                if sqlite_bytes.startswith(b"SQLite format 3\\x00"):
+                                if sqlite_bytes.startswith(b"SQLite format 3\x00"):
                                     sqlite_path = Path(os.getenv(
                                         "WORLD_SHARDS_SQLITE_PATH",
                                         ".world_shards_fallback.sqlite3",
@@ -131,7 +131,7 @@ def restore_today_archive():
                                     archive_dir.mkdir(parents=True, exist_ok=True)
                                     archive_path = archive_dir / f"edition-{today}.json"
                                     archive_path.write_text(
-                                        json.dumps(archive, ensure_ascii=False, indent=2) + "\\n",
+                                        json.dumps(archive, ensure_ascii=False, indent=2) + "\n",
                                         encoding="utf-8",
                                     )
                                     archive_restored = True
@@ -150,7 +150,7 @@ def restore_today_archive():
                                             and receipt.get("status") == "sent"
                                         ):
                                             (archive_dir / "delivery-receipt.json").write_text(
-                                                json.dumps(receipt, ensure_ascii=False, indent=2) + "\\n",
+                                                json.dumps(receipt, ensure_ascii=False, indent=2) + "\n",
                                                 encoding="utf-8",
                                             )
                                             delivery_sent = True
