@@ -301,7 +301,7 @@ def select_edition_items(supabase, edition_date):
         candidates = get_candidates(
             supabase,
             section_code,
-            limit=limit,
+            limit=25 if section_code == "research_frontier" else limit,
             edition_date=(
                 edition_date
                 if section_code == "music_of_the_day"
@@ -318,12 +318,7 @@ def select_edition_items(supabase, edition_date):
             )
             chosen = [art_choice] if art_choice else []
         elif section_code == "research_frontier":
-            research_candidates = get_candidates(
-                supabase,
-                section_code,
-                limit=25,
-            )
-            chosen = choose_research_candidates(research_candidates, limit=limit)
+            chosen = choose_research_candidates(candidates, limit=limit)
         else:
             chosen = candidates[:limit]
         selected_items.extend(chosen)
