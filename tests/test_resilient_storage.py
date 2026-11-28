@@ -230,6 +230,25 @@ class ResilientStorageTests(unittest.TestCase):
         result = self.client.table("shard_content_items").select("*").execute()
         self.assertEqual(result.data, [])
 
+    def test_cache_pruning_removes_old_cache_but_keeps_pending_writes(self):
+        self.store.cache_remote("shard_content_items", [{
+            "id": "old-cache",
+            "title": "Old cached row",
+            "collected_at": "2020-01-01T00:00:00+00:00",
+            "status": "selected",
+        }])
+        self.store.save_local("shard_content_items", {
+            "id": "old-pending",
+            "title": "Pending write",
+            "collected_at": "2020-01-01T00:00:00+00:00",
+            "status": "candidate",
+        }, pending=True)
+
+        self.store._prune_old_cache(retention_days=30)
+        remaining = {row["id"] for row in self.store.rows("shard_content_items")}
+        self.assertNotIn("old-cache", remaining)
+        self.assertIn("old-pending", remaining)
+
     def test_json_contains_filter_works_in_local_mode(self):
         self.store.save_local("shard_content_items", {
             "id": "agora-1",
