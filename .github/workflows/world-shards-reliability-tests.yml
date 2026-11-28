@@ -29,6 +29,15 @@ on:
     paths:
       - "publish_edition.py"
       - "send_edition_email.py"
+      - "shards_collector.py"
+      - "shards_collector_m13.py"
+      - "shards_collector_m14.py"
+      - "music_collector.py"
+      - "edition_builder.py"
+      - "edition_processor.py"
+      - "agora_automation.py"
+      - "test_music_collector.py"
+      - "test_agora_automation.py"
       - "restore_edition_archive.py"
       - "resilient_storage.py"
       - "tests/test_resilient_storage.py"
@@ -73,3 +82,6 @@ jobs:
 
       - name: SQLite fallback storage tests
         run: python -m unittest discover -s tests -p "test_resilient_storage.py" -v
+
+      - name: Existing Music of the Day regression tests
+        run: python -m unittest test_music_collector.py -v
