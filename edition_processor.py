@@ -65,18 +65,10 @@ logger = logging.getLogger("world_shards_processor")
 # ============================================================
 
 def get_supabase_client():
-
-    if not SUPABASE_URL:
-        raise RuntimeError("Hiányzó SUPABASE_URL.")
-
-    if not SUPABASE_SECRET_KEY:
-        raise RuntimeError("Hiányzó SUPABASE_SECRET_KEY.")
-
     return create_resilient_client(
         SUPABASE_URL,
         SUPABASE_SECRET_KEY
     )
-
 
 # ============================================================
 # TIME MANAGEMENT
