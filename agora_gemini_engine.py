@@ -224,6 +224,7 @@ def select_historical_figures(event, catalog, client, excluded_figure_ids=None, 
             "name": item.get("name"),
             "role": item.get("role"),
             "nationality": item.get("nationality"),
+            "hungarian_tradition": bool(item.get("hungarian_tradition")),
             "lifespan": item.get("lifespan"),
             "era": item.get("era"),
             "domains": item.get("domains", []),
@@ -244,8 +245,8 @@ def select_historical_figures(event, catalog, client, excluded_figure_ids=None, 
         "közhelyekre. Ne találj ki személyeket vagy profilokat; kizárólag a katalógusból "
         "válassz. A feladat minden esetben pontosan három személy kiválasztása; a "
         "katalógus leginkább releváns, egymást kiegészítő három profilját rangsorold. "
-        "Ha a prefer_hungarian_thinkers igaz, a magyar nemzetiségű vagy magyar kulturális "
-        "hagyományhoz tartozó személyeket részesítsd előnyben, amennyiben a konkrét hírhez "
+        "Ha a prefer_hungarian_thinkers igaz, a magyar nemzetiségű személyeket és azokat is "
+        "részesítsd előnyben, akiknek hungarian_tradition jelölése igaz, amennyiben a konkrét hírhez "
         "érdemben kapcsolódnak; a nemzetközi gondolkodók továbbra is választhatók, ha "
         "szakmai relevanciájuk erősebb. A nemzetiségi preferencia soha nem írhatja felül "
         "az eseményhez való tényleges kapcsolódást. Az excluded_figure_ids személyeket "
