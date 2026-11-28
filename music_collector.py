@@ -232,7 +232,7 @@ def choose_best_track(tracks, topics, excluded_track_ids=None):
         score = score_track(track)
         if score < 5:
             continue
-        topic = (topics or [{"title": "Önálló zenei válogatás", "section_code": "music_of_the_day"}])[0]
+        topic = {"title": "Önálló zenei válogatás", "section_code": "music_of_the_day", "genre_focus": track.get("_world_shards_genre_focus")}
         candidates.append({"track": track, "topic": topic, "score": score})
 
     if not candidates:
@@ -424,6 +424,7 @@ def collect_music(supabase, http_get=requests.get, edition_date=None):
             if isinstance(track, dict):
                 # Preserve the exact editorial query that produced this result.
                 track["_world_shards_query"] = query
+                track["_world_shards_genre_focus"] = topic.get("genre_focus")
                 all_tracks.append(track)
                 topic_by_query[query] = topic
 
@@ -523,6 +524,7 @@ def collect_music(supabase, http_get=requests.get, edition_date=None):
 
     # Internal query routing is not part of the published metadata.
     selection["track"].pop("_world_shards_query", None)
+    selection["track"].pop("_world_shards_genre_focus", None)
     record = build_music_record(selection, edition_date)
     result = save_music_record(supabase, record, edition_date)
 
