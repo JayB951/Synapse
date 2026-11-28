@@ -148,6 +148,19 @@ class SQLiteFallbackStore:
             if row["record_id"] not in deleted
         ]
 
+    def exclude_tombstones(self, table_name, rows):
+        with self._connect() as connection:
+            deleted = {
+                row["record_id"] for row in connection.execute(
+                    "SELECT record_id FROM tombstones WHERE table_name=?",
+                    (table_name,),
+                ).fetchall()
+            }
+        return [
+            row for row in (rows or [])
+            if row.get("id") is None or str(row["id"]) not in deleted
+        ]
+
     def pending_rows(self, table_name):
         with self._connect() as connection:
             rows = connection.execute(
@@ -384,7 +397,9 @@ class ResilientQuery:
         try:
             query = self._remote_query(operation="select", fields="*")
             response = query.execute()
-            rows = response.data or []
+            rows = self.client.store.exclude_tombstones(
+                self.table_name, response.data or []
+            )
             self.client.store.cache_remote(self.table_name, rows)
             return rows
         except Exception:
@@ -397,7 +412,9 @@ class ResilientQuery:
             if self.client.remote is not None:
                 try:
                     response = self._remote_query().execute()
-                    remote_rows = response.data or []
+                    remote_rows = self.client.store.exclude_tombstones(
+                        self.table_name, response.data or []
+                    )
                     self.client.store.cache_remote(self.table_name, remote_rows)
                     remote_read_succeeded = True
                 except Exception:
