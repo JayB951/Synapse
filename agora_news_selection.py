@@ -81,7 +81,9 @@ ELSŐDLEGESEN KERESENDŐ TÉMÁK:
 5. Egy tájékozott olvasó számára megér-e 2-3 perc figyelmet?
 
 VÁLASZTÁSI SZABÁLYOK:
-- A jelöltek közül legfeljebb egy eseményt válassz. Csak olyan eseményt válassz, amelyet legalább egy kiadó és legalább egy ellenőrizhető eredeti cikk-URL támaszt alá. Több független kiadó megerősítése minőségi előny, de nem kötelező feltétel.
+- A jelöltek közül legfeljebb egy eseményt válassz.
+- A recent_agora_events az előző kiadásokban már feldolgozott eseményeket tartalmazza. Ezeket eseményazonosság alapján hasonlítsd össze, ne pusztán a cím alapján. Ugyanannak a balesetnek, támadásnak, politikai döntésnek vagy más konkrét történésnek a másnapi következménye, újabb áldozata vagy helyzetjelentése nem új téma; ne válaszd ki újra. Csak valóban önálló, új esemény választható. Egy korábbi esemény későbbi fejleménye is csak akkor térhet vissza, ha rendkívüli, önálló fordulat történt, amely önmagában is kiemelkedő közérdekű jelentőségű, és ezt az indoklásban megnevezed.
+- A hírértéket a hatás nagysága, érintettek köre, intézményi vagy rendszerszintű következmény, visszafordíthatatlanság és nemzetközi/magyar közérdek alapján mérd; az olvasottság és a források száma önmagában nem hírérték. Csak olyan eseményt válassz, amelyet legalább egy kiadó és legalább egy ellenőrizhető eredeti cikk-URL támaszt alá. Több független kiadó megerősítése minőségi előny, de nem kötelező feltétel.
 - Ha egyik sem üti meg a fenti mércét, selected_event_id legyen üres karakterlánc.
 - Ne válassz csak azért eseményt, hogy a kiadvány mindenképpen megteljen.
 - Kizárólag a megadott event_id értékek közül választhatsz.
@@ -92,7 +94,7 @@ VÁLASZTÁSI SZABÁLYOK:
 """.strip()
 
 
-def select_international_news_event(candidates, client):
+def select_international_news_event(candidates, client, recent_events=None):
     """Select at most one qualifying event; an empty ID means publish no item."""
     candidates = [
         item for item in candidates
@@ -133,7 +135,8 @@ def select_international_news_event(candidates, client):
 
     result = client.generate_json(
         INTERNATIONAL_NEWS_SYSTEM,
-        {"edition": "international", "candidates": compact},
+        {"edition": "international", "candidates": compact,
+         "recent_agora_events": list(recent_events or [])},
         NEWS_SELECTION_SCHEMA,
     )
     selected_id = str(result.get("selected_event_id") or "").strip()
@@ -159,8 +162,12 @@ amelynek a legnagyobb közérdekű jelentősége, hírértéke és ellenőrizhet
 
 Értékelési szempontok: tényleges következmény, közérdekűség, aktualitás,
 újdonság, több független szerkesztőség megerősítése és a rendelkezésre álló
-tények minősége. Nincs politikai kvóta, bal-jobb egyensúly, kormány-ellenzék
-arány vagy politikai irányultság szerinti súlyozás. A források sokfélesége
+tények minősége. A valódi jelentőség fontosabb a kattintottságnál, a források
+számánál és a puszta frissességnél; részesítsd előnyben az országos vagy
+rendszerszintű következményekkel járó eseményeket. Nincs politikai kvóta, bal-jobb egyensúly, kormány-ellenzék
+arány vagy politikai irányultság szerinti súlyozás. A recent_agora_events mezőben
+szereplő előző kiadások eseményeit eseményazonosság alapján kerüld: egy vonatbaleset
+másnapi halálos áldozata vagy újabb helyzetjelentése nem új AGORA-téma. A források sokfélesége
 kizárólag a tények ellenőrzését szolgálja.
 
 Választható témák: magyar közélet és intézmények, gazdaság, társadalom,
@@ -177,7 +184,7 @@ Kizárólag a megadott JSON-sémának megfelelő választ adj.
 """.strip()
 
 
-def select_hungarian_news_event(candidates, client):
+def select_hungarian_news_event(candidates, client, recent_events=None):
     """Gemini editorial gate for the Hungary-focused AGORA section."""
     candidates = [
         item for item in candidates
@@ -219,7 +226,8 @@ def select_hungarian_news_event(candidates, client):
 
     result = client.generate_json(
         HUNGARIAN_NEWS_SYSTEM,
-        {"edition": "hungarian", "candidates": compact},
+        {"edition": "hungarian", "candidates": compact,
+         "recent_agora_events": list(recent_events or [])},
         NEWS_SELECTION_SCHEMA,
     )
     selected_id = str(result.get("selected_event_id") or "").strip()
