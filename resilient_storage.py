@@ -38,7 +38,7 @@ def _json_contains(value, expected):
 class SQLiteFallbackStore:
     def __init__(self, path=None):
         self.path = Path(path or os.getenv(
-            "WORLD_SHARDS_SQLITE_PATH", ".world_shards_fallback.sqlite3"
+            "WORLD_SHARDS_SQLITE_PATH", "world-shards-fallback.sqlite3"
         ))
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self._initialize()
