@@ -424,7 +424,7 @@ class ResilientQuery:
                 return False
         return True
 
-    def _prepare_rows(self, rows, project=True, apply_filters=True):
+    def _prepare_rows(self, rows, project=True, apply_filters=True, apply_range=True):
         selected = [
             dict(row) for row in rows
             if not apply_filters or self._matches(row)
@@ -436,7 +436,7 @@ class ResilientQuery:
             )
         if self.row_limit is not None:
             selected = selected[:self.row_limit]
-        if self.row_range is not None:
+        if apply_range and self.row_range is not None:
             start, end = self.row_range
             selected = selected[start:end + 1]
         if project and self.fields.strip() != "*":
@@ -534,7 +534,7 @@ class ResilientQuery:
                         merged_rows.append(dict(remote_row))
                 rows = merged_rows
                 return SimpleNamespace(
-                    data=self._prepare_rows(rows, apply_filters=False)
+                    data=self._prepare_rows(rows, apply_filters=False, apply_range=False)
                 )
 
             rows = self.client.store.rows(self.table_name)
