@@ -48,6 +48,7 @@ def automated_quality_gate(pipeline, editorial, now=None):
     groups = {item.get("event_id"): item for item in pipeline.get("groups", [])}
     errors = []
     summary = {}
+    daily_figure_ids = set()
 
     for scope in REQUIRED_SCOPES:
         item = editorial.get("daily_editorial", {}).get(scope) or {}
@@ -97,7 +98,17 @@ def automated_quality_gate(pipeline, editorial, now=None):
         if len(briefs) != 3:
             errors.append(f"{scope}: pontosan három személyes kommentárcsomag szükséges.")
 
+        for figure in figures:
+            figure_id = figure.get("figure_id")
+            if figure_id in daily_figure_ids:
+                errors.append(f"{scope}: ugyanaz a történelmi személy két AGORA-hírben is szerepel: {figure_id}.")
+            if figure_id:
+                daily_figure_ids.add(figure_id)
+
         for brief in briefs:
+            question = str(brief.get("provocative_question") or "").strip()
+            if not question.endswith("?") or len(question.split()) < 8:
+                errors.append(f"{scope}/{brief.get('figure_name')}: hiányzik a személyre szabott provokatív kérdés.")
             sections = {section.get("id"): section for section in brief.get("sections", [])}
             if set(sections) != set(REQUIRED_DIMENSIONS):
                 errors.append(f"{scope}/{brief.get('figure_name')}: hiányzik valamelyik kommentárrész.")
