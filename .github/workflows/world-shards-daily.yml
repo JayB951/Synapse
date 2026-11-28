@@ -16,6 +16,16 @@ on:
       - "test_music_collector.py"
       - "shards_collector_m14.py"
       - "edition_builder.py"
+      - "edition_processor.py"
+      - "publish_edition.py"
+      - "send_edition_email.py"
+      - "resilient_storage.py"
+      - "restore_edition_archive.py"
+      - "sync_fallback_store.py"
+      - "encrypt_fallback_artifacts.py"
+      - "artifact_crypto.py"
+      - "shards_collector.py"
+      - "shards_collector_m13.py"
 
 permissions:
   contents: read
