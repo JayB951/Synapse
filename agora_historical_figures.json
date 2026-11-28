@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0.0",
-  "description": "Curated catalogue of historical thinkers and practitioners. Hungarian profiles receive priority for Hungarian AGORA stories when directly relevant; international profiles remain eligible whenever their documented expertise is more relevant.",
+  "description": "Broad curated pantheon of Hungarian historical, political, cultural and scientific figures, alongside international thinkers. Hungarian stories prioritize directly relevant Hungarian figures and the wider Hungarian historical tradition. Legendary, disputed and foreign rulers are explicitly contextualized; do not present tradition as verified biography.",
   "figures": [
     {
       "id": "aristotle",
@@ -1111,6 +1111,1322 @@
       ],
       "limits": "A 19. századi liberális államelmélet fogalmait saját történeti környezetükben kell értelmezni; nézetei nem azonosak a mai liberalizmus minden irányzatával.",
       "role": "magyar politikai gondolkodó, író és államférfi"
+    },
+    {
+      "id": "attila",
+      "name": "Attila",
+      "role": "hun uralkodó és hadvezér",
+      "nationality": "hun",
+      "lifespan": "5. század",
+      "era": "5. század",
+      "hungarian_tradition": true,
+      "domains": [
+        "birodalom",
+        "hadvezetés",
+        "Róma",
+        "Bizánc"
+      ],
+      "topics": [
+        "birodalom",
+        "hadvezetés",
+        "Róma",
+        "Bizánc",
+        "diplomácia"
+      ],
+      "keywords": [
+        "birodalom",
+        "hadvezetés",
+        "Róma",
+        "Bizánc",
+        "diplomácia",
+        "Attila",
+        "Magyarország",
+        "magyar történelem"
+      ],
+      "core_ideas": [
+        "A hun birodalom meghatározó uralkodója. A magyar nemzeti emlékezet később saját eredetmondáiba is beemelte."
+      ],
+      "works": [
+        {
+          "title": "Attila – történeti források és feldolgozások",
+          "url": "https://mek.oszk.hu/10600/10642/10642.htm",
+          "type": "historical_reference"
+        }
+      ],
+      "limits": "Attila nem azonosítható egyszerűen a későbbi magyar nemzeti identitással; a hun-magyar hagyomány későbbi emlékezeti réteg."
+    },
+    {
+      "id": "arpad",
+      "name": "Árpád fejedelem",
+      "role": "a honfoglaló magyar törzsszövetség vezetője a hagyomány szerint",
+      "nationality": "magyar",
+      "lifespan": "9–10. század",
+      "era": "9–10. század",
+      "hungarian_tradition": true,
+      "domains": [
+        "honfoglalás",
+        "államszervezés",
+        "vezetés",
+        "törzsszövetség"
+      ],
+      "topics": [
+        "honfoglalás",
+        "államszervezés",
+        "vezetés",
+        "törzsszövetség"
+      ],
+      "keywords": [
+        "honfoglalás",
+        "államszervezés",
+        "vezetés",
+        "törzsszövetség",
+        "Árpád fejedelem",
+        "Magyarország",
+        "magyar történelem"
+      ],
+      "core_ideas": [
+        "A honfoglalás kori magyar törzsszövetség meghatározó vezetőjeként él a történeti emlékezetben."
+      ],
+      "works": [
+        {
+          "title": "Árpád fejedelem – történeti források és feldolgozások",
+          "url": "https://mek.oszk.hu/02200/02228/html/01/54.html",
+          "type": "historical_reference"
+        }
+      ],
+      "limits": "A kortárs írott források szűkösek; a későbbi krónikák adatait forráskritikával kell kezelni."
+    },
+    {
+      "id": "anonymus",
+      "name": "Anonymus (P. magister)",
+      "role": "középkori magyar krónikás, a Gesta Hungarorum szerzője",
+      "nationality": "magyar történeti hagyomány",
+      "lifespan": "12–13. század fordulója",
+      "era": "12–13. század fordulója",
+      "hungarian_tradition": true,
+      "domains": [
+        "krónika",
+        "történetírás",
+        "honfoglalás",
+        "emlékezet"
+      ],
+      "topics": [
+        "krónika",
+        "történetírás",
+        "honfoglalás",
+        "emlékezet",
+        "eredetmonda",
+        "forráskritika"
+      ],
+      "keywords": [
+        "krónika",
+        "történetírás",
+        "honfoglalás",
+        "emlékezet",
+        "eredetmonda",
+        "forráskritika",
+        "Anonymus (P. magister)",
+        "Magyarország",
+        "magyar történelem"
+      ],
+      "core_ideas": [
+        "A Gesta Hungarorum névtelen szerzője a magyar eredet- és honfoglalás-hagyomány egyik legnagyobb hatású alakja."
+      ],
+      "works": [
+        {
+          "title": "Anonymus (P. magister) – történeti források és feldolgozások",
+          "url": "https://mek.oszk.hu/02200/02228/html/01/54.html",
+          "type": "historical_reference"
+        }
+      ],
+      "limits": "Személyazonossága és a mű keletkezésének pontos ideje vitatott; elbeszélése nem minden részletében kortárs tényközlés."
+    },
+    {
+      "id": "istvan_kiraly",
+      "name": "Szent István király",
+      "role": "Magyarország első koronás királya és államszervezője",
+      "nationality": "magyar",
+      "lifespan": "997–1038",
+      "era": "997–1038",
+      "hungarian_tradition": true,
+      "domains": [
+        "államalapítás",
+        "államszervezés",
+        "egyház",
+        "vármegye"
+      ],
+      "topics": [
+        "államalapítás",
+        "államszervezés",
+        "egyház",
+        "vármegye",
+        "törvény",
+        "állam"
+      ],
+      "keywords": [
+        "államalapítás",
+        "államszervezés",
+        "egyház",
+        "vármegye",
+        "törvény",
+        "állam",
+        "Szent István király",
+        "Magyarország",
+        "magyar történelem"
+      ],
+      "core_ideas": [
+        "A keresztény magyar királyság intézményrendszerének kiépítője; uralkodása tartós állami keretet teremtett."
+      ],
+      "works": [
+        {
+          "title": "Szent István király – történeti források és feldolgozások",
+          "url": "https://mek.oszk.hu/10600/10642/10642.htm",
+          "type": "historical_reference"
+        }
+      ],
+      "limits": "A későbbi nemzeti emlékezet és a korabeli források állításai nem minden ponton azonosak."
+    },
+    {
+      "id": "laszlo_kiraly",
+      "name": "Szent László király",
+      "role": "magyar király, törvényhozó és hadvezér",
+      "nationality": "magyar",
+      "lifespan": "1077–1095",
+      "era": "1077–1095",
+      "hungarian_tradition": true,
+      "domains": [
+        "törvény",
+        "uralkodás",
+        "határvédelem",
+        "legitimitás"
+      ],
+      "topics": [
+        "törvény",
+        "uralkodás",
+        "határvédelem",
+        "legitimitás",
+        "lovagi kultúra"
+      ],
+      "keywords": [
+        "törvény",
+        "uralkodás",
+        "határvédelem",
+        "legitimitás",
+        "lovagi kultúra",
+        "Szent László király",
+        "Magyarország",
+        "magyar történelem"
+      ],
+      "core_ideas": [
+        "Uralkodása alatt a királyi hatalom megszilárdult, törvényei a társadalmi rendet és a tulajdon védelmét célozták."
+      ],
+      "works": [
+        {
+          "title": "Szent László király – történeti források és feldolgozások",
+          "url": "https://mek.oszk.hu/10600/10642/10642.htm",
+          "type": "historical_reference"
+        }
+      ],
+      "limits": "A későbbi legendákat el kell választani a történeti rekonstrukciótól."
+    },
+    {
+      "id": "bela_iv",
+      "name": "IV. Béla király",
+      "role": "magyar király, az ország tatárjárás utáni újjászervezője",
+      "nationality": "magyar",
+      "lifespan": "1235–1270",
+      "era": "1235–1270",
+      "hungarian_tradition": true,
+      "domains": [
+        "tatárjárás",
+        "újjáépítés",
+        "várépítés",
+        "városfejlődés"
+      ],
+      "topics": [
+        "tatárjárás",
+        "újjáépítés",
+        "várépítés",
+        "városfejlődés",
+        "válságkezelés"
+      ],
+      "keywords": [
+        "tatárjárás",
+        "újjáépítés",
+        "várépítés",
+        "városfejlődés",
+        "válságkezelés",
+        "IV. Béla király",
+        "Magyarország",
+        "magyar történelem"
+      ],
+      "core_ideas": [
+        "A tatárjárás után új telepítési, városfejlesztési és várépítési politikával szervezte újjá az országot."
+      ],
+      "works": [
+        {
+          "title": "IV. Béla király – történeti források és feldolgozások",
+          "url": "https://mek.oszk.hu/10600/10642/10642.htm",
+          "type": "historical_reference"
+        }
+      ],
+      "limits": "A tatárjárás előtti és utáni politikája eltért; nem írható le egyetlen reformnarratívával."
+    },
+    {
+      "id": "hunyadi_janos",
+      "name": "Hunyadi János",
+      "role": "magyar kormányzó és hadvezér",
+      "nationality": "magyar",
+      "lifespan": "15. század",
+      "era": "15. század",
+      "hungarian_tradition": true,
+      "domains": [
+        "Nándorfehérvár",
+        "oszmán",
+        "honvédelem",
+        "hadvezetés"
+      ],
+      "topics": [
+        "Nándorfehérvár",
+        "oszmán",
+        "honvédelem",
+        "hadvezetés",
+        "koalíció"
+      ],
+      "keywords": [
+        "Nándorfehérvár",
+        "oszmán",
+        "honvédelem",
+        "hadvezetés",
+        "koalíció",
+        "Hunyadi János",
+        "Magyarország",
+        "magyar történelem"
+      ],
+      "core_ideas": [
+        "Az oszmán terjeszkedéssel szembeni védekezés meghatározó vezetője; 1456-os győzelme európai jelentőségű volt."
+      ],
+      "works": [
+        {
+          "title": "Hunyadi János – történeti források és feldolgozások",
+          "url": "https://mek.oszk.hu/10600/10642/10642.htm",
+          "type": "historical_reference"
+        }
+      ],
+      "limits": "A győzelem katonai, politikai és vallási emlékezete több rétegből áll."
+    },
+    {
+      "id": "matyas_kiraly",
+      "name": "Hunyadi Mátyás",
+      "role": "magyar király, központosító uralkodó és reneszánsz mecénás",
+      "nationality": "magyar",
+      "lifespan": "1458–1490",
+      "era": "1458–1490",
+      "hungarian_tradition": true,
+      "domains": [
+        "fekete_sereg",
+        "adóztatás",
+        "központosítás",
+        "igazságszolgáltatás"
+      ],
+      "topics": [
+        "fekete sereg",
+        "adóztatás",
+        "központosítás",
+        "igazságszolgáltatás",
+        "reneszánsz",
+        "Corvina"
+      ],
+      "keywords": [
+        "fekete sereg",
+        "adóztatás",
+        "központosítás",
+        "igazságszolgáltatás",
+        "reneszánsz",
+        "Corvina",
+        "Hunyadi Mátyás",
+        "Magyarország",
+        "magyar történelem"
+      ],
+      "core_ideas": [
+        "Megerősítette a királyi hatalmat, állandó zsoldoshadsereget tartott fenn, udvara a reneszánsz kultúra központja lett."
+      ],
+      "works": [
+        {
+          "title": "Hunyadi Mátyás – történeti források és feldolgozások",
+          "url": "https://mek.oszk.hu/10600/10642/10642.htm",
+          "type": "historical_reference"
+        }
+      ],
+      "limits": "Az igazságos Mátyás népi képe és a történeti uralkodó politikája nem teljesen fedik egymást."
+    },
+    {
+      "id": "dugovics_titusz",
+      "name": "Dugovics Titusz",
+      "role": "a nándorfehérvári hősi hagyomány alakja",
+      "nationality": "magyar történeti hagyomány",
+      "lifespan": "1456-hoz kötött emlékezet",
+      "era": "1456-hoz kötött emlékezet",
+      "hungarian_tradition": true,
+      "domains": [
+        "Nándorfehérvár",
+        "hősiesség",
+        "önfeláldozás",
+        "ostrom"
+      ],
+      "topics": [
+        "Nándorfehérvár",
+        "hősiesség",
+        "önfeláldozás",
+        "ostrom",
+        "emlékezet"
+      ],
+      "keywords": [
+        "Nándorfehérvár",
+        "hősiesség",
+        "önfeláldozás",
+        "ostrom",
+        "emlékezet",
+        "Dugovics Titusz",
+        "Magyarország",
+        "magyar történelem"
+      ],
+      "core_ideas": [
+        "A hagyomány szerint az ostrom során magával rántotta a mélybe a zászlót kitűző oszmán katonát; a magyar hősi emlékezet ismert alakja."
+      ],
+      "works": [
+        {
+          "title": "Dugovics Titusz – történeti források és feldolgozások",
+          "url": "https://mek.oszk.hu/00300/00355/html/ABC03014/03573.htm",
+          "type": "historical_reference"
+        }
+      ],
+      "limits": "A történet kortárs forrásokkal való alátámasztottsága vitatott; hagyományként, nem bizonyított életrajzi tényként kezelendő."
+    },
+    {
+      "id": "dozsa_gyorgy",
+      "name": "Dózsa György",
+      "role": "az 1514-es magyar parasztháború vezetője",
+      "nationality": "magyar",
+      "lifespan": "1514",
+      "era": "1514",
+      "hungarian_tradition": true,
+      "domains": [
+        "parasztháború",
+        "jobbágyság",
+        "nemesség",
+        "felkelés"
+      ],
+      "topics": [
+        "parasztháború",
+        "jobbágyság",
+        "nemesség",
+        "felkelés",
+        "társadalmi konfliktus"
+      ],
+      "keywords": [
+        "parasztháború",
+        "jobbágyság",
+        "nemesség",
+        "felkelés",
+        "társadalmi konfliktus",
+        "Dózsa György",
+        "Magyarország",
+        "magyar történelem"
+      ],
+      "core_ideas": [
+        "Az 1514-es keresztes hadjáratból kibontakozó felkelés vezetője lett; a rendi hatalom és a társadalmi elégedetlenség jelképe."
+      ],
+      "works": [
+        {
+          "title": "Dózsa György – történeti források és feldolgozások",
+          "url": "https://mek.oszk.hu/10600/10642/10642.htm",
+          "type": "historical_reference"
+        }
+      ],
+      "limits": "A felkelés társadalmi összetétele és céljai összetettek; későbbi politikai értelmezései gyakran anakronisztikusak."
+    },
+    {
+      "id": "zrinyi_miklos",
+      "name": "Zrínyi Miklós (költő és hadvezér)",
+      "role": "17. századi magyar költő, hadvezér és politikai gondolkodó",
+      "nationality": "magyar",
+      "lifespan": "1620–1664",
+      "era": "1620–1664",
+      "hungarian_tradition": true,
+      "domains": [
+        "törökellenes_politika",
+        "hadsereg",
+        "államreform",
+        "Szigeti_veszedelem"
+      ],
+      "topics": [
+        "törökellenes politika",
+        "hadsereg",
+        "államreform",
+        "Szigeti veszedelem",
+        "függetlenség"
+      ],
+      "keywords": [
+        "törökellenes politika",
+        "hadsereg",
+        "államreform",
+        "Szigeti veszedelem",
+        "függetlenség",
+        "Zrínyi Miklós (költő és hadvezér)",
+        "Magyarország",
+        "magyar történelem"
+      ],
+      "core_ideas": [
+        "A török elleni védekezés és a magyar állam katonai-politikai megújításának sürgetője volt."
+      ],
+      "works": [
+        {
+          "title": "Zrínyi Miklós (költő és hadvezér) – történeti források és feldolgozások",
+          "url": "https://mek.oszk.hu/",
+          "type": "historical_reference"
+        }
+      ],
+      "limits": "Habsburg-politikához való viszonya és stratégiai elképzelései történeti kontextust igényelnek."
+    },
+    {
+      "id": "rakoczi_ferenc",
+      "name": "II. Rákóczi Ferenc",
+      "role": "erdélyi fejedelem, a Rákóczi-szabadságharc vezetője",
+      "nationality": "magyar",
+      "lifespan": "1703–1711",
+      "era": "1703–1711",
+      "hungarian_tradition": true,
+      "domains": [
+        "szabadságharc",
+        "szuverenitás",
+        "kuruc",
+        "Habsburg"
+      ],
+      "topics": [
+        "szabadságharc",
+        "szuverenitás",
+        "kuruc",
+        "Habsburg",
+        "állam",
+        "diplomácia"
+      ],
+      "keywords": [
+        "szabadságharc",
+        "szuverenitás",
+        "kuruc",
+        "Habsburg",
+        "állam",
+        "diplomácia",
+        "II. Rákóczi Ferenc",
+        "Magyarország",
+        "magyar történelem"
+      ],
+      "core_ideas": [
+        "A Habsburg-uralom elleni szabadságharc politikai és katonai vezetője; a rendi ellenállást államszervezési kísérletté próbálta formálni."
+      ],
+      "works": [
+        {
+          "title": "II. Rákóczi Ferenc – történeti források és feldolgozások",
+          "url": "https://mek.oszk.hu/",
+          "type": "historical_reference"
+        }
+      ],
+      "limits": "A szabadságharc társadalmi bázisa, céljai és nemzetközi mozgástere nem egyszerűsíthető utólagos jelképpé."
+    },
+    {
+      "id": "maria_terezia",
+      "name": "Mária Terézia",
+      "role": "Habsburg uralkodó, Magyarország királynője",
+      "nationality": "magyar történelemhez kötődő uralkodó",
+      "lifespan": "1740–1780",
+      "era": "1740–1780",
+      "hungarian_tradition": true,
+      "domains": [
+        "úrbéri_rendelet",
+        "oktatás",
+        "közigazgatás",
+        "adózás"
+      ],
+      "topics": [
+        "úrbéri rendelet",
+        "oktatás",
+        "közigazgatás",
+        "adózás",
+        "reform"
+      ],
+      "keywords": [
+        "úrbéri rendelet",
+        "oktatás",
+        "közigazgatás",
+        "adózás",
+        "reform",
+        "Mária Terézia",
+        "Magyarország",
+        "magyar történelem"
+      ],
+      "core_ideas": [
+        "A Habsburg Monarchia központosító reformjainak meghatározó uralkodója; döntései a magyar társadalomra és közigazgatásra is hatottak."
+      ],
+      "works": [
+        {
+          "title": "Mária Terézia – történeti források és feldolgozások",
+          "url": "https://mek.oszk.hu/",
+          "type": "historical_reference"
+        }
+      ],
+      "limits": "Nem magyar nemzeti szereplőként, hanem a magyar történelemre jelentős hatást gyakorló uralkodóként kezelendő."
+    },
+    {
+      "id": "szechenyi_istvan",
+      "name": "Széchenyi István",
+      "role": "magyar politikus, reformer és író",
+      "nationality": "magyar",
+      "lifespan": "1791–1860",
+      "era": "1791–1860",
+      "hungarian_tradition": true,
+      "domains": [
+        "reformkor",
+        "Lánchíd",
+        "közlekedés",
+        "hitel"
+      ],
+      "topics": [
+        "reformkor",
+        "Lánchíd",
+        "közlekedés",
+        "hitel",
+        "modernizáció",
+        "közjó"
+      ],
+      "keywords": [
+        "reformkor",
+        "Lánchíd",
+        "közlekedés",
+        "hitel",
+        "modernizáció",
+        "közjó",
+        "Széchenyi István",
+        "Magyarország",
+        "magyar történelem"
+      ],
+      "core_ideas": [
+        "A gazdasági és intézményi modernizáció egyik legfontosabb reformkori alakja; a hitel, infrastruktúra és társadalmi átalakulás gyakorlati programját képviselte."
+      ],
+      "works": [
+        {
+          "title": "Széchenyi István – történeti források és feldolgozások",
+          "url": "https://mek.oszk.hu/",
+          "type": "historical_reference"
+        }
+      ],
+      "limits": "Reformjaihoz kapcsolódó társadalmi kompromisszumok és politikai konfliktusok is részei az értékelésnek."
+    },
+    {
+      "id": "kossuth_lajos",
+      "name": "Kossuth Lajos",
+      "role": "magyar politikus, szónok és kormányzó-elnök",
+      "nationality": "magyar",
+      "lifespan": "1802–1894",
+      "era": "1802–1894",
+      "hungarian_tradition": true,
+      "domains": [
+        "1848",
+        "függetlenség",
+        "népképviselet",
+        "sajtó"
+      ],
+      "topics": [
+        "1848",
+        "függetlenség",
+        "népképviselet",
+        "sajtó",
+        "szabadságharc",
+        "politikai retorika"
+      ],
+      "keywords": [
+        "1848",
+        "függetlenség",
+        "népképviselet",
+        "sajtó",
+        "szabadságharc",
+        "politikai retorika",
+        "Kossuth Lajos",
+        "Magyarország",
+        "magyar történelem"
+      ],
+      "core_ideas": [
+        "A reformkor, az 1848–49-es forradalom és szabadságharc, majd az emigráció meghatározó politikai alakja."
+      ],
+      "works": [
+        {
+          "title": "Kossuth Lajos – történeti források és feldolgozások",
+          "url": "https://mek.oszk.hu/",
+          "type": "historical_reference"
+        }
+      ],
+      "limits": "Politikai programja és a nemzetiségi kérdés kezelése viták tárgya; ne kezeljük hibátlan nemzeti ikonként."
+    },
+    {
+      "id": "petofi_sandor",
+      "name": "Petőfi Sándor",
+      "role": "magyar költő és forradalmár",
+      "nationality": "magyar",
+      "lifespan": "1823–1849",
+      "era": "1823–1849",
+      "hungarian_tradition": true,
+      "domains": [
+        "Nemzeti_dal",
+        "1848",
+        "forradalom",
+        "sajtószabadság"
+      ],
+      "topics": [
+        "Nemzeti dal",
+        "1848",
+        "forradalom",
+        "sajtószabadság",
+        "költészet",
+        "nép"
+      ],
+      "keywords": [
+        "Nemzeti dal",
+        "1848",
+        "forradalom",
+        "sajtószabadság",
+        "költészet",
+        "nép",
+        "Petőfi Sándor",
+        "Magyarország",
+        "magyar történelem"
+      ],
+      "core_ideas": [
+        "Költészete a politikai szabadság, társadalmi egyenlőség és forradalmi cselekvés nyelvét teremtette meg."
+      ],
+      "works": [
+        {
+          "title": "Petőfi Sándor – történeti források és feldolgozások",
+          "url": "https://mek.oszk.hu/",
+          "type": "historical_reference"
+        }
+      ],
+      "limits": "A költői szerep és a történeti politikai cselekvés külön kezelendő; halálának körülményei sem minden részletükben tisztázottak."
+    },
+    {
+      "id": "arany_janos",
+      "name": "Arany János",
+      "role": "magyar költő, műfordító és akadémikus",
+      "nationality": "magyar",
+      "lifespan": "1817–1882",
+      "era": "1817–1882",
+      "hungarian_tradition": true,
+      "domains": [
+        "ballada",
+        "nyelv",
+        "nemzeti_emlékezet",
+        "hatalom"
+      ],
+      "topics": [
+        "ballada",
+        "nyelv",
+        "nemzeti emlékezet",
+        "hatalom",
+        "erkölcs",
+        "irodalom"
+      ],
+      "keywords": [
+        "ballada",
+        "nyelv",
+        "nemzeti emlékezet",
+        "hatalom",
+        "erkölcs",
+        "irodalom",
+        "Arany János",
+        "Magyarország",
+        "magyar történelem"
+      ],
+      "core_ideas": [
+        "Műveiben a történelmi emlékezet, a hatalom erkölcsi ára és az emberi felelősség kérdéseit vizsgálta."
+      ],
+      "works": [
+        {
+          "title": "Arany János – történeti források és feldolgozások",
+          "url": "https://mek.oszk.hu/",
+          "type": "historical_reference"
+        }
+      ],
+      "limits": "Irodalmi művei nem közvetlen politikai állásfoglalások; az allegóriák értelmezése körültekintést kíván."
+    },
+    {
+      "id": "ady_endre",
+      "name": "Ady Endre",
+      "role": "magyar költő és publicista",
+      "nationality": "magyar",
+      "lifespan": "1877–1919",
+      "era": "1877–1919",
+      "hungarian_tradition": true,
+      "domains": [
+        "modernizáció",
+        "elmaradottság",
+        "politikai_elit",
+        "publicisztika"
+      ],
+      "topics": [
+        "modernizáció",
+        "elmaradottság",
+        "politikai elit",
+        "publicisztika",
+        "nemzet",
+        "Európa"
+      ],
+      "keywords": [
+        "modernizáció",
+        "elmaradottság",
+        "politikai elit",
+        "publicisztika",
+        "nemzet",
+        "Európa",
+        "Ady Endre",
+        "Magyarország",
+        "magyar történelem"
+      ],
+      "core_ideas": [
+        "A magyar társadalom, a politikai elit, a modernizáció és a nemzeti önkép radikális kritikusa volt."
+      ],
+      "works": [
+        {
+          "title": "Ady Endre – történeti források és feldolgozások",
+          "url": "https://mek.oszk.hu/",
+          "type": "historical_reference"
+        }
+      ],
+      "limits": "Költői szimbólumait nem szabad szó szerinti politikai programként olvasni."
+    },
+    {
+      "id": "bartok_bela",
+      "name": "Bartók Béla",
+      "role": "magyar zeneszerző, zongoraművész és népzenekutató",
+      "nationality": "magyar",
+      "lifespan": "1881–1945",
+      "era": "1881–1945",
+      "hungarian_tradition": true,
+      "domains": [
+        "népzene",
+        "néprajz",
+        "identitás",
+        "kultúra"
+      ],
+      "topics": [
+        "népzene",
+        "néprajz",
+        "identitás",
+        "kultúra",
+        "gyűjtőmunka",
+        "Európa"
+      ],
+      "keywords": [
+        "népzene",
+        "néprajz",
+        "identitás",
+        "kultúra",
+        "gyűjtőmunka",
+        "Európa",
+        "Bartók Béla",
+        "Magyarország",
+        "magyar történelem"
+      ],
+      "core_ideas": [
+        "A népzenei gyűjtést tudományos alapossággal végezte, miközben különböző népek kulturális örökségét kutatta."
+      ],
+      "works": [
+        {
+          "title": "Bartók Béla – történeti források és feldolgozások",
+          "url": "https://mek.oszk.hu/",
+          "type": "historical_reference"
+        }
+      ],
+      "limits": "Művészeti és tudományos öröksége nem redukálható nemzeti identitáspolitikai jelképnek."
+    },
+    {
+      "id": "karinthy_frigyes",
+      "name": "Karinthy Frigyes",
+      "role": "magyar író, humorista és publicista",
+      "nationality": "magyar",
+      "lifespan": "1887–1938",
+      "era": "1887–1938",
+      "hungarian_tradition": true,
+      "domains": [
+        "szatíra",
+        "oktatás",
+        "tudomány",
+        "közélet"
+      ],
+      "topics": [
+        "szatíra",
+        "oktatás",
+        "tudomány",
+        "közélet",
+        "nyelv",
+        "abszurd"
+      ],
+      "keywords": [
+        "szatíra",
+        "oktatás",
+        "tudomány",
+        "közélet",
+        "nyelv",
+        "abszurd",
+        "Karinthy Frigyes",
+        "Magyarország",
+        "magyar történelem"
+      ],
+      "core_ideas": [
+        "A szatíra és az abszurd eszközeivel tette láthatóvá a tekintély, az intézményrendszer és a társadalmi konvenciók ellentmondásait."
+      ],
+      "works": [
+        {
+          "title": "Karinthy Frigyes – történeti források és feldolgozások",
+          "url": "https://mek.oszk.hu/",
+          "type": "historical_reference"
+        }
+      ],
+      "limits": "A humoros irodalmi szöveg nem tekinthető dokumentarista társadalomleírásnak."
+    },
+    {
+      "id": "szentgyorgyi_albert",
+      "name": "Szent-Györgyi Albert",
+      "role": "magyar biokémikus, Nobel-díjas tudós",
+      "nationality": "magyar",
+      "lifespan": "1893–1986",
+      "era": "1893–1986",
+      "hungarian_tradition": true,
+      "domains": [
+        "tudomány",
+        "kutatás",
+        "egyetem",
+        "innováció"
+      ],
+      "topics": [
+        "tudomány",
+        "kutatás",
+        "egyetem",
+        "innováció",
+        "egészségügy"
+      ],
+      "keywords": [
+        "tudomány",
+        "kutatás",
+        "egyetem",
+        "innováció",
+        "egészségügy",
+        "Szent-Györgyi Albert",
+        "Magyarország",
+        "magyar történelem"
+      ],
+      "core_ideas": [
+        "A tudományos kutatás, az egyetemi autonómia és a társadalmi felelősség kérdéseiben is megszólítható."
+      ],
+      "works": [
+        {
+          "title": "Szent-Györgyi Albert – történeti források és feldolgozások",
+          "url": "https://mek.oszk.hu/",
+          "type": "historical_reference"
+        }
+      ],
+      "limits": "A Nobel-díjhoz vezető kutatás történetét és későbbi közéleti szerepét külön kell kezelni."
+    },
+    {
+      "id": "kadar_janos",
+      "name": "Kádár János",
+      "role": "a Magyar Népköztársaság pártvezetője, az 1956 utáni rendszer meghatározó alakja",
+      "nationality": "magyar",
+      "lifespan": "1912–1989",
+      "era": "1912–1989",
+      "hungarian_tradition": true,
+      "domains": [
+        "államszocializmus",
+        "megtorlás",
+        "amnesztia",
+        "gulyáskommunizmus"
+      ],
+      "topics": [
+        "államszocializmus",
+        "megtorlás",
+        "amnesztia",
+        "gulyáskommunizmus",
+        "állambiztonság",
+        "legitimitás"
+      ],
+      "keywords": [
+        "államszocializmus",
+        "megtorlás",
+        "amnesztia",
+        "gulyáskommunizmus",
+        "állambiztonság",
+        "legitimitás",
+        "Kádár János",
+        "Magyarország",
+        "magyar történelem"
+      ],
+      "core_ideas": [
+        "Az 1956 utáni megtorlások és a későbbi konszolidáció politikájának központi szereplője; rendszere elnyomásra és korlátozott jóléti alkura is épített."
+      ],
+      "works": [
+        {
+          "title": "Kádár János – történeti források és feldolgozások",
+          "url": "https://www.archivnet.hu/",
+          "type": "historical_reference"
+        }
+      ],
+      "limits": "A megtorlások, a szovjet függés és a későbbi életszínvonal-politika egyaránt részei a mérlegnek; kerülendő a nosztalgikus leegyszerűsítés."
+    },
+    {
+      "id": "rakosi_mat",
+      "name": "Rákosi Mátyás",
+      "role": "a magyar kommunista diktatúra vezetője 1945 után",
+      "nationality": "magyar",
+      "lifespan": "1892–1971",
+      "era": "1892–1971",
+      "hungarian_tradition": true,
+      "domains": [
+        "személyi_kultusz",
+        "ÁVH",
+        "államosítás",
+        "kirakatperek"
+      ],
+      "topics": [
+        "személyi kultusz",
+        "ÁVH",
+        "államosítás",
+        "kirakatperek",
+        "diktatúra",
+        "propaganda"
+      ],
+      "keywords": [
+        "személyi kultusz",
+        "ÁVH",
+        "államosítás",
+        "kirakatperek",
+        "diktatúra",
+        "propaganda",
+        "Rákosi Mátyás",
+        "Magyarország",
+        "magyar történelem"
+      ],
+      "core_ideas": [
+        "A sztálinista diktatúra magyarországi kiépítésének központi politikusa; a politikai terror és a társadalmi ellenőrzés kulcsszereplője."
+      ],
+      "works": [
+        {
+          "title": "Rákosi Mátyás – történeti források és feldolgozások",
+          "url": "https://www.abtl.hu/",
+          "type": "historical_reference"
+        }
+      ],
+      "limits": "A rendszert a szovjet függés és a pártállami intézmények összefüggésében kell elemezni."
+    },
+    {
+      "id": "horthy_miklos",
+      "name": "Horthy Miklós",
+      "role": "a Magyar Királyság kormányzója 1920–1944 között",
+      "nationality": "magyar",
+      "lifespan": "1868–1957",
+      "era": "1868–1957",
+      "hungarian_tradition": true,
+      "domains": [
+        "Horthy-rendszer",
+        "második_világháború",
+        "zsidótörvények",
+        "német_megszállás"
+      ],
+      "topics": [
+        "Horthy-rendszer",
+        "második világháború",
+        "zsidótörvények",
+        "német megszállás",
+        "kiugrás"
+      ],
+      "keywords": [
+        "Horthy-rendszer",
+        "második világháború",
+        "zsidótörvények",
+        "német megszállás",
+        "kiugrás",
+        "Horthy Miklós",
+        "Magyarország",
+        "magyar történelem"
+      ],
+      "core_ideas": [
+        "A két világháború közötti rendszer és Magyarország második világháborús politikájának meghatározó államfője."
+      ],
+      "works": [
+        {
+          "title": "Horthy Miklós – történeti források és feldolgozások",
+          "url": "https://mnl.gov.hu/",
+          "type": "historical_reference"
+        }
+      ],
+      "limits": "A korszak értékelésekor az autoriter rendszer, a jogfosztó törvények, a deportálások és a háborús felelősség sem hagyható figyelmen kívül."
+    },
+    {
+      "id": "teleki_pal",
+      "name": "Teleki Pál",
+      "role": "magyar földrajztudós és miniszterelnök",
+      "nationality": "magyar",
+      "lifespan": "1879–1941",
+      "era": "1879–1941",
+      "hungarian_tradition": true,
+      "domains": [
+        "geopolitika",
+        "miniszterelnök",
+        "második_világháború",
+        "zsidótörvények"
+      ],
+      "topics": [
+        "geopolitika",
+        "miniszterelnök",
+        "második világháború",
+        "zsidótörvények",
+        "Jugoszlávia"
+      ],
+      "keywords": [
+        "geopolitika",
+        "miniszterelnök",
+        "második világháború",
+        "zsidótörvények",
+        "Jugoszlávia",
+        "Teleki Pál",
+        "Magyarország",
+        "magyar történelem"
+      ],
+      "core_ideas": [
+        "Földrajztudósként és politikusként a geopolitikai gondolkodás és a második világháborús döntési kényszerek összetett alakja."
+      ],
+      "works": [
+        {
+          "title": "Teleki Pál – történeti források és feldolgozások",
+          "url": "https://mnl.gov.hu/",
+          "type": "historical_reference"
+        }
+      ],
+      "limits": "Politikai felelősségét a zsidótörvények és a háborús szövetségi politika kontextusában kell értékelni."
+    },
+    {
+      "id": "karolyimihaly",
+      "name": "Károlyi Mihály",
+      "role": "magyar politikus, az 1918-as köztársaság első elnöke",
+      "nationality": "magyar",
+      "lifespan": "1875–1955",
+      "era": "1875–1955",
+      "hungarian_tradition": true,
+      "domains": [
+        "őszirózsás_forradalom",
+        "köztársaság",
+        "Trianon",
+        "leszerelés"
+      ],
+      "topics": [
+        "őszirózsás forradalom",
+        "köztársaság",
+        "Trianon",
+        "leszerelés",
+        "államválság"
+      ],
+      "keywords": [
+        "őszirózsás forradalom",
+        "köztársaság",
+        "Trianon",
+        "leszerelés",
+        "államválság",
+        "Károlyi Mihály",
+        "Magyarország",
+        "magyar történelem"
+      ],
+      "core_ideas": [
+        "Az első világháború végének összeomlása és az 1918-as politikai átmenet meghatározó szereplője; megítélése vitatott."
+      ],
+      "works": [
+        {
+          "title": "Károlyi Mihály – történeti források és feldolgozások",
+          "url": "https://mek.oszk.hu/",
+          "type": "historical_reference"
+        }
+      ],
+      "limits": "A korszak strukturális válságát nem lehet kizárólag egyetlen politikus döntéseire visszavezetni."
+    },
+    {
+      "id": "nagylajos",
+      "name": "Nagy Lajos király",
+      "role": "magyar és lengyel király, középkori uralkodó",
+      "nationality": "magyar",
+      "lifespan": "1342–1382",
+      "era": "1342–1382",
+      "hungarian_tradition": true,
+      "domains": [
+        "Anjou",
+        "lengyel-magyar_kapcsolatok",
+        "1351-es_törvények",
+        "hatalom"
+      ],
+      "topics": [
+        "Anjou",
+        "lengyel-magyar kapcsolatok",
+        "1351-es törvények",
+        "hatalom",
+        "diplomácia"
+      ],
+      "keywords": [
+        "Anjou",
+        "lengyel-magyar kapcsolatok",
+        "1351-es törvények",
+        "hatalom",
+        "diplomácia",
+        "Nagy Lajos király",
+        "Magyarország",
+        "magyar történelem"
+      ],
+      "core_ideas": [
+        "Uralkodása alatt a Magyar Királyság regionális hatalmi súlya megerősödött."
+      ],
+      "works": [
+        {
+          "title": "Nagy Lajos király – történeti források és feldolgozások",
+          "url": "https://mek.oszk.hu/10600/10642/10642.htm",
+          "type": "historical_reference"
+        }
+      ],
+      "limits": "A középkori hatalmi viszonyokat nem szabad modern nemzetállami logikával értelmezni."
+    },
+    {
+      "id": "lorantffy_zsuzsanna",
+      "name": "Lorántffy Zsuzsanna",
+      "role": "erdélyi fejedelemasszony és protestáns mecénás",
+      "nationality": "magyar",
+      "lifespan": "1600–1660",
+      "era": "1600–1660",
+      "hungarian_tradition": true,
+      "domains": [
+        "oktatás",
+        "református_kultúra",
+        "iskola",
+        "patronázs"
+      ],
+      "topics": [
+        "oktatás",
+        "református kultúra",
+        "iskola",
+        "patronázs",
+        "női hatalom"
+      ],
+      "keywords": [
+        "oktatás",
+        "református kultúra",
+        "iskola",
+        "patronázs",
+        "női hatalom",
+        "Lorántffy Zsuzsanna",
+        "Magyarország",
+        "magyar történelem"
+      ],
+      "core_ideas": [
+        "A 17. századi magyar művelődés és protestáns oktatás jelentős támogatója, intézményépítő szereplő."
+      ],
+      "works": [
+        {
+          "title": "Lorántffy Zsuzsanna – történeti források és feldolgozások",
+          "url": "https://mek.oszk.hu/",
+          "type": "historical_reference"
+        }
+      ],
+      "limits": "A korabeli női politikai mozgástér sajátosságait figyelembe kell venni; nem vetíthető rá közvetlenül a modern emancipáció fogalma."
+    },
+    {
+      "id": "blaha_lujza",
+      "name": "Blaha Lujza",
+      "role": "magyar színésznő, a népszínmű ikonikus alakja",
+      "nationality": "magyar",
+      "lifespan": "1850–1926",
+      "era": "1850–1926",
+      "hungarian_tradition": true,
+      "domains": [
+        "színház",
+        "népszínmű",
+        "közönség",
+        "kultúra"
+      ],
+      "topics": [
+        "színház",
+        "népszínmű",
+        "közönség",
+        "kultúra",
+        "nemzeti identitás"
+      ],
+      "keywords": [
+        "színház",
+        "népszínmű",
+        "közönség",
+        "kultúra",
+        "nemzeti identitás",
+        "Blaha Lujza",
+        "Magyarország",
+        "magyar történelem"
+      ],
+      "core_ideas": [
+        "A nemzeti színjátszás és a modern tömegkultúra korai sztárjelenségének fontos alakja."
+      ],
+      "works": [
+        {
+          "title": "Blaha Lujza – történeti források és feldolgozások",
+          "url": "https://oszk.hu/",
+          "type": "historical_reference"
+        }
+      ],
+      "limits": "A későbbi kultusz és a korabeli színházi valóság különválasztandó."
+    },
+    {
+      "id": "karacsony_sandor",
+      "name": "Karácsony Sándor",
+      "role": "magyar pedagógus és filozófiai gondolkodó",
+      "nationality": "magyar",
+      "lifespan": "1891–1952",
+      "era": "1891–1952",
+      "hungarian_tradition": true,
+      "domains": [
+        "nevelés",
+        "iskola",
+        "közösség",
+        "nyelv"
+      ],
+      "topics": [
+        "nevelés",
+        "iskola",
+        "közösség",
+        "nyelv",
+        "pedagógia",
+        "tekintély"
+      ],
+      "keywords": [
+        "nevelés",
+        "iskola",
+        "közösség",
+        "nyelv",
+        "pedagógia",
+        "tekintély",
+        "Karácsony Sándor",
+        "Magyarország",
+        "magyar történelem"
+      ],
+      "core_ideas": [
+        "A nevelés, a közösségi kapcsolatok és a magyar nyelvi-kulturális gondolkodás sajátos alakja."
+      ],
+      "works": [
+        {
+          "title": "Karácsony Sándor – történeti források és feldolgozások",
+          "url": "https://mek.oszk.hu/",
+          "type": "historical_reference"
+        }
+      ],
+      "limits": "Pedagógiai nézeteit saját korának társadalmi és vallási kontextusában kell értelmezni."
     }
   ]
 }
