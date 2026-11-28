@@ -244,7 +244,13 @@ def select_historical_figures(event, catalog, client, excluded_figure_ids=None, 
         "közhelyekre. Ne találj ki személyeket vagy profilokat; kizárólag a katalógusból "
         "válassz. A feladat minden esetben pontosan három személy kiválasztása; a "
         "katalógus leginkább releváns, egymást kiegészítő három profilját rangsorold. "
-        "Az internal_rationale belső adat, nem publikációs szöveg. Csak JSON-t adj."
+        "Ha a prefer_hungarian_thinkers igaz, a magyar nemzetiségű vagy magyar kulturális "
+        "hagyományhoz tartozó személyeket részesítsd előnyben, amennyiben a konkrét hírhez "
+        "érdemben kapcsolódnak; a nemzetközi gondolkodók továbbra is választhatók, ha "
+        "szakmai relevanciájuk erősebb. A nemzetiségi preferencia soha nem írhatja felül "
+        "az eseményhez való tényleges kapcsolódást. Az excluded_figure_ids személyeket "
+        "semmilyen körülmények között ne válaszd. Az internal_rationale belső adat, "
+        "nem publikációs szöveg. Csak JSON-t adj."
     )
     result = client.generate_json(
         system,
