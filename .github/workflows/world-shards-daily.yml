@@ -163,6 +163,6 @@ jobs:
           name: world-shards-edition-${{ github.run_id }}
           path: |
             world-shards-archive/
-            .world_shards_fallback.sqlite3
+            world-shards-fallback.sqlite3
           if-no-files-found: ignore
           retention-days: 90
