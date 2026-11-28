@@ -79,7 +79,7 @@ class RestoreEditionArchiveTests(unittest.TestCase):
             sqlite_path = os.path.join(directory, ".world_shards_fallback.sqlite3")
             self.assertTrue(os.path.isfile(sqlite_path))
             with open(sqlite_path, "rb") as handle:
-                self.assertTrue(handle.read().startswith(b"SQLite format 3\\x00"))
+                self.assertTrue(handle.read().startswith(b"SQLite format 3\x00"))
 
         self.assertEqual(restored["edition"]["edition_date"], today)
         return result, outputs
