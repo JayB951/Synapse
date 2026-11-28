@@ -161,6 +161,39 @@ def get_supabase_client():
     return create_client(url, key)
 
 
+def get_recent_agora_events(supabase, limit=12):
+    """Load recent published/candidate AGORA event identities to prevent repeat topics."""
+    response = (
+        supabase.table("shard_content_items")
+        .select("metadata")
+        .eq("section_code", "research_frontier")
+        .order("collected_at", desc=True)
+        .limit(limit)
+        .execute()
+    )
+    recent = []
+    seen = set()
+    for row in response.data or []:
+        metadata = row.get("metadata") or {}
+        for event in metadata.get("news_items") or []:
+            event_id = event.get("event_id")
+            identity = (event.get("scope"), event_id)
+            if not event_id or identity in seen:
+                continue
+            seen.add(identity)
+            recent.append({
+                "scope": event.get("scope"),
+                "event_id": event_id,
+                "title": event.get("title"),
+                "article_summaries": event.get("article_summaries") or [],
+                "sources": [
+                    {"publisher": source.get("publisher"), "title": source.get("title")}
+                    for source in (event.get("sources") or [])[:5]
+                ],
+            })
+    return recent
+
+
 def save_content_item(supabase, record):
     section_code = record["section_code"]
     content_type = record["metadata"]["content_type"]
@@ -207,9 +240,12 @@ def run(edition_date=None):
         raise RuntimeError("Az AGORA RSS-gyűjtés egyetlen jelöltet sem adott.")
     pipeline = build_pipeline_result(collection, shortlist_limit=30)
     client = GeminiClient()
+    supabase = get_supabase_client()
+    recent_events = get_recent_agora_events(supabase)
+    LOGGER.info("Korábbi AGORA-események ellenőrizve: %s", len(recent_events))
     editorial = build_editorial_output(pipeline, json.loads(
         Path("agora_historical_figures.json").read_text(encoding="utf-8")
-    ), gemini_client=client)
+    ), gemini_client=client, recent_events=recent_events)
     for scope in REQUIRED_SCOPES:
         decision = (editorial.get("daily_editorial", {}).get(scope) or {}).get("news_selection") or {}
         LOGGER.info(
@@ -233,7 +269,6 @@ def run(edition_date=None):
     qa_report = automated_quality_gate(pipeline, editorial)
     records = build_content_items(pipeline, editorial, qa_report, edition_date)
 
-    supabase = get_supabase_client()
     saved = [save_content_item(supabase, record) for record in records]
     LOGGER.info("AGORA sikeresen integrálva: %s", ", ".join(record["metadata"]["content_type"] for record in records))
     return {
