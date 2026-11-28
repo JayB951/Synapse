@@ -49,7 +49,11 @@ def test_fundamentals_requires_a_concrete_concept():
     assert m13.is_valid_fundamentals_article(page(
         "Conservation of energy",
         "In physics, conservation of energy is the principle that the total "
-        "energy of an isolated system remains constant."
+        "energy of an isolated system remains constant. This conservation law "
+        "provides a powerful constraint when analyzing physical processes, "
+        "including motion, heat transfer and transformations between energy forms. "
+        "It allows predictions to be checked against a quantity that remains "
+        "constant even when energy changes from one form to another."
     ))
     assert not m13.is_valid_fundamentals_article(page(
         "Physics",
@@ -61,17 +65,23 @@ def test_unsolved_requires_a_specific_case_not_a_general_mystery_topic():
     assert m14.is_unsolved_candidate(page(
         "The Wow! signal",
         "The Wow! signal is a strong narrowband radio signal detected in 1977. "
-        "Its origin remains unexplained and it has not been observed again."
+        "Its origin remains unexplained and it has not been observed again. "
+        "Researchers have considered several possible explanations, but none has "
+        "been confirmed by later observations or independent evidence."
     ))
     assert not m14.is_unsolved_candidate(page(
         "Historical mysteries",
         "Historical mysteries have fascinated people for centuries. "
-        "Many events, objects and people from the past remain debated."
+        "Many events, objects and people from the past remain debated. "
+        "The phrase covers a wide range of subjects rather than one identifiable "
+        "case with a specific unresolved question."
     ))
     assert not m14.is_unsolved_candidate(page(
         "A general history article",
         "The identity of one minor participant is unknown, but the subject "
-        "of this article is otherwise well documented and resolved."
+        "of this article is otherwise well documented and resolved. "
+        "The available evidence establishes the broader historical context, "
+        "and the article does not identify a continuing mystery about the event."
     ))
 
 
@@ -175,10 +185,92 @@ def test_music_picker_can_exclude_recent_tracks():
     topic = {"title": "The Bulge campaign", "summary": "Battle of the Bulge"}
     tracks = [
         {"trackId": 1, "trackName": "Bulge", "artistName": "Artist",
-         "collectionName": "The Bulge", "trackViewUrl": "https://example.com/1"},
+         "collectionName": "The Bulge", "primaryGenreName": "Rock", "trackViewUrl": "https://example.com/1"},
         {"trackId": 2, "trackName": "Bulge", "artistName": "Artist",
-         "collectionName": "The Bulge", "trackViewUrl": "https://example.com/2"},
+         "collectionName": "The Bulge", "primaryGenreName": "Rock", "trackViewUrl": "https://example.com/2"},
     ]
     chosen = music.choose_best_track(tracks, [topic], excluded_track_ids={"1"})
     assert chosen is not None
     assert chosen["track"]["trackId"] == 2
+
+
+def test_the_thinker_collector_accepts_specific_philosophical_problems_only():
+    assert m13.is_valid_thinker_article(page(
+        "The Trolley Problem",
+        "The trolley problem is a thought experiment in ethics. It asks whether "
+        "one may redirect a runaway trolley to kill one person rather than five. "
+        "The case is used in moral philosophy to examine consequentialist and "
+        "deontological reasoning, including the distinction between doing and allowing harm. "
+        "It remains a central example in debates about moral responsibility and the "
+        "limits of outcome-based decision making."
+    ))
+    assert m13.is_valid_thinker_article(page(
+        "The Ship of Theseus",
+        "The ship of Theseus is a thought experiment about identity and persistence. "
+        "It is discussed in metaphysics and philosophy, asking whether an object "
+        "that has had all its parts replaced remains the same object. The example "
+        "tests whether identity depends on material continuity or on something else."
+    ))
+    assert not m13.is_valid_thinker_article(page(
+        "Plato",
+        "Plato was an ancient Greek philosopher who founded the Academy and wrote "
+        "philosophical dialogues. His life and works influenced Western philosophy. "
+        "He is widely discussed in accounts of ancient Greek thought and the history "
+        "of political philosophy, metaphysics and epistemology."
+    ))
+    assert not m13.is_valid_thinker_article(page(
+        "History of Philosophy",
+        "The history of philosophy is the study of philosophical ideas across "
+        "different periods, traditions and thinkers. It examines the development "
+        "of philosophical schools, methods, texts and debates across world history. "
+        "It is a broad historical field rather than one specific philosophical problem."
+
+    ))
+    assert not m13.is_valid_thinker_article(page(
+        "The Theory of Everything",
+        "The theory of everything is a hypothetical framework in physics that "
+        "would explain all fundamental interactions and particles. It is a goal "
+        "in theoretical physics, seeking a unified description of the forces of nature "
+        "and the basic constituents of matter."
+    ))
+
+
+def test_the_thinker_prompt_requires_argument_counterargument_and_grounding():
+    prompt = processor.build_prompt("the_thinker", {
+        "title": "The Trolley Problem",
+        "summary": "A moral thought experiment.",
+        "body": (
+            "The trolley problem is a thought experiment in ethics. It asks "
+            "whether one may redirect a runaway trolley to kill one person "
+            "rather than five. Philosophers use it to examine moral reasoning."
+        ),
+        "source_name": "Wikipedia",
+        "source_url": "https://en.wikipedia.org/wiki/Trolley_problem",
+        "source_language": "en",
+        "metadata": {},
+    })
+    assert "legerősebb releváns ellenérvet" in prompt
+    assert "Ne találj ki idézetet" in prompt
+    assert "5–7 tartalmas" in prompt
+
+
+def test_the_thinker_editorial_gate_requires_every_quality_dimension():
+    accepted = {
+        "specific_philosophical_subject": True,
+        "central_question_explained": True,
+        "reasoning_reconstructed": True,
+        "positions_fairly_distinguished": True,
+        "counterargument_present": True,
+        "contemporary_relevance_reasoned": True,
+        "factual_and_historical_grounding": True,
+        "substantive_hungarian_article": True,
+    }
+    assert processor.thinker_content_passes(accepted)
+    valid_article = {"body": "\n\n".join(f"Bekezdés {index}." for index in range(5))}
+    assert processor.thinker_content_passes(accepted, valid_article)
+    invalid_article = {"body": "\n\n".join(f"Bekezdés {index}." for index in range(4))}
+    assert not processor.thinker_content_passes(accepted, invalid_article)
+    accepted["counterargument_present"] = False
+    assert not processor.thinker_content_passes(accepted)
+    assert not processor.thinker_content_passes(None)
+
