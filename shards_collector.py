@@ -27,6 +27,7 @@ VERSION = "M1.2 / 0.1.0"
 
 SYNAPSE_LIMIT = 25
 ART_LIMIT = 50
+ART_CANDIDATE_LIMIT = 10
 ART_SEARCH_QUERIES_PER_RUN = 2
 REQUEST_TIMEOUT = 30
 
@@ -334,6 +335,7 @@ def collect_art(client):
     inserted = 0
     skipped = 0
     seen_ids = set()
+    candidate_items = []
     total_returned = 0
 
     for term_index, search_term in enumerate(search_terms):
@@ -369,12 +371,29 @@ def collect_art(client):
                 continue
             seen_ids.add(artwork_id)
 
-            result = save_content(client, item)
-            if result == "inserted":
-                inserted += 1
-                print("ÚJ:", item["title"][:85], f"(minőségi pont: {item['relevance_score']})")
-            else:
-                skipped += 1
+            candidate_items.append(item)
+
+    # Keep the database candidate pool proportional to the one artwork used
+    # per edition. Rank the complete daily search sample before persisting it.
+    candidate_items.sort(
+        key=lambda item: (
+            int(item.get("relevance_score") or 0),
+            bool((item.get("metadata") or {}).get("artist")),
+            bool((item.get("metadata") or {}).get("description")),
+        ),
+        reverse=True,
+    )
+
+    for index, item in enumerate(candidate_items):
+        if inserted >= ART_CANDIDATE_LIMIT:
+            skipped += len(candidate_items) - index
+            break
+        result = save_content(client, item)
+        if result == "inserted":
+            inserted += 1
+            print("ÚJ:", item["title"][:85], f"(minőségi pont: {item['relevance_score']})")
+        else:
+            skipped += 1
 
     print("API által visszaadott művek:", total_returned)
     print("Új, képpel rendelkező közkincs művek:", inserted)
