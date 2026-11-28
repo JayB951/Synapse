@@ -434,6 +434,36 @@ function openArticle(item, sectionName) {
       const label = makeElement("span", "source-label", "EREDETI FORRÁS");
       readerSource.append(label);
       if (source.source_name) readerSource.append(makeElement("span", "source-name", source.source_name));
+      if (item.section_code === "research_frontier") {
+        const metadata = source.metadata && typeof source.metadata === "object" ? source.metadata : {};
+        const synapseMetadata = metadata.synapse_metadata && typeof metadata.synapse_metadata === "object"
+          ? metadata.synapse_metadata
+          : {};
+        const authorRecords = Array.isArray(synapseMetadata.author_source_ids)
+          ? synapseMetadata.author_source_ids
+          : [];
+        const authors = authorRecords
+          .filter(author => author && typeof author.name === "string" && author.name.trim())
+          .sort((left, right) => (Number(left.position) || 999999) - (Number(right.position) || 999999))
+          .map(author => author.name.trim());
+        if (authors.length) {
+          readerSource.append(makeElement("span", "source-citation", "Szerzők: " + authors.join("; ")));
+        }
+        const journal = [metadata.journal, metadata.publisher].filter(value => typeof value === "string" && value.trim());
+        if (journal.length) {
+          readerSource.append(makeElement("span", "source-citation", journal.join(" · ")));
+        }
+        const publicationDetails = [
+          metadata.publication_year,
+          metadata.publication_type
+        ].filter(value => value !== null && value !== undefined && String(value).trim());
+        if (publicationDetails.length) {
+          readerSource.append(makeElement("span", "source-citation", publicationDetails.join(" · ")));
+        }
+        if (metadata.doi) {
+          readerSource.append(makeElement("span", "source-citation", "DOI: " + String(metadata.doi)));
+        }
+      }
       if (source.source_published_at) {
         const published = new Date(source.source_published_at);
         if (!Number.isNaN(published.getTime())) {
