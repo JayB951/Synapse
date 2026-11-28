@@ -90,7 +90,7 @@ def restore_today_archive():
                             sqlite_member = next(
                                 (
                                     name for name in bundle.namelist()
-                                    if Path(name).name == ".world_shards_fallback.sqlite3"
+                                    if Path(name).name == "world-shards-fallback.sqlite3"
                                 ),
                                 None,
                             )
@@ -99,7 +99,7 @@ def restore_today_archive():
                                 if sqlite_bytes.startswith(b"SQLite format 3\x00"):
                                     sqlite_path = Path(os.getenv(
                                         "WORLD_SHARDS_SQLITE_PATH",
-                                        ".world_shards_fallback.sqlite3",
+                                        "world-shards-fallback.sqlite3",
                                     ))
                                     sqlite_path.parent.mkdir(parents=True, exist_ok=True)
                                     sqlite_path.write_bytes(sqlite_bytes)
