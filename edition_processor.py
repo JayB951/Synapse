@@ -713,7 +713,7 @@ SZERKESZTÉSI FELADAT:
 - Magyarázd el a keletkezés idejét, helyét és körülményeit, amennyiben ezek
   a forrásból megalapozhatók.
 - Ismertesd a technikát, az anyagokat és azok szerepét a mű hatásában.
-- Elemezd a kompozíciót, a térkezelést, a formákat, a színeket és a néző
+- Elemezd a mű vizuális felépítését: a kompozíciót, a térkezelést, a formákat, a színeket és a néző
   figyelmének irányítását. Csak olyan konkrét képi részletet állíts, amely
   a forrásban szerepel vagy a mű közismert, ellenőrizhető jellemzője;
   bizonytalan ikonográfiai értelmezést ne adj elő tényként.
