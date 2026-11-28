@@ -112,37 +112,6 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: python edition_processor.py
 
-      - name: SMTP hitelesites ellenorzese publikacio elott
-        if: steps.edition_builder.outputs.already_published != 'true'
-        env:
-          MAIL_USERNAME: ${{ secrets.MAIL_USERNAME }}
-          MAIL_PASSWORD: ${{ secrets.MAIL_PASSWORD }}
-          NOTIFY_EMAIL: ${{ secrets.WORLD_SHARDS_NOTIFY_EMAIL }}
-        run: |
-          python - <<'PY'
-          import os
-          import smtplib
-
-          sender = os.getenv("MAIL_USERNAME")
-          password = os.getenv("MAIL_PASSWORD")
-          recipient = os.getenv("NOTIFY_EMAIL")
-          missing = [
-              name for name, value in (
-                  ("MAIL_USERNAME", sender),
-                  ("MAIL_PASSWORD", password),
-                  ("WORLD_SHARDS_NOTIFY_EMAIL", recipient),
-              )
-              if not value
-          ]
-          if missing:
-              raise RuntimeError("Hiányzó e-mail beállítás: " + ", ".join(missing))
-
-          with smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=30) as smtp:
-              smtp.login(sender, password)
-
-          print("SMTP-hitelesítés sikeres; a kiadás publikálható és küldhető.")
-          PY
-
       - name: Teljessegi ellenorzes es automatikus publikacio
         id: publish
         if: steps.edition_builder.outputs.already_published != 'true'
@@ -152,13 +121,23 @@ jobs:
         run: python publish_edition.py
 
       - name: Teljes napi kiadás e-mailben
-        if: success() && steps.publish.outputs.published == 'true'
+        if: success() && steps.publish.outputs.archive_ready == 'true'
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
           MAIL_USERNAME: ${{ secrets.MAIL_USERNAME }}
           MAIL_PASSWORD: ${{ secrets.MAIL_PASSWORD }}
           NOTIFY_EMAIL: ${{ secrets.WORLD_SHARDS_NOTIFY_EMAIL }}
+          WORLD_SHARDS_ARCHIVE_DIR: world-shards-archive
         run: |
           python -m unittest test_send_edition_email.py -v
           python send_edition_email.py
+
+      - name: Ellenorzott napi archívum megőrzése
+        if: always() && steps.publish.outputs.archive_ready == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: world-shards-edition-${{ github.run_id }}
+          path: world-shards-archive/
+          if-no-files-found: error
+          retention-days: 90
