@@ -27,6 +27,10 @@ class RestoreEditionArchiveTests(unittest.TestCase):
                 f"edition-{today}.json",
                 json.dumps(archive),
             )
+            bundle.writestr(
+                ".world_shards_fallback.sqlite3",
+                b"SQLite format 3\\x00test-database",
+            )
             if include_receipt:
                 bundle.writestr(
                     "delivery-receipt.json",
@@ -74,6 +78,9 @@ class RestoreEditionArchiveTests(unittest.TestCase):
                 outputs = handle.read()
 
         self.assertEqual(restored["edition"]["edition_date"], today)
+        sqlite_path = os.path.join(directory, ".world_shards_fallback.sqlite3")
+        # The temporary directory is cleaned on return; verify the database
+        # before cleanup via the captured artifact contents in the output.
         return result, outputs
 
     def test_restores_archive_and_sent_receipt(self):
@@ -81,12 +88,14 @@ class RestoreEditionArchiveTests(unittest.TestCase):
         self.assertTrue(result)
         self.assertIn("archive_found=true", outputs)
         self.assertIn("delivery_sent=true", outputs)
+        self.assertIn("sqlite_found=true", outputs)
 
     def test_restores_archive_without_claiming_delivery(self):
         result, outputs = self._run_restore(include_receipt=False)
         self.assertTrue(result)
         self.assertIn("archive_found=true", outputs)
         self.assertIn("delivery_sent=false", outputs)
+        self.assertIn("sqlite_found=true", outputs)
 
 
 if __name__ == "__main__":
