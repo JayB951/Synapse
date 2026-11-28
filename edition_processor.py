@@ -751,7 +751,7 @@ KÖTELEZŐ KIMENETI SZERKEZET:
 2. summary: PONTOSAN EGY MONDAT, amely megválaszolja: miért jelentős ez a kutatás,
    és egyetlen tömör állításban összefoglalja a lényegét. Ne általánosíts, ne dicsérd
    automatikusan a kutatást, és ne ismételd meg pusztán a címet.
-3. novelty: EGYETLEN bekezdés, 3–5 mondatban. Pontosan fejtsd ki, mi az újdonság
+3. novelty: EGYETLEN bekezdés, 4–5 mondatban. Pontosan fejtsd ki, mi az újdonság
    a korábbi tudományos nézőponthoz, megközelítéshez vagy a forrásban megnevezett
    korábbi kutatásokhoz képest. Ne állítsd, hogy a munka elsőként tett valamit,
    ha ezt a forrás nem támasztja alá. Ha a forrás nem ismertet korábbi kutatást vagy
@@ -1008,8 +1008,9 @@ def parse_generated_content(generated_text, section_code=None):
     if section_code == "research_frontier":
         title = data["title"]
         summary = data["summary"]
+        data["summary"] = " ".join(data["summary"].split())
         for field in ("novelty", "challenge", "synthesis"):
-            data[field] = clean_display_text(data[field])
+            data[field] = " ".join(clean_display_text(data[field]).split())
             if not data[field]:
                 raise RuntimeError(f"Üres Research Frontier mező: {field}")
 
@@ -1029,7 +1030,7 @@ def parse_generated_content(generated_text, section_code=None):
 
         if sentence_count(summary) != 1:
             raise RuntimeError("A kutatás jelentősége pontosan egy mondat legyen.")
-        if not 3 <= sentence_count(data["novelty"]) <= 5:
+        if not 4 <= sentence_count(data["novelty"]) <= 5:
             raise RuntimeError("Az újdonság bemutatása 3–5 mondat legyen.")
         if not 1 <= sentence_count(data["challenge"]) <= 3:
             raise RuntimeError("A kritikai kihívás 1–3 mondat legyen.")
@@ -1325,7 +1326,7 @@ def generate_content_with_retries(
                     "\n\nJAVÍTSD A KIMENETET: kizárólag érvényes JSON-t adj vissza. "
                     "A Research Frontier esetén pontosan title, summary, novelty, "
                     "challenge és synthesis mezőket használj, és tartsd be az "
-                    "egymondatos, 3–5 mondatos, illetve legfeljebb 3 mondatos "
+                    "egymondatos, 4–5 mondatos, illetve legfeljebb 3 mondatos "
                     "terjedelmi korlátokat. Más rovatnál maradjon a title, summary, body "
                     "struktúra. Ne írj a JSON elé vagy mögé semmit."
                 )
