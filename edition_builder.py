@@ -88,6 +88,45 @@ def get_candidates(supabase, section_code, limit=100, edition_date=None, content
     return items[:limit]
 
 
+def research_topic_keys(item):
+    metadata = item.get("metadata") or {}
+    synapse_metadata = metadata.get("synapse_metadata") or {}
+    values = []
+    for field in ("topics", "subjects", "topic_terms"):
+        entries = synapse_metadata.get(field) or []
+        if not isinstance(entries, list):
+            continue
+        for entry in entries:
+            if isinstance(entry, dict):
+                value = entry.get("display_name") or entry.get("name") or entry.get("term")
+            else:
+                value = entry
+            if isinstance(value, str) and value.strip():
+                key = value.strip().casefold()
+                if key not in values:
+                    values.append(key)
+    return values
+
+
+def choose_research_candidates(candidates, limit=5):
+    """Select high-readiness papers while avoiding a single-topic daily issue."""
+    remaining = list(candidates)
+    chosen = []
+    topic_counts = Counter()
+    while remaining and len(chosen) < limit:
+        def selection_key(item):
+            topics = research_topic_keys(item)
+            score = float(item.get("relevance_score") or 0)
+            primary_count = topic_counts[topics[0]] if topics else 0
+            return (score - primary_count * 12, score)
+        best = max(remaining, key=selection_key)
+        remaining.remove(best)
+        chosen.append(best)
+        for topic in research_topic_keys(best):
+            topic_counts[topic] += 1
+    return chosen
+
+
 def get_recent_art_history(supabase, limit=30):
     """Read recent selected artists and styles to keep the daily art varied."""
     try:
@@ -262,7 +301,7 @@ def select_edition_items(supabase, edition_date):
         candidates = get_candidates(
             supabase,
             section_code,
-            limit=limit,
+            limit=25 if section_code == "research_frontier" else limit,
             edition_date=(
                 edition_date
                 if section_code == "music_of_the_day"
@@ -278,6 +317,8 @@ def select_edition_items(supabase, edition_date):
                 recent_artists=recent_artists,
             )
             chosen = [art_choice] if art_choice else []
+        elif section_code == "research_frontier":
+            chosen = choose_research_candidates(candidates, limit=limit)
         else:
             chosen = candidates[:limit]
         selected_items.extend(chosen)

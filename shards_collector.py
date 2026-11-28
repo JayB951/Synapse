@@ -25,7 +25,7 @@ from resilient_storage import create_resilient_client
 
 VERSION = "M1.2 / 0.1.0"
 
-SYNAPSE_LIMIT = 25
+SYNAPSE_LIMIT = 100
 ART_LIMIT = 50
 ART_SEARCH_QUERIES_PER_RUN = 2
 REQUEST_TIMEOUT = 30
@@ -100,6 +100,73 @@ def save_content(client, item):
 # RESEARCH FRONTIER – SYNAPSE
 # ============================================================
 
+def score_research_publication(publication):
+    """
+    Rank editorial readiness, not scientific merit.
+    The score rewards a usable abstract and verifiable bibliographic context.
+    """
+    score = 0
+    abstract = clean_html(publication.get("abstract")) or ""
+    abstract_length = len(abstract)
+
+    if abstract_length >= 120:
+        score += 20
+    if abstract_length >= 300:
+        score += 10
+    if abstract_length >= 700:
+        score += 5
+
+    if publication.get("doi"):
+        score += 8
+    if publication.get("journal"):
+        score += 6
+    if publication.get("publication_type") == "journal-article":
+        score += 6
+
+    metadata = publication.get("metadata") or {}
+    if isinstance(metadata, dict):
+        authors = metadata.get("author_source_ids") or []
+        topics = metadata.get("topics") or []
+        subjects = metadata.get("subjects") or []
+        if authors:
+            score += 4
+        if topics:
+            score += 6
+        if subjects:
+            score += 3
+
+    return score
+
+
+def research_publication_exists(client, publication):
+    """Deduplicate by DOI / stable SYNAPSE ID, not only by landing-page URL."""
+    metadata = {}
+    doi = publication.get("doi")
+    publication_id = publication.get("id")
+
+    if doi:
+        metadata["doi"] = doi
+    elif publication_id:
+        metadata["synapse_publication_id"] = publication_id
+
+    if metadata:
+        response = (
+            client.table("shard_content_items")
+            .select("id")
+            .eq("section_code", "research_frontier")
+            .contains("metadata", metadata)
+            .limit(1)
+            .execute()
+        )
+        if response.data:
+            return True
+
+    source_url = publication.get("url") or (
+        f"https://doi.org/{doi}" if doi else None
+    )
+    return content_exists(client, source_url)
+
+
 def collect_research(client):
     print()
     print("=" * 65)
@@ -130,15 +197,24 @@ def collect_research(client):
             publication.get("url")
             or (f"https://doi.org/{doi}" if doi else None)
         )
+        abstract = clean_html(publication.get("abstract"))
+
+        if not publication.get("title") or len(abstract or "") < 120:
+            skipped += 1
+            continue
 
         if not source_url:
+            skipped += 1
+            continue
+
+        if research_publication_exists(client, publication):
             skipped += 1
             continue
 
         item = {
             "section_code": "research_frontier",
             "title": publication["title"],
-            "summary": publication.get("abstract"),
+            "summary": abstract,
             "source_name": "SYNAPSE",
             "source_url": source_url,
             "source_published_at": publication.get(
@@ -146,6 +222,7 @@ def collect_research(client):
             ),
             "source_language": publication.get("language"),
             "status": "candidate",
+            "relevance_score": score_research_publication(publication),
             "metadata": {
                 "origin": "SYNAPSE",
                 "synapse_publication_id": publication["id"],
