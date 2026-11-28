@@ -56,11 +56,16 @@ def test_fundamentals_requires_a_concrete_concept():
     ))
 
 
-def test_unsolved_rejects_a_vague_unknown_mention():
+def test_unsolved_requires_a_specific_case_not_a_general_mystery_topic():
     assert m14.is_unsolved_candidate(page(
         "The Wow! signal",
         "The Wow! signal is a strong narrowband radio signal detected in 1977. "
         "Its origin remains unexplained and it has not been observed again."
+    ))
+    assert not m14.is_unsolved_candidate(page(
+        "Historical mysteries",
+        "Historical mysteries have fascinated people for centuries. "
+        "Many events, objects and people from the past remain debated."
     ))
     assert not m14.is_unsolved_candidate(page(
         "A general history article",
