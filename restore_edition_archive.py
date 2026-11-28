@@ -54,7 +54,7 @@ def restore_today_archive():
         write_outputs(archive_found=False, delivery_sent=False)
         return False
 
-    query = urlencode({"branch": branch, "per_page": 20})
+    query = urlencode({"branch": branch, "created": f"{today}..{today}", "per_page": 50})
     runs_url = (
         f"{API_ROOT}/repos/{repository}/actions/workflows/"
         f"world-shards-daily.yml/runs?{query}"
