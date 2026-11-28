@@ -69,7 +69,7 @@ function getSourceRecord(item) {
 
 function getXkcdAltText(displayBody) {
   const body = String(displayBody || "");
-  const match = body.match(/^KÉP LEÍRÁSA:\\s*([\\s\\S]*?)(?=\\n\\s*\\nÁTIRAT:|$)/i);
+  const match = body.match(/^KÉP LEÍRÁSA:\s*([\s\S]*?)(?=\n\s*\nÁTIRAT:|$)/i);
   return match ? match[1].trim() : "";
 }
 
@@ -77,14 +77,14 @@ function renderXkcdBody(container, body) {
   container.replaceChildren();
   const text = String(body || "");
   const alt = getXkcdAltText(text);
-  const transcriptMatch = text.match(/(?:^|\\n\\s*\\n)ÁTIRAT:\\s*([\\s\\S]*)$/i);
+  const transcriptMatch = text.match(/(?:^|\n\s*\n)ÁTIRAT:\s*([\s\S]*)$/i);
   if (alt) {
     container.append(makeElement("h3", "xkcd-text-heading", "A kép leírása"));
     container.append(makeElement("p", "xkcd-text-paragraph", alt));
   }
   if (transcriptMatch && transcriptMatch[1].trim()) {
     container.append(makeElement("h3", "xkcd-text-heading", "A képregény átirata"));
-    transcriptMatch[1].trim().split(/\\n+/).map(line => line.trim()).filter(Boolean).forEach(line => {
+    transcriptMatch[1].trim().split(/\n+/).map(line => line.trim()).filter(Boolean).forEach(line => {
       container.append(makeElement("p", "xkcd-text-paragraph", line));
     });
   }
