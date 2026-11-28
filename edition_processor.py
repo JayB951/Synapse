@@ -1025,7 +1025,7 @@ def parse_generated_content(generated_text, section_code=None):
             raise RuntimeError("A szintézis 25–300 karakter közötti legyen.")
 
         def sentence_count(value):
-            return len([part for part in re.split(r"(?<=[.!?])\\s+(?=[A-ZÁÉÍÓÖŐÚÜŰ0-9])", value.strip()) if part])
+            return len([part for part in re.split(r"(?<=[.!?])\s+(?=[A-ZÁÉÍÓÖŐÚÜŰ0-9])", value.strip()) if part])
 
         if sentence_count(summary) != 1:
             raise RuntimeError("A kutatás jelentősége pontosan egy mondat legyen.")
@@ -1322,7 +1322,7 @@ def generate_content_with_retries(
             if attempt <= JSON_RETRY_LIMIT:
 
                 prompt += (
-                    "\\n\\nJAVÍTSD A KIMENETET: kizárólag érvényes JSON-t adj vissza. "
+                    "\n\nJAVÍTSD A KIMENETET: kizárólag érvényes JSON-t adj vissza. "
                     "A Research Frontier esetén pontosan title, summary, novelty, "
                     "challenge és synthesis mezőket használj, és tartsd be az "
                     "egymondatos, 3–5 mondatos, illetve legfeljebb 3 mondatos "
@@ -1349,9 +1349,9 @@ def save_processed_content(
     display_body = generated_content.get("body")
     if "novelty" in generated_content:
         display_body = (
-            "MI AZ ÚJDONSÁG?\\n\\n" + generated_content["novelty"]
-            + "\\n\\nKRITIKAI KIHÍVÁS\\n\\n" + generated_content["challenge"]
-            + "\\n\\nSZINTÉZIS\\n\\n" + generated_content["synthesis"]
+            "MI AZ ÚJDONSÁG?\n\n" + generated_content["novelty"]
+            + "\n\nKRITIKAI KIHÍVÁS\n\n" + generated_content["challenge"]
+            + "\n\nSZINTÉZIS\n\n" + generated_content["synthesis"]
         )
 
     update_data = {
