@@ -623,6 +623,24 @@ class ResilientSupabaseClient:
         if self.remote is None:
             return
         pending, deleted = self.store.pending_records()
+        table_order = {
+            "shard_content_items": 0,
+            "shard_editions": 1,
+            "shard_edition_items": 2,
+            "publications": 3,
+        }
+        pending.sort(
+            key=lambda item: (
+                table_order.get(item["table_name"], 99),
+                item["record_id"],
+            )
+        )
+        deleted.sort(
+            key=lambda item: (
+                -table_order.get(item["table_name"], 99),
+                item["record_id"],
+            )
+        )
         for item in pending:
             try:
                 self.remote.table(item["table_name"]).upsert(item["payload"]).execute()
