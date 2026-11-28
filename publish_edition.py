@@ -176,7 +176,7 @@ def main():
     # A teljes, ellenőrzött kiadás előbb helyi archívumba kerül.
     # Így a DB-státuszváltás hibája nem semmisíti meg a kész magazint.
     archive_path = save_local_archive(edition, items, supabase)
-    write_github_output(archive_ready=True, archive_path=archive_path, published=False)
+    write_github_output(archive_ready=True, archive_path=archive_path)
 
     try:
         update_response = (
