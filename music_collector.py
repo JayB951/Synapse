@@ -1,6 +1,6 @@
 """
 WORLD SHARDS – Music of the Day Collector
-Version: M1.5.1 / 0.1.0
+Version: M1.5.2 / 0.2.0
 
 A napi kiadvány kiválasztott témáihoz keres kapcsolódó zeneművet
 az ingyenes, API-kulcs nélküli iTunes Search API segítségével.
@@ -22,7 +22,7 @@ VERSION = "M1.5.1 / 0.1.0"
 TIMEZONE = ZoneInfo("Europe/Budapest")
 ITUNES_SEARCH_URL = "https://itunes.apple.com/search"
 REQUEST_TIMEOUT = 25
-ITUNES_COUNTRY = "US"
+ITUNES_COUNTRY = "HU"
 SEARCH_LIMIT = 25
 MAX_SEARCH_TOPICS = 3
 
@@ -118,31 +118,29 @@ def build_topic_query(topic):
     return " ".join(selected)
 
 
-def choose_search_topics(topics, max_topics=MAX_SEARCH_TOPICS):
-    """Legfeljebb három eltérő, értelmezhető napi témát választ."""
-    chosen = []
-    seen_queries = set()
-
-    ordered = sorted(
-        topics,
-        key=lambda item: (
-            float(item.get("relevance_score") or 0),
-            str(item.get("title") or ""),
-        ),
-        reverse=True,
-    )
-
-    for topic in ordered:
-        query = build_topic_query(topic)
-        normalized = query.casefold()
-        if len(tokenize(query)) < 2 or normalized in seen_queries:
-            continue
-        seen_queries.add(normalized)
-        chosen.append((query, topic))
-        if len(chosen) >= max_topics:
-            break
-
-    return chosen
+def choose_search_topics(topics=None, max_topics=MAX_SEARCH_TOPICS, edition_date=None):
+    """Napi témáktól független, rotáló műfaji keresés."""
+    genres = [
+        ("jazz classics", "Jazz"), ("classic rock", "Rock"),
+        ("classical music", "Klasszikus zene"), ("soul music", "Soul"),
+        ("film score soundtrack", "Filmzene"), ("electronic music", "Elektronikus zene"),
+        ("blues classics", "Blues"), ("world music", "Világzene"),
+        ("indie alternative", "Alternatív zene"), ("folk music", "Folk"),
+        ("funk classics", "Funk"), ("piano instrumental", "Instrumentális"),
+    ]
+    date_value = edition_date or datetime.now(TIMEZONE).date().isoformat()
+    try:
+        index = datetime.strptime(date_value, "%Y-%m-%d").date().toordinal() % len(genres)
+    except ValueError:
+        index = datetime.now(TIMEZONE).date().toordinal() % len(genres)
+    return [
+        (genres[(index + offset) % len(genres)][0], {
+            "title": "Önálló zenei válogatás",
+            "section_code": "music_of_the_day",
+            "genre_focus": genres[(index + offset) % len(genres)][1],
+        })
+        for offset in range(min(max_topics, len(genres)))
+    ]
 
 
 def fetch_itunes_tracks(query, http_get=requests.get):
@@ -189,42 +187,28 @@ def deduplicate_tracks(tracks):
     return unique
 
 
-def score_track(track, topic):
-    """A track címét és albumát súlyozza; puszta előadónév nem elég."""
-    track_name = str(track.get("trackName") or "")
-    artist_name = str(track.get("artistName") or "")
-    album_name = str(track.get("collectionName") or "")
-
-    topic_title = str(topic.get("title") or "")
-    topic_text = " ".join([
-        topic_title,
-        str(topic.get("summary") or ""),
-        str(topic.get("body") or "")[:2500],
-    ])
-
-    topic_tokens = set(tokenize(topic_text))
-    if not topic_tokens:
+def score_track(track, topic=None):
+    """A zenei adatlap teljességét és a valódi zeneszám-jelleget értékeli."""
+    if not isinstance(track, dict):
         return 0
-
-    track_tokens = set(tokenize(track_name))
-    album_tokens = set(tokenize(album_name))
-    artist_tokens = set(tokenize(artist_name))
-
-    title_matches = topic_tokens.intersection(track_tokens)
-    album_matches = topic_tokens.intersection(album_tokens)
-    artist_matches = topic_tokens.intersection(artist_tokens)
-
-    score = (
-        len(title_matches) * 4
-        + len(album_matches) * 2
-        + len(artist_matches)
-    )
-
-    # A keresési találatnak legalább a dal címében vagy albumában
-    # kell érdemi egyezést mutatnia.
-    if not title_matches and not album_matches:
+    if track.get("wrapperType") not in (None, "track") or track.get("kind") not in (None, "song"):
         return 0
-
+    if not track.get("trackName") or not track.get("artistName") or not track.get("trackViewUrl"):
+        return 0
+    if re.fullmatch(r"flag\d+", str(track.get("trackName") or "").strip(), re.IGNORECASE):
+        return 0
+    if re.fullmatch(r"flag\d+", str(track.get("artistName") or "").strip(), re.IGNORECASE):
+        return 0
+    score = 2
+    if track.get("primaryGenreName"): score += 3
+    if track.get("collectionName"): score += 2
+    if track.get("artworkUrl100"): score += 2
+    if track.get("releaseDate"): score += 1
+    duration = int(track.get("trackTimeMillis") or 0)
+    if duration >= 90000: score += 3
+    elif duration >= 60000: score += 1
+    if track.get("collectionType") == "Album": score += 1
+    if int(track.get("trackCount") or 0) >= 5: score += 1
     return score
 
 
@@ -245,16 +229,11 @@ def choose_best_track(tracks, topics, excluded_track_ids=None):
         if not track.get("trackViewUrl"):
             continue
 
-        for topic in topics:
-            score = score_track(track, topic)
-            if score < 2:
-                continue
-
-            candidates.append({
-                "track": track,
-                "topic": topic,
-                "score": score,
-            })
+        score = score_track(track)
+        if score < 5:
+            continue
+        topic = (topics or [{"title": "Önálló zenei válogatás", "section_code": "music_of_the_day"}])[0]
+        candidates.append({"track": track, "topic": topic, "score": score})
 
     if not candidates:
         return None
@@ -292,23 +271,17 @@ def build_music_record(selection, edition_date):
     if selection.get("is_fallback"):
         summary_parts.append("Napi zenei ajánló – ellenőrzött iTunes-katalógusból")
     else:
-        summary_parts.append(
-            f"Napi kapcsolódó téma: {topic.get('title') or 'World Shards'}"
-        )
+        summary_parts.append("Önálló zenei szerkesztőségi ajánló")
 
     body = (
         f"Zeneszám: {track_name}\n"
         f"Előadó: {artist_name}\n"
         f"Album: {album_name or 'Nincs megadva'}\n"
         f"Megjelenés: {release_date or 'Nincs megadva'}\n\n"
-        "A zenemű a napi kiadvány egyik témájához kapcsolódó szerkesztőségi "
-        "zenei ajánlás. A kapcsolatot a dal címe vagy albuma és a napi "
-        "tartalom kulcsszavai alapján választottuk ki.\n\n"
-        + (
-            "A napi ajánlás egy ellenőrzött zenei katalógusból származik.\n"
-            if selection.get("is_fallback")
-            else f"Kapcsolódó napi tartalom: {topic.get('title') or ''}\n"
-        )
+        "Önálló szerkesztőségi zenei ajánló a WORLD SHARDS válogatásában. "
+        "A kiválasztásnál a zenei adatlap teljessége, a műfaji besorolás, "
+        "az albumadatok és a hallgathatóság számított; a napi hírekhez "
+        "nem szükséges tematikus kapcsolat.\n\n"
         + f"Meghallgatási oldal: {source_url}\n"
         "A link az Apple/iTunes adatlapjára vezet; a teljes dal elérhetősége "
         "az adott szolgáltatástól és régiótól függ."
@@ -324,7 +297,7 @@ def build_music_record(selection, edition_date):
         "source_language": "en",
         "status": "candidate",
         "metadata": {
-            "collector": "WORLD_SHARDS_M1.5.1",
+            "collector": "WORLD_SHARDS_M1.5.2",
             "collector_version": VERSION,
             "source_provider": "Apple iTunes Search API",
             "edition_date": edition_date,
@@ -337,10 +310,9 @@ def build_music_record(selection, edition_date):
             "artwork_url": track.get("artworkUrl100"),
             "genre": track.get("primaryGenreName"),
             "country": ITUNES_COUNTRY,
-            "related_content_item_id": topic.get("id"),
-            "related_section_code": topic.get("section_code"),
-            "related_content_title": topic.get("title"),
-            "relation_score": selection["score"],
+            "editorial_basis": "independent_music_selection",
+            "genre_focus": topic.get("genre_focus"),
+            "music_quality_score": selection["score"],
             "full_track_downloaded": False,
         },
     }
@@ -427,13 +399,9 @@ def collect_music(supabase, http_get=requests.get, edition_date=None):
             .execute()
         )
 
-    topics = get_daily_topics(supabase)
-    if not topics:
-        raise RuntimeError(
-            "Nincs kiválasztható napi tartalmi téma; a zenei keresés kimarad."
-        )
-
-    search_topics = choose_search_topics(topics)
+    # A zenei rovat önálló; a napi témák hiánya nem akadályozhatja.
+    topics = []
+    search_topics = choose_search_topics(edition_date=edition_date)
     if not search_topics:
         raise RuntimeError("Nem állítható elő használható zenei keresőkifejezés.")
 
