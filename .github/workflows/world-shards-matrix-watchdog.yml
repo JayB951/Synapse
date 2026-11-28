@@ -2,9 +2,10 @@ name: WORLD SHARDS - Matrix Error Watchdog
 
 on:
   schedule:
-    # Budapest 06:05: UTC 04:05 nyári időszámításkor, 05:05 téli időszámításkor.
-    # A helyi időkapu miatt a két UTC triggerből naponta csak az egyik riaszt.
-    - cron: "5 4,5 * * *"
+    # 06:05 Budapest: UTC 04:05 nyáron, UTC 05:05 télen.
+    # Külön cronok, hogy késleltetett induláskor is felismerjük a megfelelő ágat.
+    - cron: "5 4 * * *"
+    - cron: "5 5 * * *"
   workflow_dispatch:
 
 permissions:
@@ -25,6 +26,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           REPOSITORY: ${{ github.repository }}
+          SCHEDULE_CRON: ${{ github.event.schedule }}
         run: |
           python - <<'PY' >> "$GITHUB_OUTPUT"
           import json
@@ -36,12 +38,16 @@ jobs:
           tz = ZoneInfo("Europe/Budapest")
           now = datetime.now(tz)
 
-          # A cron két UTC időpontot fed le a nyári/téli óraátállítás miatt.
-          # Csak a helyi 06:05-ös futás végez ellenőrzést.
-          if now.hour != 6:
-              print("alert=false")
-              print("Nem a 06:05-ös budapesti ellenőrzési időpont; kihagyva.")
-              raise SystemExit(0)
+          # A két cronból csak az aktuális budapesti időzónához tartozó ág fut.
+          # A GitHub késése esetén is ellenőrzünk; nem kötjük a futást a percnyi pontossághoz.
+          scheduled = os.environ.get("SCHEDULE_CRON", "")
+          if scheduled:
+              scheduled_hour = int(scheduled.split()[1])
+              expected_utc_hour = 6 - int(now.utcoffset().total_seconds() // 3600)
+              if scheduled_hour != expected_utc_hour:
+                  print("alert=false")
+                  print("A másik UTC-időzóna cronja futott; kihagyva.")
+                  raise SystemExit(0)
 
           repo = os.environ["REPOSITORY"]
           token = os.environ["GH_TOKEN"]
