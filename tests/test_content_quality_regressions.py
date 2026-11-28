@@ -16,6 +16,7 @@ m13 = load_module("collector_m13", "shards_collector_m13.py")
 m14 = load_module("collector_m14", "shards_collector_m14.py")
 music = load_module("music_collector", "music_collector.py")
 processor = load_module("edition_processor", "edition_processor.py")
+builder = load_module("edition_builder", "edition_builder.py")
 
 
 def page(title, extract):
@@ -100,6 +101,75 @@ def test_joke_prompt_explicitly_preserves_the_punchline():
     assert "CSATTANÓT" in prompt
     assert "teljes vicc" in prompt.lower()
 
+
+
+def test_joke_record_rejects_missing_id_and_uses_stable_id_source():
+    assert m14.build_joke_record({
+        "category": "Misc",
+        "type": "single",
+        "joke": "A complete joke.",
+    }) is None
+    record = m14.build_joke_record({
+        "id": 314,
+        "category": "Misc",
+        "type": "single",
+        "joke": "A complete joke.",
+    })
+    assert record["source_url"].endswith("idRange=314-314")
+    assert record["metadata"]["joke_id"] == 314
+
+
+def test_joke_candidate_selection_prefers_less_recently_used_category():
+    candidates = [
+        {"metadata": {"joke_id": 1, "category": "Programming"}, "title": "A"},
+        {"metadata": {"joke_id": 2, "category": "Misc"}, "title": "B"},
+        {"metadata": {"joke_id": 3, "category": "Dark"}, "title": "C"},
+    ]
+    chosen = builder.choose_joke_candidate(
+        candidates,
+        recent_categories=["Programming", "Programming", "Misc"],
+    )
+    assert chosen["title"] == "C"
+
+
+def test_joke_translation_review_requires_natural_complete_punchline():
+    source = {
+        "metadata": {"joke_type": "twopart"},
+    }
+    generated = {
+        "title": "Programozói felmondás",
+        "summary": "Egy technikai félreértés története",
+        "body": "Miért mondott fel a programozó?\n\nMert nem kapott tömböket.",
+    }
+    accepted = {
+        "complete": True,
+        "meaning_preserved": True,
+        "punchline_preserved": True,
+        "natural_hungarian": True,
+        "joke_logic_preserved": True,
+        "reason": "A felvezetés és a csattanó kapcsolata megmaradt.",
+    }
+    assert processor.joke_translation_passes(source, generated, accepted)
+    accepted["punchline_preserved"] = False
+    assert not processor.joke_translation_passes(source, generated, accepted)
+    accepted["punchline_preserved"] = True
+    generated["body"] = "Miért mondott fel a programozó? Mert nem kapott tömböket."
+    assert not processor.joke_translation_passes(source, generated, accepted)
+
+
+def test_joke_prompt_requests_humor_adaptation_and_non_repeating_teaser():
+    prompt = processor.build_prompt("closing", {
+        "title": "Why did the programmer quit?",
+        "summary": "Why did the programmer quit?",
+        "body": "Why did the programmer quit?\n\nBecause they didn't get arrays.",
+        "source_name": "JokeAPI",
+        "source_url": "https://v2.jokeapi.dev/joke/Any?idRange=42-42",
+        "source_language": "en",
+        "metadata": {"source_provider": "JokeAPI", "joke_id": 42, "joke_type": "twopart"},
+    })
+    assert "természetes" in prompt.lower()
+    assert "ne ismételje" in prompt.lower()
+    assert "két külön bekezdésben" in prompt.lower()
 
 def test_music_picker_can_exclude_recent_tracks():
     topic = {"title": "The Bulge campaign", "summary": "Battle of the Bulge"}
