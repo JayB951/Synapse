@@ -3,7 +3,7 @@ import json
 import os
 import tempfile
 import unittest
-from datetime import datetime
+from datetime import datetime, timedelta
 from unittest.mock import patch
 from zipfile import ZipFile
 from zoneinfo import ZoneInfo
@@ -124,6 +124,7 @@ class RestoreEditionArchiveTests(unittest.TestCase):
 
     def test_restores_sqlite_state_from_previous_day_without_an_edition_archive(self):
         today = datetime.now(ZoneInfo("Europe/Budapest")).date().isoformat()
+        previous_day = (datetime.now(ZoneInfo("Europe/Budapest")).date() - timedelta(days=1)).isoformat()
         sqlite_bytes = encrypt_bytes(
             b"SQLite format 3\x00previous-day-cache", "test-secret"
         )
@@ -132,7 +133,7 @@ class RestoreEditionArchiveTests(unittest.TestCase):
             bundle.writestr("world-shards-fallback.sqlite3.gpg", sqlite_bytes)
 
         runs_response = json.dumps({
-            "workflow_runs": [{"id": 100, "created_at": "2026-11-27T07:00:00Z"}]
+            "workflow_runs": [{"id": 100, "created_at": f"{previous_day}T07:00:00Z"}]
         }).encode("utf-8")
         artifacts_response = json.dumps({
             "artifacts": [{
