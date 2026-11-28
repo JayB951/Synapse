@@ -52,7 +52,7 @@ def write_github_output(**values):
         return
     with open(output_path, "a", encoding="utf-8") as output:
         for key, value in values.items():
-            output.write(f"{key}={str(value).lower() if isinstance(value, bool) else value}\\n")
+            output.write(f"{key}={str(value).lower() if isinstance(value, bool) else value}\n")
 
 
 def save_local_archive(edition, items, supabase):
@@ -83,7 +83,7 @@ def save_local_archive(edition, items, supabase):
     archive_path = archive_dir / f"edition-{edition['edition_date']}.json"
     temporary_path = archive_path.with_suffix(".json.tmp")
     temporary_path.write_text(
-        json.dumps(archive, ensure_ascii=False, indent=2) + "\\n",
+        json.dumps(archive, ensure_ascii=False, indent=2) + "\n",
         encoding="utf-8",
     )
     temporary_path.replace(archive_path)
