@@ -1221,7 +1221,7 @@ A reason mezőben konkrétan nevezd meg a hibát, vagy röviden indokold az elfo
         raise RuntimeError(f"A The Thinker AI-szerkesztői bírálata nem értelmezhető: {error}")
 
 
-def thinker_content_passes(verdict):
+def thinker_content_passes(verdict, generated=None):
     if not isinstance(verdict, dict):
         return False
     checks = (
@@ -1234,7 +1234,13 @@ def thinker_content_passes(verdict):
         "factual_and_historical_grounding",
         "substantive_hungarian_article",
     )
-    return all(verdict.get(key) is True for key in checks)
+    if not all(verdict.get(key) is True for key in checks):
+        return False
+    if generated is not None:
+        paragraphs = [part.strip() for part in re.split(r"\\n\\s*\\n", generated.get("body", "")) if part.strip()]
+        if not 5 <= len(paragraphs) <= 7:
+            return False
+    return True
 
 
 def review_unsolved_content(source, generated):
@@ -1805,7 +1811,7 @@ Készíts új fordítást. Őrizd meg a teljes jelentést és a csattanó logik�
 
     if item["section_code"] == "the_thinker":
         verdict = review_thinker_content(source, generated_content)
-        if not thinker_content_passes(verdict):
+        if not thinker_content_passes(verdict, generated_content):
             logger.warning(
                 "The Thinker minőségellenőrzése javítást kért: %s",
                 verdict.get("reason", "A cikk nem felelt meg a filozófiai szerkesztési feltételeknek.")
