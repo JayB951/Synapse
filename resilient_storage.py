@@ -148,6 +148,24 @@ class SQLiteFallbackStore:
             if row["record_id"] not in deleted
         ]
 
+    def pending_rows(self, table_name):
+        with self._connect() as connection:
+            rows = connection.execute(
+                "SELECT record_id, payload FROM records WHERE table_name=? AND pending=1",
+                (table_name,),
+            ).fetchall()
+            deleted = {
+                row["record_id"] for row in connection.execute(
+                    "SELECT record_id FROM tombstones WHERE table_name=?",
+                    (table_name,),
+                ).fetchall()
+            }
+        return [
+            json.loads(row["payload"])
+            for row in rows
+            if row["record_id"] not in deleted
+        ]
+
     def mark_deleted(self, table_name, record_ids):
         with self._connect() as connection:
             for record_id in record_ids:
@@ -362,7 +380,7 @@ class ResilientQuery:
 
     def _fetch_remote_matching_rows(self):
         if self.client.remote is None:
-            return []
+            return None
         try:
             query = self._remote_query(operation="select", fields="*")
             response = query.execute()
@@ -370,25 +388,35 @@ class ResilientQuery:
             self.client.store.cache_remote(self.table_name, rows)
             return rows
         except Exception:
-            return []
+            return None
 
     def execute(self):
         if self.operation == "select":
             remote_rows = []
+            remote_read_succeeded = False
             if self.client.remote is not None:
                 try:
                     response = self._remote_query().execute()
                     remote_rows = response.data or []
                     self.client.store.cache_remote(self.table_name, remote_rows)
+                    remote_read_succeeded = True
                 except Exception:
                     LOGGER.exception(
                         "Supabase-olvasási hiba (%s); SQLite tartalék használata.",
                         self.table_name,
                     )
-            # cache_remote merges server values with pending local overrides.
-            return SimpleNamespace(
-                data=self._prepare_rows(self.client.store.rows(self.table_name))
-            )
+            if remote_read_succeeded:
+                merged = {
+                    str(row["id"]): dict(row)
+                    for row in remote_rows if row.get("id") is not None
+                }
+                for row in self.client.store.pending_rows(self.table_name):
+                    record_id = str(row.get("id"))
+                    merged[record_id] = {**merged.get(record_id, {}), **row}
+                rows = list(merged.values())
+            else:
+                rows = self.client.store.rows(self.table_name)
+            return SimpleNamespace(data=self._prepare_rows(rows))
 
         if self.operation in {"insert", "upsert"}:
             values = self.payload if isinstance(self.payload, list) else [self.payload]
@@ -432,8 +460,22 @@ class ResilientQuery:
                         "Supabase-update hiba (%s); módosítás helyi SQLite-ba kerül.",
                         self.table_name,
                     )
-                    self._fetch_remote_matching_rows()
-            rows = self._prepare_rows(self.client.store.rows(self.table_name), project=False)
+                    remote_matches = self._fetch_remote_matching_rows()
+                else:
+                    remote_matches = []
+            else:
+                remote_matches = None
+            if remote_matches is None:
+                base_rows = self.client.store.rows(self.table_name)
+            else:
+                by_id = {
+                    str(row.get("id")): dict(row)
+                    for row in remote_matches if row.get("id") is not None
+                }
+                for row in self.client.store.pending_rows(self.table_name):
+                    by_id[str(row.get("id"))] = {**by_id.get(str(row.get("id")), {}), **row}
+                base_rows = list(by_id.values())
+            rows = self._prepare_rows(base_rows, project=False)
             updated = []
             for row in rows:
                 changed = self.client.store.save_local(
@@ -457,8 +499,22 @@ class ResilientQuery:
                         "Supabase-delete hiba (%s); törlési jelölés helyben rögzítve.",
                         self.table_name,
                     )
-                    self._fetch_remote_matching_rows()
-            rows = self._prepare_rows(self.client.store.rows(self.table_name), project=False)
+                    remote_matches = self._fetch_remote_matching_rows()
+                else:
+                    remote_matches = []
+            else:
+                remote_matches = None
+            if remote_matches is None:
+                base_rows = self.client.store.rows(self.table_name)
+            else:
+                by_id = {
+                    str(row.get("id")): dict(row)
+                    for row in remote_matches if row.get("id") is not None
+                }
+                for row in self.client.store.pending_rows(self.table_name):
+                    by_id[str(row.get("id"))] = {**by_id.get(str(row.get("id")), {}), **row}
+                base_rows = list(by_id.values())
+            rows = self._prepare_rows(base_rows, project=False)
             ids = [row["id"] for row in rows if row.get("id") is not None]
             self.client.store.mark_deleted(self.table_name, ids)
             return SimpleNamespace(data=rows)
