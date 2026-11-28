@@ -105,14 +105,7 @@ def setup_logging():
 def get_supabase_client():
     url = os.environ.get("SUPABASE_URL")
     key = os.environ.get("SUPABASE_SECRET_KEY")
-
-    if not url or not key:
-        raise RuntimeError(
-            "Missing SUPABASE_URL or SUPABASE_SECRET_KEY environment variable."
-        )
-
     return create_resilient_client(url, key)
-
 
 def clean_text(value):
     if not value:
