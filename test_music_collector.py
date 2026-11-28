@@ -9,6 +9,8 @@ from music_collector import (
     music_record_exists_for_date,
     score_track,
     is_valid_music_record,
+    choose_search_topics,
+    ITUNES_COUNTRY,
 )
 
 
@@ -54,12 +56,26 @@ class MusicCollectorTests(unittest.TestCase):
             artistName="Quantum",
         )
 
-        self.assertGreater(
+        self.assertGreaterEqual(
+            score_track(direct, self.topic),
+            5,
+        )
+        self.assertEqual(
             score_track(direct, self.topic),
             score_track(unrelated, self.topic),
         )
         chosen = choose_best_track([unrelated, direct], [self.topic])
         self.assertEqual(chosen["track"]["trackId"], 123)
+
+    def test_music_search_is_independent_from_daily_topics(self):
+        first = choose_search_topics([], edition_date="2026-11-28")
+        second = choose_search_topics([], edition_date="2026-11-29")
+        self.assertEqual(len(first), 3)
+        self.assertNotEqual(first[0][0], second[0][0])
+        self.assertEqual(first[0][1]["section_code"], "music_of_the_day")
+
+    def test_uses_hungarian_itunes_catalogue(self):
+        self.assertEqual(ITUNES_COUNTRY, "HU")
 
     def test_flag_code_catalogue_entry_is_not_selected(self):
         flag_track = dict(
