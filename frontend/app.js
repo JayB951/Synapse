@@ -399,14 +399,14 @@ function renderArticleBody(container, body, galleryImages = []) {
 
 function renderResearchFrontierBody(container, body) {
   container.replaceChildren();
-  const blocks = String(body || "").split(/\\n\\n(?=KRITIKAI KIHÍVÁS\\n\\n|SZINTÉZIS\\n\\n)/);
+  const blocks = String(body || "").split(/\n\n(?=KRITIKAI KIHÍVÁS\n\n|SZINTÉZIS\n\n)/);
   const labels = {
     "MI AZ ÚJDONSÁG?": "research-novelty",
     "KRITIKAI KIHÍVÁS": "research-challenge",
     "SZINTÉZIS": "research-synthesis"
   };
   blocks.forEach(block => {
-    const match = block.match(/^([^\\n]+)\\n\\n([\\s\\S]*)$/);
+    const match = block.match(/^([^\n]+)\n\n([\\s\\S]*)$/);
     if (!match || !labels[match[1]]) {
       if (block.trim()) container.append(makeElement("p", "reader-paragraph", block.trim()));
       return;
