@@ -121,6 +121,18 @@ class XkcdNoRepeatTests(unittest.TestCase):
         self.assertEqual(database.rows[0]["image_url"], comic(3329)["img"])
         fetch.assert_called_once_with()
 
+    def test_xkcd_record_preserves_alt_transcript_and_license_metadata(self):
+        record = shards_collector_m14.build_xkcd_record({
+            **comic(3330),
+            "alt": "A precise visual description.",
+            "transcript": "Character 1: Hello.\\nCharacter 2: Goodbye.",
+        })
+        metadata = record["metadata"]
+        self.assertEqual(metadata["alt_text"], "A precise visual description.")
+        self.assertEqual(metadata["transcript"], "Character 1: Hello. Character 2: Goodbye.")
+        self.assertEqual(metadata["source_license"], "CC BY-NC 2.5")
+        self.assertEqual(metadata["source_license_url"], "https://creativecommons.org/licenses/by-nc/2.5/")
+
     def test_builder_prefers_highest_unused_comic_number(self):
         candidates = [
             {"id": "older", "title": "xkcd 3328", "metadata": {"comic_number": 3328}},
