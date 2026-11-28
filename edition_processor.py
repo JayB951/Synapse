@@ -897,7 +897,7 @@ def joke_translation_passes(source, generated, verdict):
     if not body:
         return False
     if metadata.get("joke_type") == "twopart":
-        paragraphs = [part.strip() for part in re.split(r"\\n\\s*\\n", body) if part.strip()]
+        paragraphs = [part.strip() for part in re.split(r"\n\s*\n", body) if part.strip()]
         return len(paragraphs) == 2
     return True
 
