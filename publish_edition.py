@@ -151,7 +151,7 @@ def main():
 
     positions = sorted(item.get("position") for item in items)
     if positions != list(range(1, EXPECTED_TOTAL + 1)):
-        raise RuntimeError("A pozíciók nem folytonosak 1–16 között. A kiadás draft marad.")
+        raise RuntimeError("A pozíciók nem folytonosak 1–17 között. A kiadás draft marad.")
 
     incomplete = []
     for item in items:
