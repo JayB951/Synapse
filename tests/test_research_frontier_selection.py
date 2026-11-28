@@ -1,6 +1,7 @@
 import importlib.util
 from pathlib import Path
 import unittest
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -54,6 +55,72 @@ class FakeClient:
 
 
 class ResearchFrontierSelectionTests(unittest.TestCase):
+    def test_research_collection_pages_past_existing_newest_records(self):
+        publications = [
+            {
+                "id": f"paper-{index}",
+                "title": f"Research paper {index}",
+                "abstract": "A sufficiently detailed abstract. " * 8,
+                "doi": f"10.1234/paper-{index}",
+                "url": f"https://example.org/paper-{index}",
+                "publication_date": f"2026-11-{28-index:02d}",
+                "publication_year": 2026,
+                "publication_type": "journal-article",
+                "language": "en",
+                "journal": "Example Journal",
+                "publisher": "Example Publisher",
+                "metadata": {"topics": ["Science"]},
+            }
+            for index in range(5)
+        ]
+
+        class PageQuery:
+            def __init__(self):
+                self.start = 0
+                self.end = 0
+
+            def select(self, fields):
+                return self
+
+            def order(self, field, desc=False):
+                return self
+
+            def range(self, start, end):
+                self.start, self.end = start, end
+                requested_ranges.append((start, end))
+                return self
+
+            def execute(self):
+                return FakeResponse(publications[self.start:self.end + 1])
+
+        class PageClient:
+            def table(self, name):
+                self.assert_table = name
+                return PageQuery()
+
+        requested_ranges = []
+        client = PageClient()
+        with (
+            patch.object(collector, "SYNAPSE_LIMIT", 1),
+            unittest.mock.patch.object(collector, "SYNAPSE_PAGE_SIZE", 2),
+            unittest.mock.patch.object(collector, "SYNAPSE_MAX_SCAN", 6),
+            unittest.mock.patch.object(
+                collector,
+                "research_publication_exists",
+                side_effect=lambda _client, publication: publication["id"] != "paper-2",
+            ),
+            unittest.mock.patch.object(
+                collector,
+                "save_content",
+                return_value="inserted",
+            ),
+        ):
+            result = collector.collect_research(client)
+
+        self.assertEqual(result["inserted"], 1)
+        self.assertEqual(result["scanned"], 3)
+        self.assertEqual(requested_ranges, [(0, 1), (2, 3)])
+
     def test_daily_edition_reserves_six_papers_and_seventeen_items(self):
         self.assertEqual(builder.SECTION_LIMITS["research_frontier"], 6)
         self.assertEqual(builder.BASE_EXPECTED_ITEMS, 15)

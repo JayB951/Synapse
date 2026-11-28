@@ -25,7 +25,10 @@ from resilient_storage import create_resilient_client
 
 VERSION = "M1.2 / 0.1.0"
 
+# Per-run target and bounded keyless pagination through the publication table.
 SYNAPSE_LIMIT = 100
+SYNAPSE_PAGE_SIZE = 100
+SYNAPSE_MAX_SCAN = 1000
 ART_LIMIT = 50
 ART_SEARCH_QUERIES_PER_RUN = 2
 REQUEST_TIMEOUT = 30
@@ -167,12 +170,8 @@ def research_publication_exists(client, publication):
     return content_exists(client, source_url)
 
 
-def collect_research(client):
-    print()
-    print("=" * 65)
-    print("RESEARCH FRONTIER – SYNAPSE")
-    print("=" * 65)
-
+def get_research_publication_page(client, offset):
+    """Fetch one deterministic window from the SYNAPSE publication table."""
     response = (
         client.table("publications")
         .select(
@@ -181,81 +180,110 @@ def collect_research(client):
             "journal,publisher,url,metadata"
         )
         .order("publication_date", desc=True)
-        .limit(SYNAPSE_LIMIT)
+        .range(offset, offset + SYNAPSE_PAGE_SIZE - 1)
         .execute()
     )
+    return response.data or []
 
-    publications = response.data or []
+
+def collect_research(client):
+    print()
+    print("=" * 65)
+    print("RESEARCH FRONTIER – SYNAPSE")
+    print("=" * 65)
 
     inserted = 0
     skipped = 0
+    scanned = 0
+    offset = 0
+    pages = 0
 
-    for publication in publications:
-        doi = publication.get("doi")
+    # Do not stop at the newest 100 database rows: already-imported or
+    # unusable records must not hide older, still-unseen publications.
+    while scanned < SYNAPSE_MAX_SCAN and inserted < SYNAPSE_LIMIT:
+        publications = get_research_publication_page(client, offset)
+        if not publications:
+            break
 
-        source_url = (
-            publication.get("url")
-            or (f"https://doi.org/{doi}" if doi else None)
-        )
-        abstract = clean_html(publication.get("abstract"))
+        pages += 1
+        offset += len(publications)
 
-        if not publication.get("title") or len(abstract or "") < 120:
-            skipped += 1
-            continue
+        for publication in publications:
+            scanned += 1
+            doi = publication.get("doi")
 
-        if not source_url:
-            skipped += 1
-            continue
+            source_url = (
+                publication.get("url")
+                or (f"https://doi.org/{doi}" if doi else None)
+            )
+            abstract = clean_html(publication.get("abstract"))
 
-        if research_publication_exists(client, publication):
-            skipped += 1
-            continue
+            if not publication.get("title") or len(abstract or "") < 120:
+                skipped += 1
+                continue
 
-        item = {
-            "section_code": "research_frontier",
-            "title": publication["title"],
-            "summary": abstract,
-            "source_name": "SYNAPSE",
-            "source_url": source_url,
-            "source_published_at": publication.get(
-                "publication_date"
-            ),
-            "source_language": publication.get("language"),
-            "status": "candidate",
-            "relevance_score": score_research_publication(publication),
-            "metadata": {
-                "origin": "SYNAPSE",
-                "synapse_publication_id": publication["id"],
-                "doi": doi,
-                "publication_year": publication.get(
-                    "publication_year"
+            if not source_url:
+                skipped += 1
+                continue
+
+            if research_publication_exists(client, publication):
+                skipped += 1
+                continue
+
+            item = {
+                "section_code": "research_frontier",
+                "title": publication["title"],
+                "summary": abstract,
+                "source_name": "SYNAPSE",
+                "source_url": source_url,
+                "source_published_at": publication.get(
+                    "publication_date"
                 ),
-                "publication_type": publication.get(
-                    "publication_type"
-                ),
-                "journal": publication.get("journal"),
-                "publisher": publication.get("publisher"),
-                "synapse_metadata": publication.get(
-                    "metadata"
-                ) or {},
-            },
-        }
+                "source_language": publication.get("language"),
+                "status": "candidate",
+                "relevance_score": score_research_publication(publication),
+                "metadata": {
+                    "origin": "SYNAPSE",
+                    "synapse_publication_id": publication["id"],
+                    "doi": doi,
+                    "publication_year": publication.get(
+                        "publication_year"
+                    ),
+                    "publication_type": publication.get(
+                        "publication_type"
+                    ),
+                    "journal": publication.get("journal"),
+                    "publisher": publication.get("publisher"),
+                    "synapse_metadata": publication.get(
+                        "metadata"
+                    ) or {},
+                },
+            }
 
-        result = save_content(client, item)
+            result = save_content(client, item)
 
-        if result == "inserted":
-            inserted += 1
-            print("ÚJ:", publication["title"][:85])
-        else:
-            skipped += 1
+            if result == "inserted":
+                inserted += 1
+                print("ÚJ:", publication["title"][:85])
+            else:
+                skipped += 1
 
-    print("SYNAPSE rekord:", len(publications))
+            if inserted >= SYNAPSE_LIMIT or scanned >= SYNAPSE_MAX_SCAN:
+                break
+
+        if len(publications) < SYNAPSE_PAGE_SIZE:
+            break
+
+    print("SYNAPSE átvizsgált rekord:", scanned)
+    print("SYNAPSE oldalak:", pages)
     print("Új tartalom:", inserted)
-    print("Már létezett / kihagyva:", skipped)
+    print("Már létezett / kihagyva / érvénytelen:", skipped)
 
     return {
         "inserted": inserted,
         "skipped": skipped,
+        "scanned": scanned,
+        "pages": pages,
     }
 
 
