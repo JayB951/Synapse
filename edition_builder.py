@@ -4,9 +4,7 @@ import logging
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
-from supabase import create_client
-
-
+from resilient_storage import create_resilient_client
 VERSION = "0.1.0"
 TIMEZONE = ZoneInfo("Europe/Budapest")
 
@@ -57,7 +55,7 @@ def get_supabase_client():
             "Hiányzó SUPABASE_URL vagy SUPABASE_SECRET_KEY."
         )
 
-    return create_client(url, key)
+    return create_resilient_client(url, key)
 
 
 def get_candidates(supabase, section_code, limit=100, edition_date=None, content_type=None):
