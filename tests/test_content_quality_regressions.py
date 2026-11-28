@@ -61,12 +61,16 @@ def test_unsolved_requires_a_specific_case_not_a_general_mystery_topic():
     assert m14.is_unsolved_candidate(page(
         "The Wow! signal",
         "The Wow! signal is a strong narrowband radio signal detected in 1977. "
-        "Its origin remains unexplained and it has not been observed again."
+        "Its origin remains unexplained and it has not been observed again. "
+        "Researchers have considered several possible explanations, but none has "
+        "been confirmed by later observations or independent evidence."
     ))
     assert not m14.is_unsolved_candidate(page(
         "Historical mysteries",
         "Historical mysteries have fascinated people for centuries. "
-        "Many events, objects and people from the past remain debated."
+        "Many events, objects and people from the past remain debated. "
+        "The phrase covers a wide range of subjects rather than one identifiable "
+        "case with a specific unresolved question."
     ))
     assert not m14.is_unsolved_candidate(page(
         "A general history article",
@@ -190,7 +194,9 @@ def test_the_thinker_collector_accepts_specific_philosophical_problems_only():
         "The trolley problem is a thought experiment in ethics. It asks whether "
         "one may redirect a runaway trolley to kill one person rather than five. "
         "The case is used in moral philosophy to examine consequentialist and "
-        "deontological reasoning, including the distinction between doing and allowing harm."
+        "deontological reasoning, including the distinction between doing and allowing harm. "
+        "It remains a central example in debates about moral responsibility and the "
+        "limits of outcome-based decision making."
     ))
     assert m13.is_valid_thinker_article(page(
         "The Ship of Theseus",
