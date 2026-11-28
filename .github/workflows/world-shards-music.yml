@@ -2,6 +2,11 @@ name: WORLD SHARDS - Music of the Day Collector
 
 on:
   workflow_dispatch:
+  pull_request:
+    paths:
+      - 'music_collector.py'
+      - 'test_music_collector.py'
+      - '.github/workflows/world-shards-music.yml'
 
 permissions:
   contents: read
