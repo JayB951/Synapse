@@ -22,7 +22,7 @@ from agora_news_selection import (
     select_international_news_event,
 )
 
-ENGINE_VERSION = "AGORA_DAILY_EDITORIAL_M4.3"
+ENGINE_VERSION = "AGORA_DAILY_EDITORIAL_M4.4"
 
 
 def _has_source_url(event):
@@ -44,6 +44,7 @@ def build_editorial_output(pipeline, catalog, figure_limit=3, gemini_client=None
     validate_catalog(catalog)
     groups = {item.get("event_id"): item for item in pipeline.get("groups", [])}
     result = {}
+    used_figure_ids = set()
     for scope in ("hungary", "international"):
         selection = pipeline.get("daily_selection", {}).get(scope, {})
         news_selection = None
@@ -97,7 +98,15 @@ def build_editorial_output(pipeline, catalog, figure_limit=3, gemini_client=None
             raise ValueError(f"A kiválasztott esemény nem található a pipeline-ban: {event_id}")
 
         if gemini_client is not None:
-            historical = gemini_select_historical_figures(event, catalog, gemini_client)
+            historical = gemini_select_historical_figures(
+                event, catalog, gemini_client,
+                excluded_figure_ids=used_figure_ids,
+                prefer_hungarian=(scope == "hungary"),
+            )
+            selected_ids = {item.get("figure_id") for item in historical.get("figures", [])}
+            if selected_ids & used_figure_ids:
+                raise ValueError("Az AGORA ugyanazt a történelmi személyt két hírhez is kiválasztotta.")
+            used_figure_ids.update(selected_ids)
             package = build_gemini_commentary_package(event, historical, gemini_client)
             status = package["status"]
         else:
