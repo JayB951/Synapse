@@ -51,7 +51,9 @@ def test_fundamentals_requires_a_concrete_concept():
         "In physics, conservation of energy is the principle that the total "
         "energy of an isolated system remains constant. This conservation law "
         "provides a powerful constraint when analyzing physical processes, "
-        "including motion, heat transfer and transformations between energy forms."
+        "including motion, heat transfer and transformations between energy forms. "
+        "It allows predictions to be checked against a quantity that remains "
+        "constant even when energy changes from one form to another."
     ))
     assert not m13.is_valid_fundamentals_article(page(
         "Physics",
