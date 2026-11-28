@@ -16,7 +16,55 @@ collector = load_module("research_frontier_collector", "shards_collector.py")
 builder = load_module("research_frontier_builder", "edition_builder.py")
 
 
+class FakeResponse:
+    def __init__(self, data):
+        self.data = data
+
+
+class FakeQuery:
+    def __init__(self, existing_doi):
+        self.existing_doi = existing_doi
+        self.filters = {}
+
+    def select(self, value):
+        return self
+
+    def eq(self, key, value):
+        self.filters[key] = value
+        return self
+
+    def contains(self, key, value):
+        self.filters[key] = value
+        return self
+
+    def limit(self, value):
+        return self
+
+    def execute(self):
+        requested = (self.filters.get("metadata") or {}).get("doi")
+        return FakeResponse([{"id": "existing"}] if requested == self.existing_doi else [])
+
+
+class FakeClient:
+    def __init__(self, existing_doi):
+        self.query = FakeQuery(existing_doi)
+
+    def table(self, name):
+        return self.query
+
+
 class ResearchFrontierSelectionTests(unittest.TestCase):
+    def test_deduplication_uses_doi_even_when_landing_urls_differ(self):
+        client = FakeClient("10.1234/same-paper")
+        publication = {
+            "id": "synapse-new-id",
+            "doi": "10.1234/same-paper",
+            "url": "https://publisher.example/article/updated-url",
+        }
+        self.assertTrue(
+            collector.research_publication_exists(client, publication)
+        )
+
     def test_candidate_score_rewards_editorial_readiness_not_empty_metadata(self):
         weak = {"title": "A paper", "abstract": "Short", "metadata": {}}
         strong = {
