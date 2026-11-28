@@ -15,7 +15,6 @@ def is_published_today(client, edition_date):
         client.table("shard_editions")
         .select("id,status")
         .eq("edition_date", edition_date)
-        .eq("status", "published")
         .limit(1)
         .execute()
     )
