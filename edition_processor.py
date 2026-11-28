@@ -619,6 +619,11 @@ def build_prompt(
             "NINCS TRANSCRIPT. Ne találj ki párbeszédet, szereplőt vagy képen nem látható eseményt; "
             "kizárólag az alt text fordítását add meg."
         )
+        body_format = (
+            '"KÉP LEÍRÁSA:\\n[A teljes magyar alt text]\\n\\nÁTIRAT:\\n[A teljes magyar transcript]"
+            if transcript else
+            '"KÉP LEÍRÁSA:\\n[A teljes magyar alt text]"'
+        )
         return f\"\"\"
 A WORLD SHARDS magyar magazin xkcd-szerkesztője vagy. A képregény eredeti képe változatlanul jelenik meg; a feladatod kizárólag a hozzá tartozó szöveg pontos, természetes magyarítása.
 Ne írj hosszú magazincikket, ne magyarázd túl a poént, és ne találj ki semmit, ami a forrásban nem szerepel.
@@ -639,7 +644,7 @@ Kizárólag ezt a JSON-struktúrát add vissza:
 {{
   "title": "A képregény magyar címe",
   "summary": "Rövid magyar kedvcsináló",
-  "body": "KÉP LEÍRÁSA:\\nA teljes magyar alt text" + ("\\n\\nÁTIRAT:\\nA teljes magyar átirat" if transcript else "")
+  "body": {body_format}
 }}
 Ne használj Markdown kódblokkot.
 \"\"\"
@@ -881,10 +886,10 @@ def validate_xkcd_translation(source, generated):
     alt_text = clean_source_text(metadata.get("alt_text") or metadata.get("alt") or "")
     transcript = clean_source_text(metadata.get("transcript") or "")
     body = clean_display_text(generated.get("body", ""))
-    match = re.match(r"^KÉP LEÍRÁSA:\\s*(.+?)(?=\\n\\s*\\nÁTIRAT:|$)", body, re.IGNORECASE | re.DOTALL)
+    match = re.match(r"^KÉP LEÍRÁSA:\s*(.+?)(?=\n\s*\nÁTIRAT:|$)", body, re.IGNORECASE | re.DOTALL)
     if not alt_text or not match or not match.group(1).strip():
         raise RuntimeError("Az xkcd-feldolgozásból hiányzik a teljes magyar képleírás.")
-    transcript_match = re.search(r"(?:^|\\n\\s*\\n)ÁTIRAT:\\s*(.+)$", body, re.IGNORECASE | re.DOTALL)
+    transcript_match = re.search(r"(?:^|\n\s*\n)ÁTIRAT:\s*(.+)$", body, re.IGNORECASE | re.DOTALL)
     if transcript and (not transcript_match or not transcript_match.group(1).strip()):
         raise RuntimeError("Az xkcd eredeti transcriptje nem került át a magyar feldolgozásba.")
     if not transcript and transcript_match:
