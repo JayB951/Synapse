@@ -106,7 +106,8 @@ class ResearchFrontierTests(unittest.TestCase):
             "novelty": (
                 "A tanulmány globális megfigyelési adatokat kapcsol össze regionális elemzéssel. "
                 "Ez a megközelítés a korábbi általános trendeknél részletesebb képet ad. "
-                "Az absztrakt nem nevez meg közvetlenül összehasonlított korábbi tanulmányt."
+                "Az absztrakt nem nevez meg közvetlenül összehasonlított korábbi tanulmányt. "
+                "A módszertani összehasonlítás részletei ezért továbbra sem ismertek."
             ),
             "challenge": " ".join(["Ez a kritika túl hosszú."] * 4),
             "synthesis": "Az eredmények fontos regionális mintázatokat jeleznek, de az absztrakt alapján a stabilitásuk nem ellenőrizhető."
