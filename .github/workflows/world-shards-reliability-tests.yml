@@ -6,6 +6,8 @@ on:
       - "critical-reliability-*"
     paths:
       - "publish_edition.py"
+      - "skip_published_edition.py"
+      - "tests/test_skip_published_edition.py"
       - "send_edition_email.py"
       - "shards_collector.py"
       - "shards_collector_m13.py"
@@ -33,6 +35,8 @@ on:
       - main
     paths:
       - "publish_edition.py"
+      - "skip_published_edition.py"
+      - "tests/test_skip_published_edition.py"
       - "send_edition_email.py"
       - "shards_collector.py"
       - "shards_collector_m13.py"
@@ -98,6 +102,9 @@ jobs:
 
       - name: SQLite fallback storage tests
         run: python -m unittest discover -s tests -p "test_resilient_storage.py" -v
+
+      - name: Published edition idempotency tests
+        run: python -m unittest discover -s tests -p "test_skip_published_edition.py" -v
 
       - name: Existing Music of the Day regression tests
         run: python -m unittest test_music_collector.py -v
