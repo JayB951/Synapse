@@ -503,7 +503,8 @@ class ResilientQuery:
             records = []
             for value in values:
                 record = dict(value)
-                record.setdefault("id", str(uuid.uuid4()))
+                if not record.get("id"):
+                    record["id"] = str(uuid.uuid4())
                 records.append(record)
             if self.client.remote is not None:
                 try:
