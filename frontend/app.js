@@ -6,7 +6,7 @@ const sections = [
   ["05","fundamentals","FUNDAMENTALS","A világ működésének alapjai"],
   ["06","world_explorer","WORLD EXPLORER","Helyek és jelenségek a bolygónkról"],
   ["07","unsolved","UNSOLVED","Nyitott kérdések és megfejtetlen rejtélyek"],
-  ["08","music_of_the_day","MUSIC OF THE DAY","A nap témájához kapcsolódó zenei felfedezés"],
+  ["08","music_of_the_day","MUSIC OF THE DAY","Önálló zenei ajánló és felfedezés"],
   ["09","closing","CLOSING","Egy könnyedebb lezárás: képregény és humor"]
 ];
 
