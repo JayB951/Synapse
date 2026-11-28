@@ -1,6 +1,7 @@
 import importlib.util
 from pathlib import Path
 import unittest
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -100,7 +101,7 @@ class ResearchFrontierSelectionTests(unittest.TestCase):
         requested_ranges = []
         client = PageClient()
         with (
-            unittest.mock.patch.object(collector, "SYNAPSE_LIMIT", 1),
+            patch.object(collector, "SYNAPSE_LIMIT", 1),
             unittest.mock.patch.object(collector, "SYNAPSE_PAGE_SIZE", 2),
             unittest.mock.patch.object(collector, "SYNAPSE_MAX_SCAN", 6),
             unittest.mock.patch.object(
