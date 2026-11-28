@@ -76,9 +76,15 @@ class SQLiteFallbackStore:
                     "SELECT payload, pending FROM records WHERE table_name=? AND record_id=?",
                     (table_name, record_id),
                 ).fetchone()
+                deleted = connection.execute(
+                    "SELECT 1 FROM tombstones WHERE table_name=? AND record_id=?",
+                    (table_name, record_id),
+                ).fetchone()
+                if deleted:
+                    continue
                 previous = json.loads(existing["payload"]) if existing else {}
-                merged = {**previous, **row}
                 pending = int(existing["pending"]) if existing else 0
+                merged = ({**row, **previous} if pending else {**previous, **row})
                 connection.execute(
                     """
                     INSERT INTO records(table_name, record_id, payload, pending)
@@ -88,10 +94,6 @@ class SQLiteFallbackStore:
                         pending=MAX(records.pending, excluded.pending)
                     """,
                     (table_name, record_id, json.dumps(merged, ensure_ascii=False, default=str), pending),
-                )
-                connection.execute(
-                    "DELETE FROM tombstones WHERE table_name=? AND record_id=?",
-                    (table_name, record_id),
                 )
 
     def save_local(self, table_name, row, pending=True):
@@ -204,6 +206,10 @@ class SQLiteFallbackStore:
                     "UPDATE records SET pending=0 WHERE table_name=? AND record_id=?",
                     (table_name, str(record_id)),
                 )
+            connection.execute(
+                "DELETE FROM tombstones WHERE table_name=? AND record_id=?",
+                (table_name, str(record_id)),
+            )
 
     def mark_delete_synced(self, table_name, record_id):
         with self._connect() as connection:
@@ -379,12 +385,10 @@ class ResilientQuery:
                         "Supabase-olvasási hiba (%s); SQLite tartalék használata.",
                         self.table_name,
                     )
-            merged = {str(row.get("id")): row for row in self.client.store.rows(self.table_name)}
-            for row in remote_rows:
-                if row.get("id") is not None:
-                    key = str(row["id"])
-                    merged[key] = {**merged.get(key, {}), **row}
-            return SimpleNamespace(data=self._prepare_rows(list(merged.values())))
+            # cache_remote merges server values with pending local overrides.
+            return SimpleNamespace(
+                data=self._prepare_rows(self.client.store.rows(self.table_name))
+            )
 
         if self.operation in {"insert", "upsert"}:
             values = self.payload if isinstance(self.payload, list) else [self.payload]
