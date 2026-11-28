@@ -28,7 +28,7 @@ def main():
         )
         return
 
-    client.sync_pending()
+    # create_resilient_client already attempted one dependency-ordered replay.
     remaining, remaining_deleted = client.store.pending_records()
     if remaining or remaining_deleted:
         LOGGER.warning(
