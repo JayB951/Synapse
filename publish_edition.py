@@ -40,10 +40,7 @@ def get_target_edition_date():
 def get_client():
     url = os.getenv("SUPABASE_URL")
     key = os.getenv("SUPABASE_SECRET_KEY")
-    if not url or not key:
-        raise RuntimeError("Hiányzó SUPABASE_URL vagy SUPABASE_SECRET_KEY.")
     return create_resilient_client(url, key)
-
 
 def write_github_output(**values):
     output_path = os.getenv("GITHUB_OUTPUT")
