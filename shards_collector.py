@@ -111,7 +111,7 @@ def collect_research(client):
         .select(
             "id,title,abstract,doi,publication_date,"
             "publication_year,publication_type,language,"
-            "journal,url,metadata"
+            "journal,publisher,url,metadata"
         )
         .order("publication_date", desc=True)
         .limit(SYNAPSE_LIMIT)
@@ -157,6 +157,7 @@ def collect_research(client):
                     "publication_type"
                 ),
                 "journal": publication.get("journal"),
+                "publisher": publication.get("publisher"),
                 "synapse_metadata": publication.get(
                     "metadata"
                 ) or {},
