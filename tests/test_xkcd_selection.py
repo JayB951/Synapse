@@ -129,9 +129,24 @@ class XkcdNoRepeatTests(unittest.TestCase):
         })
         metadata = record["metadata"]
         self.assertEqual(metadata["alt_text"], "A precise visual description.")
-        self.assertEqual(metadata["transcript"], "Character 1: Hello. Character 2: Goodbye.")
+        self.assertEqual(metadata["transcript"], "Character 1: Hello.\nCharacter 2: Goodbye.")
         self.assertEqual(metadata["source_license"], "CC BY-NC 2.5")
         self.assertEqual(metadata["source_license_url"], "https://creativecommons.org/licenses/by-nc/2.5/")
+
+    def test_xkcd_record_rejects_missing_title_or_alt_text(self):
+        for invalid in (
+            {**comic(3331), "title": ""},
+            {**comic(3332), "alt": ""},
+        ):
+            with self.assertRaises(RuntimeError):
+                shards_collector_m14.build_xkcd_record(invalid)
+
+    def test_xkcd_record_rejects_untrusted_image_host(self):
+        with self.assertRaises(RuntimeError):
+            shards_collector_m14.build_xkcd_record({
+                **comic(3333),
+                "img": "https://example.com/comic.png",
+            })
 
     def test_builder_prefers_highest_unused_comic_number(self):
         candidates = [
