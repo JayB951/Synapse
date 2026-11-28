@@ -46,6 +46,8 @@ on:
       - "music_collector.py"
       - "edition_builder.py"
       - "edition_processor.py"
+      - "frontend/app.js"
+      - "tests/test_research_frontier.py"
       - "agora_automation.py"
       - "test_music_collector.py"
       - "test_agora_automation.py"
@@ -107,6 +109,9 @@ jobs:
 
       - name: Published edition idempotency tests
         run: python -m unittest discover -s tests -p "test_skip_published_edition.py" -v
+
+      - name: Frontend JavaScript syntax check
+        run: node --check frontend/app.js
 
       - name: Research Frontier editorial metadata tests
         run: python -m unittest discover -s tests -p "test_research_frontier.py" -v
