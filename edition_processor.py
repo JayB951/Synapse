@@ -117,7 +117,7 @@ def wait_with_deadline(seconds, deadline):
 # GEMINI API
 # ============================================================
 
-def call_gemini(prompt):
+def call_gemini(prompt, response_schema=None):
 
     if not GEMINI_API_KEY:
         raise RuntimeError("Hiányzó GEMINI_API_KEY.")
@@ -141,29 +141,15 @@ def call_gemini(prompt):
         "generationConfig": {
             "maxOutputTokens": MAX_OUTPUT_TOKENS,
             "responseMimeType": "application/json",
-            "responseSchema": {
+            "responseSchema": response_schema or {
                 "type": "OBJECT",
                 "properties": {
-                    "title": {
-                        "type": "STRING"
-                    },
-                    "summary": {
-                        "type": "STRING"
-                    },
-                    "body": {
-                        "type": "STRING"
-                    }
+                    "title": {"type": "STRING"},
+                    "summary": {"type": "STRING"},
+                    "body": {"type": "STRING"}
                 },
-                "required": [
-                    "title",
-                    "summary",
-                    "body"
-                ],
-                "propertyOrdering": [
-                    "title",
-                    "summary",
-                    "body"
-                ]
+                "required": ["title", "summary", "body"],
+                "propertyOrdering": ["title", "summary", "body"]
             }
         }
     }
@@ -811,6 +797,46 @@ def parse_generated_content(generated_text, section_code=None):
     return data
 
 
+def review_unsolved_content(source, generated):
+    """Second-pass AI editorial gate for the daily unresolved mystery."""
+    schema = {
+        "type": "OBJECT",
+        "properties": {
+            "specific_case": {"type": "BOOLEAN"},
+            "one_clear_open_question": {"type": "BOOLEAN"},
+            "still_unresolved": {"type": "BOOLEAN"},
+            "thought_provoking": {"type": "BOOLEAN"},
+            "question": {"type": "STRING"},
+            "reason": {"type": "STRING"}
+        },
+        "required": ["specific_case", "one_clear_open_question", "still_unresolved", "thought_provoking", "question", "reason"],
+        "propertyOrdering": ["specific_case", "one_clear_open_question", "still_unresolved", "thought_provoking", "question", "reason"]
+    }
+    prompt = f"""
+Szigorú WORLD SHARDS-szerkesztő vagy. Minősítsd az elkészült Unsolved cikket.
+A rovat célja: NAPONTA EGYETLEN KONKRÉT, MÁIG MEGOLDATLAN REJTÉLY bemutatása.
+Nem a rejtélyek általános jelenségéről, nem rejtélylistáról és nem egy korszak áttekintéséről kell írni.
+Csak akkor fogadd el, ha egy konkrét esetet vizsgál, egyetlen világos és lényegi megválaszolatlan kérdést nevez meg, az eset ma is megoldatlan, a tényeket elkülöníti a hipotézisektől, és a kérdés elgondolkodtató.
+Ha bármelyik feltétel nem teljesül, utasítsd el. Kétség esetén is utasítsd el. Ne a cím alapján dönts.
+Forráscím: {source.get("title", "")}
+Forrásszöveg: {build_source_text(source)}
+Generált cím: {generated.get("title", "")}
+Összefoglaló: {generated.get("summary", "")}
+Cikk: {generated.get("body", "")}
+A question mezőben add meg a pontos megválaszolatlan kérdést; elutasításkor indokold meg röviden.
+"""
+    raw = call_gemini(prompt, response_schema=schema)
+    try:
+        verdict = json.loads(raw)
+    except (TypeError, json.JSONDecodeError) as error:
+        raise RuntimeError(f"Az Unsolved AI-bírálat nem értelmezhető: {error}")
+    checks = ("specific_case", "one_clear_open_question", "still_unresolved", "thought_provoking")
+    if not all(verdict.get(key) is True for key in checks) or not verdict.get("question", "").strip():
+        raise RuntimeError("Az Unsolved AI-szerkesztő elutasította a cikket: " + str(verdict.get("reason", "Nem konkrét, elgondolkodtató megoldatlan rejtély.")))
+    logger.info("Unsolved AI-szerkesztő elfogadta: %s", verdict["question"])
+    return verdict
+
+
 # ============================================================
 # GENERATION WITH JSON RETRIES
 # ============================================================
@@ -1125,6 +1151,9 @@ def process_item(
             item["section_code"],
             source
         )
+
+    if item["section_code"] == "unsolved":
+        review_unsolved_content(source, generated_content)
 
     save_processed_content(
         supabase,
