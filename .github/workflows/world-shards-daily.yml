@@ -72,6 +72,13 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install --no-cache-dir -r requirements.txt
 
+      - name: Korabbi SQLite tartalmak visszaszinkronizalasa
+        if: steps.restore.outputs.sqlite_found == 'true'
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+        run: python sync_fallback_store.py
+
       - name: Alap tartalmak gyujtese
         if: steps.restore.outputs.archive_found != 'true'
         env:
