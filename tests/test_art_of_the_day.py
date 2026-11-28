@@ -123,6 +123,57 @@ def test_collect_art_queries_public_domain_image_records_and_saves_unique_items(
     assert calls[0][2]["AIC-User-Agent"]
 
 
+def test_collect_art_persists_only_the_best_limited_candidate_pool(monkeypatch):
+    calls = []
+    saved = []
+    monkeypatch.setattr(collector, "ART_CANDIDATE_LIMIT", 2)
+
+    sparse = artwork(
+        id=124,
+        title="Sparse record",
+        artist_title=None,
+        artist_display=None,
+        date_display=None,
+        medium_display=None,
+        description=None,
+        short_description=None,
+        place_of_origin=None,
+        style_title=None,
+        classification_title=None,
+        dimensions=None,
+    )
+
+    class Response:
+        def __init__(self, data):
+            self.data = data
+
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return {"data": self.data}
+
+    def fake_get(url, params, headers, timeout):
+        calls.append(params)
+        if len(calls) == 1:
+            return Response([artwork(), sparse])
+        return Response([artwork(), artwork(id=125, title="Another Garden")])
+
+    monkeypatch.setattr(collector.requests, "get", fake_get)
+    monkeypatch.setattr(collector.time, "sleep", lambda seconds: None)
+    monkeypatch.setattr(
+        collector, "save_content",
+        lambda client, item: saved.append(item) or "inserted"
+    )
+
+    result = collector.collect_art(object())
+
+    assert len(calls) == 2
+    assert len(saved) == 2
+    assert all(item["relevance_score"] > collector.score_artwork(sparse) for item in saved)
+    assert result == {"inserted": 2, "skipped": 2}
+
+
 def test_art_candidate_selection_balances_quality_with_recent_artist_and_style():
     candidates = [
         {
