@@ -3,6 +3,7 @@ name: WORLD SHARDS - Reliability Regression Tests
 on:
   push:
     branches:
+      - main
       - "critical-reliability-*"
     paths:
       - "publish_edition.py"
