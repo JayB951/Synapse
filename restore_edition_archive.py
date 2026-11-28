@@ -59,6 +59,7 @@ def restore_today_archive():
         f"{API_ROOT}/repos/{repository}/actions/workflows/"
         f"world-shards-daily.yml/runs?{query}"
     )
+    sqlite_restored = False
     try:
         runs = json.loads(api_get(runs_url, token))
         for run in runs.get("workflow_runs", []):
@@ -78,6 +79,25 @@ def restore_today_archive():
                 try:
                     archive_bytes = api_get(artifact["archive_download_url"], token)
                     with ZipFile(io.BytesIO(archive_bytes)) as bundle:
+                        sqlite_member = next(
+                            (
+                                name for name in bundle.namelist()
+                                if Path(name).name == ".world_shards_fallback.sqlite3"
+                            ),
+                            None,
+                        )
+                        if sqlite_member and not sqlite_restored:
+                            sqlite_bytes = bundle.read(sqlite_member)
+                            if sqlite_bytes.startswith(b"SQLite format 3\\x00"):
+                                sqlite_path = Path(os.getenv(
+                                    "WORLD_SHARDS_SQLITE_PATH",
+                                    ".world_shards_fallback.sqlite3",
+                                ))
+                                sqlite_path.parent.mkdir(parents=True, exist_ok=True)
+                                sqlite_path.write_bytes(sqlite_bytes)
+                                sqlite_restored = True
+                                LOGGER.info("A korábbi SQLite tartalék-adattár visszaállítva.")
+
                         archive_member = next(
                             (
                                 name for name in bundle.namelist()
@@ -130,7 +150,11 @@ def restore_today_archive():
                             "Mai archívum visszaállítva a(z) %s futásból; kézbesítve=%s.",
                             run["id"], receipt_found,
                         )
-                        write_outputs(archive_found=True, delivery_sent=receipt_found)
+                        write_outputs(
+                            archive_found=True,
+                            delivery_sent=receipt_found,
+                            sqlite_found=sqlite_restored,
+                        )
                         return True
                 except Exception:
                     LOGGER.exception(
@@ -141,7 +165,11 @@ def restore_today_archive():
     except Exception:
         LOGGER.exception("A korábbi WORLD SHARDS archívumok keresése sikertelen.")
 
-    write_outputs(archive_found=False, delivery_sent=False)
+    write_outputs(
+        archive_found=False,
+        delivery_sent=False,
+        sqlite_found=sqlite_restored,
+    )
     return False
 
 
