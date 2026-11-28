@@ -532,7 +532,7 @@ class ResilientQuery:
             if self.client.remote is not None:
                 try:
                     response = self._remote_query().execute()
-                    rows = response.data or []
+                    rows = response.data or self._fetch_remote_matching_rows() or []
                     self.client.store.cache_remote(self.table_name, rows)
                     for row in rows:
                         self.client.store.mark_synced(self.table_name, row["id"], row)
@@ -571,7 +571,9 @@ class ResilientQuery:
             if self.client.remote is not None:
                 try:
                     response = self._remote_query().execute()
-                    rows = response.data or []
+                    rows = response.data or self._prepare_rows(
+                        self.client.store.rows(self.table_name), project=False
+                    )
                     ids = [row["id"] for row in rows if row.get("id") is not None]
                     self.client.store.mark_deleted(self.table_name, ids)
                     for record_id in ids:
