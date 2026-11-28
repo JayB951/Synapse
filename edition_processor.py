@@ -1027,7 +1027,7 @@ def validate_xkcd_translation(source, generated):
     """Require a faithful Hungarian alt-text translation and, when available, transcript."""
     metadata = source.get("metadata") or {}
     alt_text = clean_source_text(metadata.get("alt_text") or metadata.get("alt") or "")
-    transcript = clean_source_text(metadata.get("transcript") or "")
+    transcript = clean_multiline_source_text(metadata.get("transcript") or "")
     body = clean_display_text(generated.get("body", ""))
     match = re.match(r"^KÉP LEÍRÁSA:\s*(.+?)(?=\n\s*\nÁTIRAT:|$)", body, re.IGNORECASE | re.DOTALL)
     if not alt_text or not match or not match.group(1).strip():
