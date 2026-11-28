@@ -583,6 +583,55 @@ def build_source_text(source):
                     f"{key}: {cleaned}"
                 )
 
+    if source.get("section_code") == "research_frontier":
+        publication_fields = [
+            ("DOI", metadata.get("doi")),
+            ("Megjelenés éve", metadata.get("publication_year")),
+            ("Publikáció típusa", metadata.get("publication_type")),
+            ("Folyóirat", metadata.get("journal")),
+            ("Kiadó", metadata.get("publisher")),
+        ]
+        for label, value in publication_fields:
+            cleaned = clean_source_text(value)
+            if cleaned:
+                parts.append(f"{label}: {cleaned}")
+
+        synapse_metadata = metadata.get("synapse_metadata") or {}
+        if isinstance(synapse_metadata, dict):
+            author_records = synapse_metadata.get("author_source_ids") or []
+            author_names = []
+            if isinstance(author_records, list):
+                ordered_authors = sorted(
+                    (
+                        author for author in author_records
+                        if isinstance(author, dict) and author.get("name")
+                    ),
+                    key=lambda author: int(author.get("position") or 999999),
+                )
+                author_names = [
+                    clean_source_text(author.get("name"))
+                    for author in ordered_authors
+                ]
+            if author_names:
+                parts.append("Szerzők: " + "; ".join(author_names))
+
+            for key, label in (
+                ("topics", "Tudományterületi témák"),
+                ("subjects", "Tárgyszavak"),
+                ("topic_terms", "Témaköri kifejezések"),
+            ):
+                values = synapse_metadata.get(key) or []
+                if isinstance(values, list):
+                    names = []
+                    for value in values:
+                        if isinstance(value, dict):
+                            value = value.get("display_name") or value.get("name") or value.get("term")
+                        cleaned = clean_source_text(value)
+                        if cleaned and cleaned not in names:
+                            names.append(cleaned)
+                    if names:
+                        parts.append(f"{label}: " + "; ".join(names[:20]))
+
     source_text = "\n\n".join(parts)
 
     if len(source_text) > MAX_SOURCE_LENGTH:
@@ -670,6 +719,35 @@ Kizárólag ezt a JSON-struktúrát add vissza:
   "title": "A képregény magyar címe",
   "summary": "Rövid magyar kedvcsináló",
   "body": {body_format}
+}}
+Ne használj Markdown kódblokkot.
+"""
+
+    if section_code == "research_frontier":
+        return f"""
+A WORLD SHARDS magyar tudományos szerkesztője vagy. A feladatod a megadott tudományos publikáció
+igényes, közérthető, de szakmailag pontos magyar bemutatása.
+
+A FORRÁSANYAGBAN szereplő bibliográfiai adatok és absztrakt:
+{source_text}
+
+KÖTELEZŐ SZERKESZTÉSI SZABÁLYOK:
+1. A cikk kizárólag a megadott publikációról szóljon. Ne helyettesítsd általános témájú ismeretterjesztő esszével.
+2. Mutasd be a kutatási kérdést vagy célt, a módszert, a legfontosabb eredményeket és azok jelentőségét, de csak akkor, ha ezek a forrásanyagból ténylegesen megismerhetők.
+3. Ha az absztrakt nem közöl részletes módszert, mintanagyságot, mérési körülményt, eredményt vagy korlátot, ne találd ki. Röviden jelezd, hogy az elérhető összefoglaló erre nem tér ki.
+4. Ne állítsd, hogy a teljes tanulmányt elolvastad. A rendelkezésre álló absztraktból nem ismert részleteket ne pótold általános tudásból.
+5. Különítsd el a kutatók eredményeit, azok értelmezését és a lehetséges következményeket. Korrelációt ne nevezz oksági kapcsolatnak.
+6. Ne találj ki szerzőt, intézményt, folyóiratot, idézetet, statisztikai adatot, hivatkozást vagy tudományos konszenzust.
+7. A szerzők, a folyóirat, az év, a publikáció típusa és a DOI csak a megadott metaadatok alapján jelenhet meg.
+8. A szöveg legyen informatív és részletes, de ne legyen fölöslegesen terjengős. A bizonytalanságot világosan jelezd.
+9. A cím természetes magyar cím legyen; a summary rövid, figyelemfelkeltő, de pontos összefoglaló.
+10. A törzsszöveg logikus, jól tagolt, legalább négy tartalmi bekezdésből álljon, amennyiben a forrásanyag ezt lehetővé teszi.
+
+Kizárólag ezt a JSON-struktúrát add vissza:
+{{
+  "title": "A publikáció magyar címe",
+  "summary": "Rövid magyar összefoglaló",
+  "body": "A kutatás magyar nyelvű, forráshű bemutatása"
 }}
 Ne használj Markdown kódblokkot.
 """
