@@ -44,38 +44,39 @@ def research_source():
 
 class ResearchFrontierTests(unittest.TestCase):
     def test_source_text_includes_bibliography_and_topics(self):
-    source_text = processor.build_source_text(research_source())
+        source_text = processor.build_source_text(research_source())
 
-    assert "DOI: 10.1234/example.2026" in source_text
-    assert "Megjelenés éve: 2026" in source_text
-    assert "Publikáció típusa: article" in source_text
-    assert "Folyóirat: Journal of Climate Research" in source_text
-    assert "Kiadó: Example Academic Press" in source_text
-    assert "Szerzők: A. Scientist; B. Researcher" in source_text
-    assert "Tudományterületi témák: Oceanography; Climate science" in source_text
-    assert "Tárgyszavak: Ocean heat content" in source_text
-    assert "Témaköri kifejezések: ocean warming" in source_text
-
+        self.assertIn("DOI: 10.1234/example.2026", source_text)
+        self.assertIn("Megjelenés éve: 2026", source_text)
+        self.assertIn("Publikáció típusa: article", source_text)
+        self.assertIn("Folyóirat: Journal of Climate Research", source_text)
+        self.assertIn("Kiadó: Example Academic Press", source_text)
+        self.assertIn("Szerzők: A. Scientist; B. Researcher", source_text)
+        self.assertIn("Tudományterületi témák: Oceanography; Climate science", source_text)
+        self.assertIn("Tárgyszavak: Ocean heat content", source_text)
+        self.assertIn("Témaköri kifejezések: ocean warming", source_text)
 
     def test_prompt_requires_source_bounded_scientific_reporting(self):
-    prompt = processor.build_prompt("research_frontier", research_source())
+        prompt = processor.build_prompt("research_frontier", research_source())
 
-    assert "ne találd ki" in prompt.lower()
-    assert "teljes tanulmányt elolvastad" in prompt.lower()
-    assert "korrelációt ne nevezz oksági kapcsolatnak" in prompt.lower()
-    assert "Szerzők: A. Scientist; B. Researcher" in prompt
-    assert "Journal of Climate Research" in prompt
-
+        self.assertIn("ne találd ki", prompt.lower())
+        self.assertIn("teljes tanulmányt elolvastad", prompt.lower())
+        self.assertIn("korrelációt ne nevezz oksági kapcsolatnak", prompt.lower())
+        self.assertIn("Szerzők: A. Scientist; B. Researcher", prompt)
+        self.assertIn("Journal of Climate Research", prompt)
 
     def test_non_research_prompt_does_not_use_research_frontier_template(self):
-    prompt = processor.build_prompt(
-        "the_thinker",
-        {
-            "section_code": "the_thinker",
-            "title": "A philosophical question",
-            "summary": "A short source summary with enough detail.",
-            "source_name": "Example",
-        },
-    )
+        prompt = processor.build_prompt(
+            "the_thinker",
+            {
+                "section_code": "the_thinker",
+                "title": "A philosophical question",
+                "summary": "A short source summary with enough detail.",
+                "source_name": "Example",
+            },
+        )
 
-    assert "A WORLD SHARDS magyar tudományos szerkesztője vagy" not in prompt
+        self.assertNotIn(
+            "A WORLD SHARDS magyar tudományos szerkesztője vagy",
+            prompt,
+        )
