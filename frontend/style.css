@@ -7,7 +7,7 @@
 @media(max-width:760px){.article-cards{grid-template-columns:1fr}.article-card{min-height:0;padding:20px}.article-card h3{font-size:18px}.article-reader{padding:24px}.reader-body{font-size:15px}}
 
 /* F2 – eredeti források */
-.reader-source{display:flex;flex-direction:column;align-items:flex-start;gap:8px;margin-top:30px;padding:18px 20px;border:1px solid var(--line);background:rgba(255,255,255,.025)}.source-label{font:9px 'DM Mono',monospace;letter-spacing:1.5px;color:var(--gold)}.source-name{font:600 13px Manrope,sans-serif;color:#dce4ed}.source-date{font:11px 'DM Sans',sans-serif;color:var(--muted)}.source-link{margin-top:4px;color:var(--gold);font:11px 'DM Mono',monospace;text-decoration:none;border-bottom:1px solid rgba(197,166,107,.4);padding-bottom:4px}.source-link:hover{color:#f0d39b;border-color:currentColor}
+.reader-source{display:flex;flex-direction:column;align-items:flex-start;gap:8px;margin-top:30px;padding:18px 20px;border:1px solid var(--line);background:rgba(255,255,255,.025)}.source-label{font:9px 'DM Mono',monospace;letter-spacing:1.5px;color:var(--gold)}.source-name{font:600 13px Manrope,sans-serif;color:#dce4ed}.source-date{font:11px 'DM Sans',sans-serif;color:var(--muted)}.source-citation{font:11px 'DM Sans',sans-serif;line-height:1.55;color:#b9c3cf}.source-link{margin-top:4px;color:var(--gold);font:11px 'DM Mono',monospace;text-decoration:none;border-bottom:1px solid rgba(197,166,107,.4);padding-bottom:4px}.source-link:hover{color:#f0d39b;border-color:currentColor}
 
 
 /* F3 – cikkenkénti relevancia-visszajelzés */
