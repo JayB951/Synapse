@@ -8,6 +8,8 @@ on:
       - "publish_edition.py"
       - "send_edition_email.py"
       - "restore_edition_archive.py"
+      - "resilient_storage.py"
+      - "tests/test_resilient_storage.py"
       - "tests/test_restore_edition_archive.py"
       - "test_send_edition_email.py"
       - "tests/test_publish_edition.py"
@@ -57,3 +59,6 @@ jobs:
 
       - name: Artifact restore and outbox tests
         run: python -m unittest discover -s tests -p "test_restore_edition_archive.py" -v
+
+      - name: SQLite fallback storage tests
+        run: python -m unittest discover -s tests -p "test_resilient_storage.py" -v
