@@ -53,17 +53,17 @@ jobs:
       - name: Repository letoltese
         uses: actions/checkout@v4
 
+      - name: Python beallitasa
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
       - name: Korabbi napi archívum es kezbesitesi allapot visszaallitasa
         id: restore
         env:
           GH_TOKEN: ${{ github.token }}
           WORLD_SHARDS_ARCHIVE_DIR: world-shards-archive
         run: python restore_edition_archive.py
-
-      - name: Python beallitasa
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
 
       - name: Fuggosegek telepitese
         run: |
