@@ -527,6 +527,12 @@ def fetch_jokes():
 def build_joke_record(joke):
     category = clean_text(joke.get("category", "Any"))
     joke_id = joke.get("id")
+    if joke_id is None:
+        return None
+    try:
+        joke_id = int(joke_id)
+    except (TypeError, ValueError):
+        return None
     joke_type = joke.get("type", "single")
 
     if joke_type == "twopart":
@@ -600,11 +606,8 @@ def collect_jokes(supabase):
             skipped += 1
             continue
 
-        if content_exists_by_title(
-            supabase,
-            "closing",
-            record["title"],
-        ):
+        # JokeAPI IDs are stable; titles are not (and can legitimately repeat).
+        if content_exists_by_url(supabase, record["source_url"]):
             skipped += 1
             continue
 

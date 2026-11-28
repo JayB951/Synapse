@@ -1,6 +1,7 @@
 
 import os
 import logging
+from collections import Counter
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
@@ -87,6 +88,51 @@ def get_candidates(supabase, section_code, limit=100, edition_date=None, content
     return items[:limit]
 
 
+def choose_joke_candidate(candidates, recent_categories=()):
+    """Choose the candidate from the least recently represented category."""
+    recent_counts = Counter(
+        str(category).strip().casefold()
+        for category in recent_categories
+        if category
+    )
+    joke_candidates = []
+    for item in candidates:
+        metadata = item.get("metadata") or {}
+        if not isinstance(metadata, dict) or metadata.get("joke_id") is None:
+            continue
+        category = str(metadata.get("category") or "Any").strip().casefold()
+        joke_candidates.append((recent_counts[category], item))
+
+    if not joke_candidates:
+        return None
+    # Candidate order already reflects relevance and collection recency;
+    # stable sorting preserves that order when category history is tied.
+    return min(joke_candidates, key=lambda pair: pair[0])[1]
+
+
+def get_recent_joke_categories(supabase, limit=30):
+    """Read recent selected JokeAPI categories; history is advisory only."""
+    try:
+        response = (
+            supabase.table("shard_content_items")
+            .select("metadata,collected_at")
+            .eq("section_code", "closing")
+            .eq("status", "selected")
+            .order("collected_at", desc=True)
+            .limit(limit)
+            .execute()
+        )
+        categories = []
+        for item in response.data or []:
+            metadata = item.get("metadata") or {}
+            if isinstance(metadata, dict) and metadata.get("joke_id") is not None:
+                categories.append(metadata.get("category") or "Any")
+        return categories
+    except Exception as error:
+        logger.warning("Joke category history unavailable; using candidate order: %s", error)
+        return []
+
+
 def select_closing_items(supabase):
     candidates = get_candidates(
         supabase,
@@ -94,8 +140,9 @@ def select_closing_items(supabase):
         limit=100,
     )
 
+    recent_joke_categories = get_recent_joke_categories(supabase)
     xkcd_candidates = []
-    joke_item = None
+    joke_candidates = []
 
     for item in candidates:
         metadata = item.get("metadata") or {}
@@ -110,8 +157,10 @@ def select_closing_items(supabase):
                 continue
             xkcd_candidates.append((comic_number, item))
 
-        if joke_item is None and metadata.get("joke_id") is not None:
-            joke_item = item
+        if metadata.get("joke_id") is not None:
+            joke_candidates.append(item)
+
+    joke_item = choose_joke_candidate(joke_candidates, recent_joke_categories)
 
     # Candidate rows can survive interrupted builds. Always prefer the newest
     # unused comic number, independent of relevance score or collection time.
