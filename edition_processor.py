@@ -608,13 +608,14 @@ def build_prompt(
         joke_type = metadata.get("joke_type", "single")
         structure = (
             "KÉTRÉSZES VICC: a FELVEZETÉST és a CSATTANÓT is teljes egészében fordítsd le, "
-            "ebben a sorrendben, külön bekezdésben. A csattanót tilos elhagyni vagy összefoglalni."
+            "ebben a sorrendben, pontosan két külön bekezdésben. A csattanót tilos elhagyni vagy összefoglalni."
             if joke_type == "twopart"
             else "EGYRÉSZES VICC: a teljes viccet fordítsd le, minden mondatával és a poénnal együtt."
         )
         return f"""
-A WORLD SHARDS magyar magazin műfordítója vagy. A feladatod a teljes vicc magyarra fordítása.
-Ne ismertesd, ne kommentáld, ne magyarázd és ne találj ki új viccet.
+A WORLD SHARDS magyar magazin humorfordítója vagy. A feladatod a teljes vicc természetes, magyarul is működő átültetése.
+Ne ismertesd, ne kommentáld, ne magyarázd és ne találj ki a forrástól független új viccet.
+Ne fordíts mechanikusan: a szóviccet, kulturális utalást vagy nyelvi csavart lehetőség szerint magyar megfelelővel ültesd át úgy, hogy a felvezetés és a csattanó közötti logikai kapcsolat megmaradjon. Ha nincs pontos megfelelő, őrizd meg a poén mechanizmusát, ne írj oda nem illő magyar poént.
 {structure}
 
 EREDETI CÍM: {original_title}
@@ -626,7 +627,9 @@ TELJES FORRÁS:
 
 KÖTELEZŐ: minden mondatot és a poénhoz szükséges részletet őrizz meg.
 A csattanó maradjon a végén. Ne írj elé vagy mögé körítést vagy magyarázatot.
-A summary rövid kedvcsináló lehet, de a body mezőben a teljes vicc legyen.
+A title rövid, önálló cím legyen, ne másolja le a teljes viccet.
+A summary rövid, spoilermentes kedvcsináló legyen, ne ismételje a címet és ne lője le a csattanót.
+A body mezőben a teljes magyar vicc szerepeljen. Egyrészes viccnél a teljes szöveg, kétrészesnél pontosan két bekezdés: felvezetés, majd csattanó.
 Kizárólag ezt a JSON-struktúrát add vissza:
 {{
   "title": "Rövid magyar cím",
@@ -825,6 +828,78 @@ A question mezőben add meg a pontos megválaszolatlan kérdést; elutasításko
         raise RuntimeError("Az Unsolved AI-szerkesztő elutasította a cikket: " + str(verdict.get("reason", "Nem konkrét, elgondolkodtató megoldatlan rejtély.")))
     logger.info("Unsolved AI-szerkesztő elfogadta: %s", verdict["question"])
     return verdict
+
+
+def review_joke_translation(source, generated):
+    """Second-pass semantic and language-quality check for translated jokes."""
+    schema = {
+        "type": "OBJECT",
+        "properties": {
+            "complete": {"type": "BOOLEAN"},
+            "meaning_preserved": {"type": "BOOLEAN"},
+            "punchline_preserved": {"type": "BOOLEAN"},
+            "natural_hungarian": {"type": "BOOLEAN"},
+            "joke_logic_preserved": {"type": "BOOLEAN"},
+            "reason": {"type": "STRING"}
+        },
+        "required": [
+            "complete", "meaning_preserved", "punchline_preserved",
+            "natural_hungarian", "joke_logic_preserved", "reason"
+        ],
+        "propertyOrdering": [
+            "complete", "meaning_preserved", "punchline_preserved",
+            "natural_hungarian", "joke_logic_preserved", "reason"
+        ]
+    }
+    metadata = source.get("metadata") or {}
+    prompt = f"""
+Szigorú, kétnyelvű humorfordítás-szerkesztő vagy. Ellenőrizd az angol eredeti és a magyar változat megfelelését.
+Vizsgáld, hogy minden lényegi részlet megmaradt-e, a felvezetés és a csattanó logikailag összetartozik-e,
+a poén értelme nem változott-e meg, és a magyar szöveg természetes-e.
+A szó szerinti fordítás önmagában nem követelmény: a nyelvi poén magyar adaptációja elfogadható,
+ha ugyanazt a humormechanizmust és csattanót őrzi. Ne utasítsd el pusztán azért, mert a megfogalmazás eltér.
+Ha a vicc nem teljes, a csattanó elveszett, a logika sérült vagy a magyar szöveg természetellenes, utasítsd el.
+Vicc típusa: {metadata.get("joke_type", "single")}
+EREDETI:
+{build_source_text(source)}
+MAGYAR VÁLTOZAT:
+Cím: {generated.get("title", "")}
+Felvezetés: {generated.get("summary", "")}
+Teljes szöveg: {generated.get("body", "")}
+A reason mezőben röviden nevezd meg a hibát, vagy írd le, miért megfelelő.
+"""
+    raw = call_gemini(prompt, response_schema=schema)
+    try:
+        return json.loads(raw)
+    except (TypeError, json.JSONDecodeError) as error:
+        raise RuntimeError(f"A JokeAPI fordításellenőrzése nem értelmezhető: {error}")
+
+
+def is_jokeapi_source(source):
+    metadata = source.get("metadata") or {}
+    return (
+        metadata.get("source_provider") == "JokeAPI"
+        or metadata.get("joke_id") is not None
+    )
+
+
+def joke_translation_passes(source, generated, verdict):
+    metadata = source.get("metadata") or {}
+    if not isinstance(verdict, dict):
+        return False
+    checks = (
+        "complete", "meaning_preserved", "punchline_preserved",
+        "natural_hungarian", "joke_logic_preserved"
+    )
+    if not all(verdict.get(key) is True for key in checks):
+        return False
+    body = generated.get("body", "").strip()
+    if not body:
+        return False
+    if metadata.get("joke_type") == "twopart":
+        paragraphs = [part.strip() for part in re.split(r"\\n\\s*\\n", body) if part.strip()]
+        return len(paragraphs) == 2
+    return True
 
 
 # ============================================================
@@ -1141,6 +1216,33 @@ def process_item(
             item["section_code"],
             source
         )
+
+    if is_jokeapi_source(source):
+        verdict = review_joke_translation(source, generated_content)
+        if not joke_translation_passes(source, generated_content, verdict):
+            logger.warning(
+                "JokeAPI fordítási minőségellenőrzése javítást kért: %s",
+                verdict.get("reason", "Nem megfelelő fordítás."),
+            )
+            repair_prompt = build_prompt(item["section_code"], source) + f"""
+
+FORDÍTÁSI MINŐSÉGJAVÍTÁS:
+Az előző magyar változatot a szerkesztő elutasította: {verdict.get("reason", "A poén vagy a magyar megfogalmazás nem megfelelő.")}
+Készíts új fordítást. Őrizd meg a teljes jelentést és a csattanó logikáját, használj természetes magyar humort,
+és tartsd be a kétrészes vicc két bekezdéses szerkezetét. A cím és az összefoglaló ne ismételje a viccet.
+"""
+            repaired_text = call_gemini(repair_prompt)
+            generated_content = parse_generated_content(
+                repaired_text,
+                section_code=item["section_code"]
+            )
+            verdict = review_joke_translation(source, generated_content)
+            if not joke_translation_passes(source, generated_content, verdict):
+                raise RuntimeError(
+                    "A JokeAPI fordítás a javítás után sem ment át a minőségi ellenőrzésen: "
+                    + str(verdict.get("reason", "Nem megfelelő magyarítás vagy elveszett csattanó."))
+                )
+        logger.info("JokeAPI magyar fordítás minőségi ellenőrzése sikeres.")
 
     if item["section_code"] == "unsolved":
         review_unsolved_content(source, generated_content)
