@@ -196,22 +196,28 @@ def test_the_thinker_collector_accepts_specific_philosophical_problems_only():
         "The Ship of Theseus",
         "The ship of Theseus is a thought experiment about identity and persistence. "
         "It is discussed in metaphysics and philosophy, asking whether an object "
-        "that has had all its parts replaced remains the same object."
+        "that has had all its parts replaced remains the same object. The example "
+        "tests whether identity depends on material continuity or on something else."
     ))
     assert not m13.is_valid_thinker_article(page(
         "Plato",
         "Plato was an ancient Greek philosopher who founded the Academy and wrote "
-        "philosophical dialogues. His life and works influenced Western philosophy."
+        "philosophical dialogues. His life and works influenced Western philosophy. "
+        "He is widely discussed in accounts of ancient Greek thought and the history "
+        "of political philosophy, metaphysics and epistemology."
     ))
     assert not m13.is_valid_thinker_article(page(
         "History of Philosophy",
         "The history of philosophy is the study of philosophical ideas across "
-        "different periods, traditions and thinkers."
+        "different periods, traditions and thinkers. It examines the development "
+        "of philosophical schools, methods, texts and debates across world history."
     ))
     assert not m13.is_valid_thinker_article(page(
         "The Theory of Everything",
         "The theory of everything is a hypothetical framework in physics that "
-        "would explain all fundamental interactions and particles."
+        "would explain all fundamental interactions and particles. It is a goal "
+        "in theoretical physics, seeking a unified description of the forces of nature "
+        "and the basic constituents of matter."
     ))
 
 
