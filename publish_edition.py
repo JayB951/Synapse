@@ -10,8 +10,7 @@ from collections import Counter
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
-from supabase import create_client
-
+from resilient_storage import create_resilient_client
 EXPECTED_COUNTS = {
     "research_frontier": 7,
     "art_of_the_day": 1,
@@ -43,7 +42,7 @@ def get_client():
     key = os.getenv("SUPABASE_SECRET_KEY")
     if not url or not key:
         raise RuntimeError("Hiányzó SUPABASE_URL vagy SUPABASE_SECRET_KEY.")
-    return create_client(url, key)
+    return create_resilient_client(url, key)
 
 
 def write_github_output(**values):
