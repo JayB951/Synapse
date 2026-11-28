@@ -62,6 +62,22 @@ UNSOLVED_TITLE_TERMS = (
     "open problem", "unresolved",
 )
 
+UNSOLVED_GENERIC_TITLES = {
+    "historical mysteries", "history s greatest mysteries",
+    "unsolved mysteries", "mysteries of history",
+    "unexplained phenomena", "mysteries", "historical enigmas",
+    "list of unsolved problems", "list of unsolved questions",
+}
+
+UNSOLVED_SPECIFICITY_PATTERNS = (
+    r"\\b(?:the )?(?:origin|cause|identity|location|fate|whereabouts) of .{3,100} (?:unknown|unexplained|unresolved)\\b",
+    r"\\b(?:who|what|where|why|how) (?:was|were|is|are|did|does) .{3,120}\\?",
+    r"\\bremains? unexplained\\b",
+    r"\\bhas not been (?:solved|explained|identified|located)\\b",
+    r"\\bremain(?:s)? unsolved\\b",
+    r"\\bno accepted explanation\\b",
+)
+
 UNSOLVED_EVIDENCE_PATTERNS = (
     r"\bremains? unexplained\b",
     r"\bhas not been (?:solved|explained|identified)\b",
@@ -190,14 +206,23 @@ def is_unsolved_candidate(page):
     if "(disambiguation)" in title.lower():
         return False
 
+    normalized_title = re.sub(r"[^a-z0-9 ]+", " ", title.casefold())
+    normalized_title = re.sub(r"\\s+", " ", normalized_title).strip()
+    if normalized_title in UNSOLVED_GENERIC_TITLES:
+        return False
+
     title_matches = any(term in title.casefold() for term in UNSOLVED_TITLE_TERMS)
-    evidence_text = extract[:2200].casefold()
+    evidence_text = extract[:3500].casefold()
     explicit_evidence = any(
         re.search(pattern, evidence_text, re.IGNORECASE)
         for pattern in UNSOLVED_EVIDENCE_PATTERNS
     )
-    # A casual mention of "unknown" is not evidence that the topic itself is unresolved.
-    return title_matches or explicit_evidence
+    specific_question = any(
+        re.search(pattern, evidence_text, re.IGNORECASE)
+        for pattern in UNSOLVED_SPECIFICITY_PATTERNS
+    )
+    # Require one identifiable case and an explicit unresolved question.
+    return (title_matches or explicit_evidence) and (explicit_evidence or specific_question)
 
 
 def build_unsolved_record(page, search_query):
