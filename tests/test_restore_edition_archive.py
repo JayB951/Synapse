@@ -28,7 +28,7 @@ class RestoreEditionArchiveTests(unittest.TestCase):
                 json.dumps(archive),
             )
             bundle.writestr(
-                ".world_shards_fallback.sqlite3",
+                "world-shards-fallback.sqlite3",
                 b"SQLite format 3\x00test-database",
             )
             if include_receipt:
@@ -66,7 +66,7 @@ class RestoreEditionArchiveTests(unittest.TestCase):
                 "GITHUB_REF_NAME": "main",
                 "GITHUB_RUN_ID": "101",
                 "WORLD_SHARDS_ARCHIVE_DIR": directory,
-                "WORLD_SHARDS_SQLITE_PATH": os.path.join(directory, ".world_shards_fallback.sqlite3"),
+                "WORLD_SHARDS_SQLITE_PATH": os.path.join(directory, "world-shards-fallback.sqlite3"),
                 "GITHUB_OUTPUT": output_path,
             }), patch.object(
                 restore_edition_archive,
@@ -80,7 +80,7 @@ class RestoreEditionArchiveTests(unittest.TestCase):
                 restored = json.load(handle)
             with open(output_path, encoding="utf-8") as handle:
                 outputs = handle.read()
-            sqlite_path = os.path.join(directory, ".world_shards_fallback.sqlite3")
+            sqlite_path = os.path.join(directory, "world-shards-fallback.sqlite3")
             self.assertTrue(os.path.isfile(sqlite_path))
             with open(sqlite_path, "rb") as handle:
                 self.assertTrue(handle.read().startswith(b"SQLite format 3\x00"))
@@ -107,7 +107,7 @@ class RestoreEditionArchiveTests(unittest.TestCase):
         sqlite_bytes = b"SQLite format 3\x00previous-day-cache"
         buffer = io.BytesIO()
         with ZipFile(buffer, "w") as bundle:
-            bundle.writestr(".world_shards_fallback.sqlite3", sqlite_bytes)
+            bundle.writestr("world-shards-fallback.sqlite3", sqlite_bytes)
 
         runs_response = json.dumps({
             "workflow_runs": [{"id": 100, "created_at": "2026-11-27T07:00:00Z"}]
@@ -128,7 +128,7 @@ class RestoreEditionArchiveTests(unittest.TestCase):
                 "GITHUB_REF_NAME": "main",
                 "GITHUB_RUN_ID": "101",
                 "WORLD_SHARDS_ARCHIVE_DIR": directory,
-                "WORLD_SHARDS_SQLITE_PATH": os.path.join(directory, ".world_shards_fallback.sqlite3"),
+                "WORLD_SHARDS_SQLITE_PATH": os.path.join(directory, "world-shards-fallback.sqlite3"),
                 "GITHUB_OUTPUT": output_path,
             }), patch.object(
                 restore_edition_archive,
@@ -142,7 +142,7 @@ class RestoreEditionArchiveTests(unittest.TestCase):
                 result = restore_edition_archive.restore_today_archive()
             with open(output_path, encoding="utf-8") as handle:
                 outputs = handle.read()
-            with open(os.path.join(directory, ".world_shards_fallback.sqlite3"), "rb") as handle:
+            with open(os.path.join(directory, "world-shards-fallback.sqlite3"), "rb") as handle:
                 restored_sqlite = handle.read()
 
         self.assertFalse(result)
