@@ -624,7 +624,7 @@ def build_prompt(
             if transcript else
             '"KÉP LEÍRÁSA:\\n[A teljes magyar alt text]"'
         )
-        return f\"\"\"
+        return f"""
 A WORLD SHARDS magyar magazin xkcd-szerkesztője vagy. A képregény eredeti képe változatlanul jelenik meg; a feladatod kizárólag a hozzá tartozó szöveg pontos, természetes magyarítása.
 Ne írj hosszú magazincikket, ne magyarázd túl a poént, és ne találj ki semmit, ami a forrásban nem szerepel.
 EREDETI CÍM: {comic_title}
