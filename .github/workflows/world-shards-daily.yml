@@ -2,8 +2,8 @@ name: WORLD SHARDS - Daily Automatic Edition
 
 on:
   schedule:
-    # Repeated hourly attempts cover schedule delays and transient failures.
-    # The local-time gate below prevents a run before 02:00 Budapest.
+    # Több óránkénti próbálkozás ad tartalékot: a napi első érdemi futás
+    # 02:00 Budapest körül indul, a későbbi próbák a reggeli 06:00-s határidő előtt segítenek helyreállni.
     - cron: "0 0,1,2,3 * * *"
   workflow_dispatch:
   # Recovery trigger: a change to this workflow automatically starts today's edition.
@@ -28,7 +28,7 @@ jobs:
     outputs:
       run: ${{ steps.gate.outputs.run }}
     steps:
-      - name: Run only at 02:00 Budapest local time
+      - name: Run from 02:00 Budapest local time; retry delayed attempts
         id: gate
         run: |
           python - <<'PY' >> "$GITHUB_OUTPUT"
@@ -37,8 +37,8 @@ jobs:
           now = datetime.now(ZoneInfo("Europe/Budapest"))
           # GitHub scheduled runs can be delayed by several hours. Do not require an exact hour:
           # the edition builder is idempotent and skips an already-published date.
-          # Both UTC triggers cover the Budapest 02:00 window across DST and provide
-          # an automatic retry if the first scheduled attempt is delayed or fails.
+          # The UTC schedule spans both DST offsets and retries hourly.
+          # Repeated runs are safe because edition_builder is idempotent.
           print(f"run={'true' if now.hour >= 2 else 'false'}")
           PY
 
