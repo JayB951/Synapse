@@ -88,6 +88,55 @@ def get_candidates(supabase, section_code, limit=100, edition_date=None, content
     return items[:limit]
 
 
+def get_recent_art_history(supabase, limit=30):
+    """Read recent selected artists and styles to keep the daily art varied."""
+    try:
+        response = (
+            supabase.table("shard_content_items")
+            .select("metadata,collected_at")
+            .eq("section_code", "art_of_the_day")
+            .eq("status", "selected")
+            .order("collected_at", desc=True)
+            .limit(limit)
+            .execute()
+        )
+        styles = []
+        artists = []
+        for item in response.data or []:
+            metadata = item.get("metadata") or {}
+            if not isinstance(metadata, dict):
+                continue
+            if metadata.get("style_title") or metadata.get("classification_title"):
+                styles.append(metadata.get("style_title") or metadata.get("classification_title"))
+            if metadata.get("artist"):
+                artists.append(metadata["artist"])
+        return styles, artists
+    except Exception as error:
+        logger.warning("Art of the Day history unavailable; using candidate ranking: %s", error)
+        return [], []
+
+
+def choose_art_candidate(candidates, recent_styles=(), recent_artists=()):
+    """Balance museum metadata quality with variety in recent artists and styles."""
+    style_counts = Counter(
+        str(value).strip().casefold() for value in recent_styles if value
+    )
+    artist_counts = Counter(
+        str(value).strip().casefold() for value in recent_artists if value
+    )
+    ranked = []
+    for index, item in enumerate(candidates):
+        metadata = item.get("metadata") or {}
+        if not isinstance(metadata, dict):
+            metadata = {}
+        style = str(metadata.get("style_title") or metadata.get("classification_title") or "").strip().casefold()
+        artist = str(metadata.get("artist") or "").strip().casefold()
+        quality = float(item.get("relevance_score") or metadata.get("quality_score") or 0)
+        adjusted = quality - (12 * style_counts[style]) - (18 * artist_counts[artist])
+        ranked.append((adjusted, quality, -index, item))
+    return max(ranked, key=lambda row: row[:3])[3] if ranked else None
+
+
 def choose_joke_candidate(candidates, recent_categories=()):
     """Choose the candidate from the least recently represented category."""
     recent_counts = Counter(
@@ -221,7 +270,16 @@ def select_edition_items(supabase, edition_date):
             ),
         )
 
-        chosen = candidates[:limit]
+        if section_code == "art_of_the_day":
+            recent_styles, recent_artists = get_recent_art_history(supabase)
+            art_choice = choose_art_candidate(
+                candidates,
+                recent_styles=recent_styles,
+                recent_artists=recent_artists,
+            )
+            chosen = [art_choice] if art_choice else []
+        else:
+            chosen = candidates[:limit]
         selected_items.extend(chosen)
 
         logger.info(
