@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0.0",
-  "description": "Curated starter catalogue. Relevance is matched from documented themes and works; it is not an endorsement of a figure's views.",
+  "description": "Curated catalogue of historical thinkers and practitioners. Hungarian profiles receive priority for Hungarian AGORA stories when directly relevant; this is not an exclusive nationality filter.",
   "figures": [
     {
       "id": "aristotle",
@@ -903,7 +903,8 @@
         }
       ],
       "limits": "A gyermekágyi láz megelőzésére kidolgozott történeti felismeréseit nem szabad a modern sürgősségi orvoslás teljes protokolljaként kezelni.",
-      "role": "magyar orvos, a gyermekágyi láz megelőzésének úttörője"
+      "role": "magyar orvos, a gyermekágyi láz megelőzésének úttörője",
+      "nationality": "magyar"
     },
     {
       "id": "john_snow",
