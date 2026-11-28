@@ -18,6 +18,7 @@ def make_package(scope, event_id, keyword):
             "name": f"Historical Figure {scope} {i}",
             "figure_name": f"Historical Figure {scope} {i}",
             "figure_role": "történész és közéleti gondolkodó",
+            "provocative_question": f"Ha a döntéshozók figyelmen kívül hagyják {keyword} következményeit, milyen jogon kérnek bizalmat a közösségtől?",
             "sections": [
                 {"id": dimension, "label": dimension.title(),
                  "draft_text": f"Reviewed {dimension} text for {keyword}.",
