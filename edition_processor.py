@@ -1731,7 +1731,7 @@ def process_edition(
         if completed == total:
 
             logger.info(
-                "Mind a 16 tartalom elkészült."
+                "Mind a 17 tartalom elkészült."
             )
 
             logger.info(
@@ -1836,7 +1836,7 @@ def process_edition(
         ):
 
             logger.info(
-                "Mind a 16 tartalom elkészült."
+                "Mind a 17 tartalom elkészült."
             )
 
             logger.info(
@@ -1945,7 +1945,7 @@ def main():
         )
 
         logger.info(
-            "Mind a 16 tartalom sikeresen feldolgozva."
+            "Mind a 17 tartalom sikeresen feldolgozva."
         )
 
         logger.info(
