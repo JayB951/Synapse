@@ -330,7 +330,10 @@ def main():
 
     client = get_supabase_client()
 
-    print("Supabase-kapcsolat: SIKERES")
+    if client.remote is not None:
+        print("Adattár: Supabase (elsődleges) + SQLite tartalék")
+    else:
+        print("Adattár: SQLite-only tartalék üzemmód")
 
     results = {}
     errors = []
