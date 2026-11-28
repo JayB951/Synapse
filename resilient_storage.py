@@ -326,6 +326,7 @@ class ResilientQuery:
         self.filters = []
         self.orders = []
         self.row_limit = None
+        self.row_range = None
 
     def select(self, fields="*"):
         self.operation = "select"
@@ -391,6 +392,14 @@ class ResilientQuery:
         self.row_limit = int(value)
         return self
 
+    def range(self, start, end):
+        start = int(start)
+        end = int(end)
+        if start < 0 or end < start:
+            raise ValueError("A Supabase range érvénytelen.")
+        self.row_range = (start, end)
+        return self
+
     def _matches(self, row):
         for operation, field, expected in self.filters:
             actual = row.get(field)
@@ -427,6 +436,9 @@ class ResilientQuery:
             )
         if self.row_limit is not None:
             selected = selected[:self.row_limit]
+        if self.row_range is not None:
+            start, end = self.row_range
+            selected = selected[start:end + 1]
         if project and self.fields.strip() != "*":
             fields = [part.strip().split(":")[-1] for part in self.fields.split(",")]
             selected = [
@@ -454,6 +466,8 @@ class ResilientQuery:
             query = query.order(field, desc=descending)
         if self.row_limit is not None:
             query = query.limit(self.row_limit)
+        if self.row_range is not None:
+            query = query.range(*self.row_range)
         return query
 
     def _fetch_remote_matching_rows(self):
