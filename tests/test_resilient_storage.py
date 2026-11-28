@@ -90,7 +90,9 @@ class FakeRemoteQuery:
                 else:
                     rows.append(record)
                     saved.append(dict(record))
-            return type("Response", (), {"data": saved})()
+            return type("Response", (), {
+                "data": [] if self.remote.return_minimal else saved
+            })()
 
         if self.operation == "update":
             changed = []
@@ -98,14 +100,18 @@ class FakeRemoteQuery:
                 if self._matches(row):
                     row.update(self.payload)
                     changed.append(dict(row))
-            return type("Response", (), {"data": changed})()
+            return type("Response", (), {
+                "data": [] if self.remote.return_minimal else changed
+            })()
 
         if self.operation == "delete":
             removed = [row for row in rows if self._matches(row)]
             self.remote.tables[self.table_name] = [
                 row for row in rows if not self._matches(row)
             ]
-            return type("Response", (), {"data": removed})()
+            return type("Response", (), {
+                "data": [] if self.remote.return_minimal else removed
+            })()
 
 
 class FakeRemote:
@@ -114,6 +120,7 @@ class FakeRemote:
         self.calls = []
         self.fail_reads = False
         self.fail_writes = False
+        self.return_minimal = False
 
     def table(self, table_name):
         return FakeRemoteQuery(self, table_name)
@@ -188,6 +195,37 @@ class ResilientStorageTests(unittest.TestCase):
             .eq("status", "candidate")
             .execute()
         )
+        self.assertEqual(result.data, [])
+
+    def test_minimal_return_update_reloads_updated_remote_row(self):
+        self.remote.tables["shard_content_items"] = [{
+            "id": "minimal-update",
+            "title": "Original",
+            "status": "candidate",
+        }]
+        self.remote.return_minimal = True
+
+        result = (
+            self.client.table("shard_content_items")
+            .update({"status": "selected"})
+            .eq("id", "minimal-update")
+            .execute()
+        )
+        self.assertEqual(len(result.data), 1)
+        self.assertEqual(result.data[0]["status"], "selected")
+
+    def test_minimal_return_delete_removes_cached_row(self):
+        self.remote.tables["shard_content_items"] = [{
+            "id": "minimal-delete",
+            "title": "Temporary",
+        }]
+        self.client.table("shard_content_items").select("*").execute()
+        self.remote.return_minimal = True
+
+        self.client.table("shard_content_items").delete().eq(
+            "id", "minimal-delete"
+        ).execute()
+        result = self.client.table("shard_content_items").select("*").execute()
         self.assertEqual(result.data, [])
 
     def test_local_reads_continue_when_remote_is_unavailable(self):
