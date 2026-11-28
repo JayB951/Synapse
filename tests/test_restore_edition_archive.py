@@ -63,6 +63,7 @@ class RestoreEditionArchiveTests(unittest.TestCase):
                 "GITHUB_REF_NAME": "main",
                 "GITHUB_RUN_ID": "101",
                 "WORLD_SHARDS_ARCHIVE_DIR": directory,
+                "WORLD_SHARDS_SQLITE_PATH": os.path.join(directory, ".world_shards_fallback.sqlite3"),
                 "GITHUB_OUTPUT": output_path,
             }), patch.object(
                 restore_edition_archive,
