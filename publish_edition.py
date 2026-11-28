@@ -10,8 +10,7 @@ from collections import Counter
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
-from supabase import create_client
-
+from resilient_storage import create_resilient_client
 EXPECTED_COUNTS = {
     "research_frontier": 7,
     "art_of_the_day": 1,
@@ -41,10 +40,7 @@ def get_target_edition_date():
 def get_client():
     url = os.getenv("SUPABASE_URL")
     key = os.getenv("SUPABASE_SECRET_KEY")
-    if not url or not key:
-        raise RuntimeError("Hiányzó SUPABASE_URL vagy SUPABASE_SECRET_KEY.")
-    return create_client(url, key)
-
+    return create_resilient_client(url, key)
 
 def write_github_output(**values):
     output_path = os.getenv("GITHUB_OUTPUT")
@@ -180,7 +176,7 @@ def main():
     # A teljes, ellenőrzött kiadás előbb helyi archívumba kerül.
     # Így a DB-státuszváltás hibája nem semmisíti meg a kész magazint.
     archive_path = save_local_archive(edition, items, supabase)
-    write_github_output(archive_ready=True, archive_path=archive_path, published=False)
+    write_github_output(archive_ready=True, archive_path=archive_path)
 
     try:
         update_response = (
@@ -209,6 +205,19 @@ def main():
             exc,
         )
         write_github_output(archive_ready=True, archive_path=archive_path, published=False)
+        return
+
+    if getattr(supabase, "local_fallback_used", False):
+        logger.warning(
+            "A kiadás teljes egészében elkészült és helyben megőrződött, "
+            "de a Supabase szinkron még függőben van; a frontend publikáció később áll helyre."
+        )
+        write_github_output(
+            archive_ready=True,
+            archive_path=archive_path,
+            published=False,
+            db_degraded=True,
+        )
         return
 
     logger.info(

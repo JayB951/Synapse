@@ -25,9 +25,7 @@ from datetime import date
 from urllib.parse import quote
 
 import requests
-from supabase import create_client
-
-
+from resilient_storage import create_resilient_client
 VERSION = "0.1.0"
 WIKIPEDIA_API = "https://en.wikipedia.org/w/api.php"
 REQUEST_TIMEOUT = 30
@@ -107,14 +105,7 @@ def setup_logging():
 def get_supabase_client():
     url = os.environ.get("SUPABASE_URL")
     key = os.environ.get("SUPABASE_SECRET_KEY")
-
-    if not url or not key:
-        raise RuntimeError(
-            "Missing SUPABASE_URL or SUPABASE_SECRET_KEY environment variable."
-        )
-
-    return create_client(url, key)
-
+    return create_resilient_client(url, key)
 
 def clean_text(value):
     if not value:

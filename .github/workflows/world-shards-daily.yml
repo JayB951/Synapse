@@ -16,6 +16,17 @@ on:
       - "test_music_collector.py"
       - "shards_collector_m14.py"
       - "edition_builder.py"
+      - "edition_processor.py"
+      - "publish_edition.py"
+      - "send_edition_email.py"
+      - "resilient_storage.py"
+      - "restore_edition_archive.py"
+      - "sync_fallback_store.py"
+      - "encrypt_fallback_artifacts.py"
+      - "artifact_crypto.py"
+      - "shards_collector.py"
+      - "shards_collector_m13.py"
+      - "agora_automation.py"
 
 permissions:
   contents: read
@@ -55,6 +66,14 @@ jobs:
       - name: Repository letoltese
         uses: actions/checkout@v4
 
+      - name: GPG eszkoz ellenorzese
+        run: |
+          if ! command -v gpg >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y gnupg
+          fi
+          gpg --version
+
       - name: Python beallitasa
         uses: actions/setup-python@v5
         with:
@@ -64,6 +83,8 @@ jobs:
         id: restore
         env:
           GH_TOKEN: ${{ github.token }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          WORLD_SHARDS_FALLBACK_ENCRYPTION_KEY: ${{ secrets.WORLD_SHARDS_FALLBACK_ENCRYPTION_KEY }}
           WORLD_SHARDS_ARCHIVE_DIR: world-shards-archive
         run: python restore_edition_archive.py
 
@@ -71,6 +92,13 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install --no-cache-dir -r requirements.txt
+
+      - name: Korabbi SQLite tartalmak visszaszinkronizalasa
+        if: steps.restore.outputs.sqlite_found == 'true'
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+        run: python sync_fallback_store.py
 
       - name: Alap tartalmak gyujtese
         if: steps.restore.outputs.archive_found != 'true'
@@ -149,11 +177,22 @@ jobs:
           python -m unittest test_send_edition_email.py -v
           python send_edition_email.py
 
-      - name: Ellenorzott napi archívum megőrzése
-        if: always() && (steps.restore.outputs.archive_found == 'true' || steps.publish.outputs.archive_ready == 'true')
+      - name: Privát napi archívum es SQLite allomany titkositasa
+        if: always()
+        env:
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          WORLD_SHARDS_FALLBACK_ENCRYPTION_KEY: ${{ secrets.WORLD_SHARDS_FALLBACK_ENCRYPTION_KEY }}
+          WORLD_SHARDS_ARCHIVE_DIR: world-shards-archive
+          WORLD_SHARDS_SQLITE_PATH: world-shards-fallback.sqlite3
+        run: python encrypt_fallback_artifacts.py
+
+      - name: Titkositott napi tartalek-adattar megorzese
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: world-shards-edition-${{ github.run_id }}
-          path: world-shards-archive/
-          if-no-files-found: error
+          path: |
+            world-shards-archive/*.gpg
+            world-shards-fallback.sqlite3.gpg
+          if-no-files-found: ignore
           retention-days: 90

@@ -16,9 +16,7 @@ import html
 from datetime import datetime, timezone
 
 import requests
-from supabase import create_client
-
-
+from resilient_storage import create_resilient_client
 # ============================================================
 # BEÁLLÍTÁSOK
 # ============================================================
@@ -50,14 +48,7 @@ ART_SEARCH_TERMS = [
 def get_supabase_client():
     url = os.getenv("SUPABASE_URL")
     key = os.getenv("SUPABASE_SECRET_KEY")
-
-    if not url or not key:
-        raise RuntimeError(
-            "Hiányzó SUPABASE_URL vagy SUPABASE_SECRET_KEY."
-        )
-
-    return create_client(url, key)
-
+    return create_resilient_client(url, key)
 
 def clean_html(value):
     if not value:
@@ -339,7 +330,10 @@ def main():
 
     client = get_supabase_client()
 
-    print("Supabase-kapcsolat: SIKERES")
+    if client.remote is not None:
+        print("Adattár: Supabase (elsődleges) + SQLite tartalék")
+    else:
+        print("Adattár: SQLite-only tartalék üzemmód")
 
     results = {}
     errors = []
