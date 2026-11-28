@@ -10,6 +10,7 @@ import os
 import sqlite3
 from contextlib import contextmanager
 import uuid
+from datetime import date, timedelta
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -74,6 +75,55 @@ class SQLiteFallbackStore:
                     PRIMARY KEY (table_name, record_id)
                 )
             """)
+        self._prune_old_cache()
+
+    def _prune_old_cache(self, retention_days=120):
+        """Keep pending writes, but bound the age of ordinary local cache rows."""
+        cutoff = date.today() - timedelta(days=retention_days)
+        with self._connect() as connection:
+            rows = connection.execute(
+                "SELECT table_name, record_id, payload, pending FROM records"
+            ).fetchall()
+            edition_dates = {}
+            for row in rows:
+                if row["table_name"] == "shard_editions":
+                    payload = json.loads(row["payload"])
+                    edition_dates[str(payload.get("id", row["record_id"]))] = payload.get("edition_date")
+
+            stale_ids = []
+            for row in rows:
+                if row["pending"]:
+                    continue
+                payload = json.loads(row["payload"])
+                if row["table_name"] == "shard_edition_items":
+                    raw_date = edition_dates.get(str(payload.get("edition_id")))
+                elif row["table_name"] == "shard_content_items":
+                    raw_date = payload.get("collected_at") or payload.get("created_at")
+                elif row["table_name"] == "publications":
+                    raw_date = payload.get("publication_date") or payload.get("created_at")
+                elif row["table_name"] == "shard_editions":
+                    raw_date = payload.get("edition_date")
+                else:
+                    raw_date = None
+                if not raw_date:
+                    continue
+                try:
+                    record_date = date.fromisoformat(str(raw_date)[:10])
+                except ValueError:
+                    continue
+                if record_date < cutoff:
+                    stale_ids.append((row["table_name"], row["record_id"]))
+
+            for table_name, record_id in stale_ids:
+                connection.execute(
+                    "DELETE FROM records WHERE table_name=? AND record_id=? AND pending=0",
+                    (table_name, record_id),
+                )
+        if stale_ids:
+            LOGGER.info(
+                "SQLite cache takarítás: %s régi, nem függő rekord eltávolítva.",
+                len(stale_ids),
+            )
 
     def cache_remote(self, table_name, rows):
         with self._connect() as connection:
