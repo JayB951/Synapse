@@ -88,7 +88,7 @@ def restore_today_archive():
                         )
                         if sqlite_member and not sqlite_restored:
                             sqlite_bytes = bundle.read(sqlite_member)
-                            if sqlite_bytes.startswith(b"SQLite format 3\\x00"):
+                            if sqlite_bytes.startswith(b"SQLite format 3\x00"):
                                 sqlite_path = Path(os.getenv(
                                     "WORLD_SHARDS_SQLITE_PATH",
                                     ".world_shards_fallback.sqlite3",
