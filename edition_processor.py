@@ -785,7 +785,7 @@ KIZÁRÓLAG EZT A JSON-STRUKTÚRÁT ADD VISSZA:
 {{
   "title": "A publikáció magyar címe",
   "summary": "A kutatás jelentőségét egy mondatban összefoglaló állítás.",
-  "novelty": "A korábbi megközelítéshez viszonyított újdonság 3–5 mondatban.",
+  "novelty": "A korábbi megközelítéshez viszonyított újdonság 4–5 mondatban.",
   "challenge": "A kutatás legfontosabb kritikai kihívása 1–3 mondatban.",
   "synthesis": "A kritika és a forrás tényleges eredményének egymondatos szintézise."
 }}
