@@ -40,7 +40,7 @@ def _has_source_url(event):
     return len(publishers) >= 1 and len(urls) >= 1
 
 
-def build_editorial_output(pipeline, catalog, figure_limit=3, gemini_client=None):
+def build_editorial_output(pipeline, catalog, figure_limit=3, gemini_client=None, recent_events=None):
     validate_catalog(catalog)
     groups = {item.get("event_id"): item for item in pipeline.get("groups", [])}
     result = {}
@@ -70,7 +70,7 @@ def build_editorial_output(pipeline, catalog, figure_limit=3, gemini_client=None
                 if scope == "hungary"
                 else select_international_news_event
             )
-            news_selection = selector(candidates, gemini_client)
+            news_selection = selector(candidates, gemini_client, recent_events=recent_events)
             event_id = news_selection["selected_event_id"] or None
             selection = {
                 **selection,
