@@ -122,14 +122,16 @@ SIMULATION_SCHEMA = {
                         "type": "ARRAY",
                         "items": {"type": "STRING"},
                     },
+                    "provocative_question": {"type": "STRING"},
                 },
-                "required": ["id", "draft_text", "evidence_notes", "source_titles"],
+                "required": ["id", "draft_text", "evidence_notes", "source_titles", "provocative_question"],
             },
         },
         "historical_disclosure": {"type": "STRING"},
+        "provocative_question": {"type": "STRING"},
         "direct_quote_used": {"type": "BOOLEAN"},
     },
-    "required": ["sections", "historical_disclosure", "direct_quote_used"],
+    "required": ["sections", "historical_disclosure", "provocative_question", "direct_quote_used"],
 }
 
 
@@ -212,14 +214,16 @@ def _event_payload(event):
     }
 
 
-def select_historical_figures(event, catalog, client):
+def select_historical_figures(event, catalog, client, excluded_figure_ids=None, prefer_hungarian=False):
     """Select exactly three relevant profiles; never fill the list with weak matches."""
-    figures = catalog.get("figures") or []
+    excluded_figure_ids = set(excluded_figure_ids or [])
+    figures = [item for item in (catalog.get("figures") or []) if item.get("id") not in excluded_figure_ids]
     compact_profiles = [
         {
             "id": item.get("id"),
             "name": item.get("name"),
             "role": item.get("role"),
+            "nationality": item.get("nationality"),
             "lifespan": item.get("lifespan"),
             "era": item.get("era"),
             "domains": item.get("domains", []),
@@ -244,7 +248,9 @@ def select_historical_figures(event, catalog, client):
     )
     result = client.generate_json(
         system,
-        {"news": _event_payload(event), "historical_catalogue": compact_profiles},
+        {"news": _event_payload(event), "historical_catalogue": compact_profiles,
+         "prefer_hungarian_thinkers": bool(prefer_hungarian),
+         "excluded_figure_ids": sorted(excluded_figure_ids)},
         SELECTION_SCHEMA,
     )
     ids = result.get("selected_figure_ids")
@@ -353,7 +359,13 @@ def simulate_historical_figure(event, profile, client):
         "következmények, megoldás. A három rész ugyanazt a személyiséget, értékrendet "
         "és fogalmi keretet tükrözze. Ne válaszolj egymástól független sablonokkal. "
         "Ne karikírozd a személyt és ne használj róla közismert leegyszerűsítő kliséket. "
-        "A mai esemény tényeit kizárólag a megadott híranyagból vedd. Történelmi "
+        "A mai esemény tényeit kizárólag a megadott híranyagból vedd. Mindhárom kommentár "
+        "minden bekezdésében közvetlenül az adott esemény konkrét tényeire, döntéseire, "
+        "szereplőire, számaira, helyszíneire és következményeire reagálj; legalább három "
+        "konkrét, a híranyagban szereplő részletet dolgozz fel. Tilos általános, bármely "
+        "hírre ráhúzható társadalomelméleti bevezetőt vagy ismétlődő közhelyet írni. "
+        "A terjedelem maradjon legalább 60 szó, de minden mondatnak legyen közvetlen "
+        "kapcsolata az eseménnyel. Történelmi "
         "állításnál kizárólag a profilban megadott dokumentációra hivatkozhatsz; "
         "ne találj ki idézetet, oldalszámot, fejezetet, dátumot vagy művet. "
         "Szó szerinti idézetet ne használj. A forráscímek közül csak a megadottakat "
@@ -367,6 +379,8 @@ def simulate_historical_figure(event, profile, client):
         "news": _event_payload(event),
         "historical_person": {
             "name": profile.get("name"),
+            "role": profile.get("role"),
+            "nationality": profile.get("nationality"),
             "role": profile.get("role"),
             "lifespan": profile.get("lifespan"),
             "era": profile.get("era"),
@@ -382,6 +396,7 @@ def simulate_historical_figure(event, profile, client):
             {"id": "response", "purpose": "A dokumentált elvekből levezethető megoldási irány, mai alkalmazásként megjelölve."},
         ],
         "allowed_historical_source_titles": source_titles,
+        "provocative_question_requirement": "A személy saját műveiből, szakmájából, életművéből és ismert tetteiből fakadó, a konkrét eseményre célzott, kifejezetten provokatív, akár polgárpukkasztó kérdés. Ne általános retorikai kérdés legyen; pontosan egy kérdés.",
     }
     result = client.generate_json(system, payload, SIMULATION_SCHEMA)
     sections = result.get("sections")
@@ -395,6 +410,9 @@ def simulate_historical_figure(event, profile, client):
     def validate_all_dimensions():
         if not str(result.get("historical_disclosure") or "").strip():
             raise GeminiError(f"{profile.get('name')}: hiányzik a hipotetikus rekonstrukció jelölése.")
+        question = str(result.get("provocative_question") or "").strip()
+        if not question.endswith("?") or len(question.split()) < 8:
+            raise GeminiError(f"{profile.get('name')}: hiányzik a személyre szabott, provokatív kérdés.")
         for dimension in DIMENSIONS:
             section = by_id[dimension]
             draft = str(section.get("draft_text") or "").strip()
@@ -533,6 +551,7 @@ def simulate_historical_figure(event, profile, client):
             "profile_limitations": profile.get("limits"),
         },
         "sections": briefs,
+        "provocative_question": str(result.get("provocative_question") or "").strip(),
         "mandatory_disclosures": {
             "hypothetical_reconstruction": True,
             "historical_disclosure": result.get("historical_disclosure") or (
