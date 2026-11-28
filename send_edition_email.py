@@ -385,6 +385,25 @@ def send_email(plain_body, html_body, date_label):
 
     return False
 
+def save_delivery_receipt(edition):
+    """Persist a receipt beside the edition so later scheduled runs do not resend it."""
+    archive_dir = Path(os.getenv("WORLD_SHARDS_ARCHIVE_DIR", "world-shards-archive"))
+    archive_dir.mkdir(parents=True, exist_ok=True)
+    receipt = {
+        "edition_date": edition["edition_date"],
+        "sent_at": datetime.now(timezone.utc).isoformat(),
+        "status": "sent",
+    }
+    receipt_path = archive_dir / "delivery-receipt.json"
+    temporary_path = receipt_path.with_suffix(".json.tmp")
+    temporary_path.write_text(
+        json.dumps(receipt, ensure_ascii=False, indent=2) + "\\n",
+        encoding="utf-8",
+    )
+    temporary_path.replace(receipt_path)
+    logger.info("A kézbesítési nyugta elmentve: %s", receipt_path)
+
+
 def main():
     archived = load_local_archive()
     if archived:
@@ -419,6 +438,7 @@ def main():
     logger.info("E-mail tartalma ellenőrizve: %s elem, benne mindkét AGORA-rovat.", len(items))
     if not send_email(plain_body, html_body, date_label):
         raise RuntimeError("Az SMTP-küldés nem igazolható; a napi workflow hibával álljon le.")
+    save_delivery_receipt(edition)
 
 if __name__ == "__main__":
     main()
