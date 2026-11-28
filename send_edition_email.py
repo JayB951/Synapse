@@ -14,6 +14,7 @@ import os
 from pathlib import Path
 import uuid
 import smtplib
+import time
 from collections import Counter
 from datetime import datetime, timedelta, timezone
 from email.message import EmailMessage
@@ -361,13 +362,28 @@ def send_email(plain_body, html_body, date_label):
     message.set_content(plain_body)
     message.add_alternative(html_body, subtype="html")
 
-    with smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=30) as smtp:
-        smtp.login(sender, password)
-        smtp.send_message(message)
+    for attempt in range(1, 4):
+        try:
+            with smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=30) as smtp:
+                smtp.login(sender, password)
+                smtp.send_message(message)
+            logger.info("A teljes napi kiadás e-mailben elküldve: %s", recipient)
+            return True
+        except smtplib.SMTPResponseException as exc:
+            transient = 400 <= int(getattr(exc, "smtp_code", 0)) < 500
+            if not transient or attempt == 3:
+                raise
+            logger.warning(
+                "Átmeneti SMTP-válaszhiba (%s); újrapróbálkozás %s/3.",
+                getattr(exc, "smtp_code", "ismeretlen"), attempt + 1,
+            )
+        except (smtplib.SMTPServerDisconnected, smtplib.SMTPConnectError, TimeoutError, OSError):
+            if attempt == 3:
+                raise
+            logger.exception("Átmeneti SMTP-kapcsolati hiba; újrapróbálkozás %s/3.", attempt + 1)
+        time.sleep(20 * attempt)
 
-    logger.info("A teljes napi kiadás e-mailben elküldve: %s", recipient)
-    return True
-
+    return False
 
 def main():
     archived = load_local_archive()
