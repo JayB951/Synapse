@@ -26,6 +26,7 @@ on:
       - "artifact_crypto.py"
       - "shards_collector.py"
       - "shards_collector_m13.py"
+      - "agora_automation.py"
 
 permissions:
   contents: read
