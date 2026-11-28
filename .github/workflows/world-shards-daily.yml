@@ -2,8 +2,9 @@ name: WORLD SHARDS - Daily Automatic Edition
 
 on:
   schedule:
-    # UTC triggers cover 02:00 Europe/Budapest in both DST seasons.
-    - cron: "0 0,1 * * *"
+    # Repeated hourly attempts cover schedule delays and transient failures.
+    # The local-time gate below prevents a run before 02:00 Budapest.
+    - cron: "0 0,1,2,3 * * *"
   workflow_dispatch:
   # Recovery trigger: a change to this workflow automatically starts today's edition.
   push:
