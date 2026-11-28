@@ -10,7 +10,7 @@ VERSION = "0.1.0"
 TIMEZONE = ZoneInfo("Europe/Budapest")
 
 SECTION_LIMITS = {
-    "research_frontier": 5,
+    "research_frontier": 6,
     "art_of_the_day": 1,
     "the_thinker": 1,
     "battlefield": 1,
@@ -21,7 +21,7 @@ SECTION_LIMITS = {
 }
 
 CLOSING_LIMIT = 2
-# Both AGORA sections are required for every new 16-item edition.
+# Both AGORA sections are required for every new 17-item edition.
 AGORA_SECTION_LIMITS = {
     "agora_hungary": 1,
     "agora_world": 1,
