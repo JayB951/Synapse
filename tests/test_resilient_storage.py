@@ -66,6 +66,7 @@ class FakeRemoteQuery:
         return True
 
     def execute(self):
+        self.remote.calls.append((self.table_name, self.operation))
         if self.remote.fail_reads and self.operation == "select":
             raise RuntimeError("database unavailable")
         if self.remote.fail_writes and self.operation != "select":
@@ -110,6 +111,7 @@ class FakeRemoteQuery:
 class FakeRemote:
     def __init__(self):
         self.tables = {}
+        self.calls = []
         self.fail_reads = False
         self.fail_writes = False
 
@@ -229,6 +231,31 @@ class ResilientStorageTests(unittest.TestCase):
         self.client.table("shard_content_items").delete().eq("id", "delete-me").execute()
         result = self.client.table("shard_content_items").select("*").execute()
         self.assertEqual(result.data, [])
+
+    def test_pending_writes_replay_in_foreign_key_safe_order(self):
+        self.store.save_local("shard_edition_items", {
+            "id": "item-1",
+            "edition_id": "edition-1",
+            "content_item_id": "content-1",
+        })
+        self.store.save_local("shard_editions", {
+            "id": "edition-1",
+            "edition_date": "2026-11-28",
+        })
+        self.store.save_local("shard_content_items", {
+            "id": "content-1",
+            "source_url": "https://example.org/source",
+        })
+
+        self.client.sync_pending()
+        write_order = [
+            table for table, operation in self.remote.calls
+            if operation == "upsert"
+        ]
+        self.assertEqual(
+            write_order,
+            ["shard_content_items", "shard_editions", "shard_edition_items"],
+        )
 
     def test_cache_pruning_removes_old_cache_but_keeps_pending_writes(self):
         self.store.cache_remote("shard_content_items", [{
