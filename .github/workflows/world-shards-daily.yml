@@ -18,6 +18,7 @@ on:
       - "edition_builder.py"
       - "edition_processor.py"
       - "publish_edition.py"
+      - "skip_published_edition.py"
       - "send_edition_email.py"
       - "resilient_storage.py"
       - "restore_edition_archive.py"
