@@ -67,7 +67,31 @@ function getSourceRecord(item) {
     : item.shard_content_items;
 }
 
-function makeSectionImage(source, title, className, altPrefix) {
+function getXkcdAltText(displayBody) {
+  const body = String(displayBody || "");
+  const match = body.match(/^KÉP LEÍRÁSA:\\s*([\\s\\S]*?)(?=\\n\\s*\\nÁTIRAT:|$)/i);
+  return match ? match[1].trim() : "";
+}
+
+function renderXkcdBody(container, body) {
+  container.replaceChildren();
+  const text = String(body || "");
+  const alt = getXkcdAltText(text);
+  const transcriptMatch = text.match(/(?:^|\\n\\s*\\n)ÁTIRAT:\\s*([\\s\\S]*)$/i);
+  if (alt) {
+    container.append(makeElement("h3", "xkcd-text-heading", "A kép leírása"));
+    container.append(makeElement("p", "xkcd-text-paragraph", alt));
+  }
+  if (transcriptMatch && transcriptMatch[1].trim()) {
+    container.append(makeElement("h3", "xkcd-text-heading", "A képregény átirata"));
+    transcriptMatch[1].trim().split(/\\n+/).map(line => line.trim()).filter(Boolean).forEach(line => {
+      container.append(makeElement("p", "xkcd-text-paragraph", line));
+    });
+  }
+  if (!alt && !transcriptMatch) container.textContent = text || "Ehhez a képregényhez nem érhető el magyar leírás.";
+}
+
+function makeSectionImage(source, title, className, altPrefix, explicitAlt = "") {
   const metadata = source?.metadata && typeof source.metadata === "object"
     ? source.metadata
     : {};
@@ -107,7 +131,7 @@ function makeSectionImage(source, title, className, altPrefix) {
       return;
     }
     image.src = candidate.url;
-    image.alt = candidate.caption || (title ? `${altPrefix}: ${title}` : altPrefix);
+    image.alt = explicitAlt || candidate.caption || (title ? `${altPrefix}: ${title}` : altPrefix);
   };
   image.addEventListener("error", loadNextImage);
   loadNextImage();
@@ -389,11 +413,15 @@ function openArticle(item, sectionName) {
       const image = makeSectionImage(source, item.display_title, "reader-battle-image", "A csata történelmi ábrázolása");
       if (image) readerImage.append(image);
     } else if (item.section_code === "closing" && source?.source_name === "xkcd") {
-      const image = makeSectionImage(source, item.display_title, "reader-xkcd-image", "xkcd képregény");
+      const image = makeSectionImage(source, item.display_title, "reader-xkcd-image", "xkcd képregény", getXkcdAltText(item.display_body) || `xkcd: ${item.display_title || "képregény"}`);
       if (image) readerImage.append(image);
     }
   }
-  renderArticleBody(readerBody, item.display_body, item.section_code === "world_explorer" ? source?.gallery_images : []);
+  if (item.section_code === "closing" && source?.source_name === "xkcd") {
+    renderXkcdBody(readerBody, item.display_body);
+  } else {
+    renderArticleBody(readerBody, item.display_body, item.section_code === "world_explorer" ? source?.gallery_images : []);
+  }
   readerSection.textContent = sectionName;
   readerFeedbackItemId = item.id;
   readerFeedbackSectionName = sectionName;
@@ -411,6 +439,22 @@ function openArticle(item, sectionName) {
         if (!Number.isNaN(published.getTime())) {
           readerSource.append(makeElement("span", "source-date", "Forrás dátuma: " + new Intl.DateTimeFormat("hu-HU", { year: "numeric", month: "long", day: "numeric" }).format(published)));
         }
+      }
+      if (source.source_name === "xkcd") {
+        const metadata = source.metadata && typeof source.metadata === "object" ? source.metadata : {};
+        const credit = makeElement("span", "xkcd-license-credit", "Randall Munroe · xkcd · " + (metadata.source_license || "CC BY-NC 2.5"));
+        readerSource.append(credit);
+        const licenseUrl = metadata.source_license_url || "https://creativecommons.org/licenses/by-nc/2.5/";
+        try {
+          const license = new URL(licenseUrl);
+          if (license.protocol === "https:" || license.protocol === "http:") {
+            const licenseLink = makeElement("a", "source-link xkcd-license-link", "Felhasználási licenc megtekintése ↗");
+            licenseLink.href = license.href;
+            licenseLink.target = "_blank";
+            licenseLink.rel = "noopener noreferrer";
+            readerSource.append(licenseLink);
+          }
+        } catch (_) {}
       }
       if (source.source_url) {
         try {
@@ -618,7 +662,7 @@ function renderArticles(items = []) {
       } else if (code === "battlefield") {
         sectionImage = makeSectionImage(source, item.display_title, "article-battle-image", "A csata történelmi ábrázolása");
       } else if (code === "closing" && source?.source_name === "xkcd") {
-        sectionImage = makeSectionImage(source, item.display_title, "article-xkcd-image", "xkcd képregény");
+        sectionImage = makeSectionImage(source, item.display_title, "article-xkcd-image", "xkcd képregény", getXkcdAltText(item.display_body) || `xkcd: ${item.display_title || "képregény"}`);
       }
       if (sectionImage) card.append(sectionImage);
       card.append(meta, titleNode, summary, feedback, button);
