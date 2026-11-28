@@ -381,7 +381,11 @@ def add_music_to_existing_edition(supabase, edition, edition_date):
             "A mai kiadvány nem draft státuszú; automatikus módosítás leállítva."
         )
 
-    allowed_existing_counts = {BASE_EXPECTED_ITEMS - 1, BASE_EXPECTED_ITEMS}
+    allowed_existing_counts = {
+        BASE_EXPECTED_ITEMS - 2,
+        BASE_EXPECTED_ITEMS - 1,
+        BASE_EXPECTED_ITEMS,
+    }
     if len(existing_items) not in allowed_existing_counts:
         raise RuntimeError(
             f"A meglévő kiadvány {len(existing_items)} elemet tartalmaz; "
