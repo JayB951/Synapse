@@ -26,7 +26,7 @@ from urllib.parse import quote
 
 import requests
 from resilient_storage import create_resilient_client
-VERSION = "0.1.0"
+VERSION = "0.2.0"
 WIKIPEDIA_API = "https://en.wikipedia.org/w/api.php"
 REQUEST_TIMEOUT = 30
 MIN_REQUEST_INTERVAL = 10.0
@@ -43,14 +43,16 @@ SECTION_CONFIG = {
     "the_thinker": {
         "name": "The Thinker",
         "queries": [
-            "philosophy ethics thought experiment paradox",
-            "philosophy of mind consciousness free will",
-            "moral philosophy ethical dilemma",
-            "logic epistemology theory of knowledge",
-            "political philosophy justice freedom",
-            "philosophical paradoxes and thought experiments",
-            "existentialism meaning of life philosophy",
-            "philosophy of science scientific method",
+            'intitle:"thought experiment" philosophy',
+            'intitle:paradox philosophy ethics',
+            '"trolley problem" OR "ship of Theseus" OR "Chinese room"',
+            '"problem of evil" OR "problem of induction" OR "brain in a vat"',
+            '"veil of ignorance" OR "social contract" OR "categorical imperative"',
+            '"free will" philosophy determinism',
+            '"personal identity" philosophy OR "hard problem of consciousness"',
+            '"epistemology" skepticism knowledge philosophy',
+            '"utilitarianism" OR "virtue ethics" OR "moral realism"',
+            '"existentialism" OR "absurdism" OR "philosophy of mind"',
         ],
     },
     "battlefield": {
@@ -221,6 +223,47 @@ def is_valid_article(page):
         return False
 
     return True
+
+
+
+
+def is_valid_thinker_article(page):
+    """Accept a concrete philosophical question, argument, concept or thought experiment."""
+    title = clean_text(page.get("title", ""))
+    extract = clean_text(page.get("extract", ""))
+    if not title or len(extract) < 250:
+        return False
+
+    # Biographical and catalogue-style pages are not suitable as the daily
+    # subject, even when the person's name is associated with philosophy.
+    if re.search(
+        r"\\b(philosopher|philosophers|biography|bibliography|"
+        r"list of works|life of)\\b",
+        title,
+        re.I,
+    ):
+        return False
+
+    subject = re.search(
+        r"\\b(paradox|thought experiment|problem|dilemma|theory|principle|"
+        r"argument|ethics|ethical|epistemology|consciousness|free will|justice|"
+        r"liberty|knowledge|truth|morality|mind|existentialism|nihilism|stoicism|"
+        r"absurdism|determinism|utilitarianism|social contract|categorical imperative|"
+        r"veil of ignorance|trolley|ship of theseus|chinese room|brain in a vat|"
+        r"experience machine|simulation argument|problem of evil|problem of induction|"
+        r"hard problem|personal identity|dualism|materialism|idealism|skepticism|"
+        r"scepticism|virtue ethics|natural law|state of nature|original position)\\b",
+        title,
+        re.I,
+    )
+    philosophical_context = re.search(
+        r"\\b(philosoph(?:y|ical|er|ers)|ethic(?:s|al)|moral(?:ity)?|"
+        r"epistemolog(?:y|ical)|metaphysic(?:s|al)|normative|thought experiment|"
+        r"philosophical argument|free will|personal identity|the nature of knowledge)\\b",
+        extract[:1800],
+        re.I,
+    )
+    return bool(subject and philosophical_context)
 
 
 def is_valid_battle_article(page):
@@ -549,6 +592,14 @@ def collect_section(supabase, section_code):
 
         if not is_valid_article(page):
             skipped += 1
+            continue
+
+        if section_code == "the_thinker" and not is_valid_thinker_article(page):
+            skipped += 1
+            logging.info(
+                "The Thinker: '%s' skipped; not a specific philosophical subject.",
+                page.get("title", ""),
+            )
             continue
 
         if section_code == "battlefield" and not is_valid_battle_article(page):
