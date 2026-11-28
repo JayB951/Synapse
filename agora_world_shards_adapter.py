@@ -8,7 +8,7 @@ import json
 import sys
 from pathlib import Path
 
-ADAPTER_VERSION = "AGORA_WORLD_SHARDS_ADAPTER_M6.1"
+ADAPTER_VERSION = "AGORA_WORLD_SHARDS_ADAPTER_M6.2"
 REQUIRED_SCOPES = ("hungary", "international")
 DIMENSIONS = ("interpretation", "consequences", "response")
 
@@ -75,8 +75,10 @@ def build_content_item(pipeline, editorial, qa_report, edition_date):
             if article_summary:
                 body_parts.append(f"**{publisher}: {article_title}**")
                 body_parts.append(article_summary)
-            if article.get("url"):
-                body_parts.append(f"Forrás: {article['url']}")
+        # Keep all verified links in metadata, but display one representative source per event.
+        representative_source = next((item for item in sources if item.get("url")), None)
+        if representative_source:
+            body_parts.append(f"Forrás: {representative_source['url']}")
         for brief in package.get("briefs", []):
             all_figures.append({
                 "scope": scope,
@@ -89,7 +91,11 @@ def build_content_item(pipeline, editorial, qa_report, edition_date):
                 f"### {brief.get('figure_name')}",
                 f"**{role}**" if role else "",
                 "Történelmi nézőpont",
+                "#### Provokatív kérdés",
+                str(brief.get("provocative_question") or "").strip(),
             ])
+            if not str(brief.get("provocative_question") or "").strip().endswith("?"):
+                raise ValueError(f"Missing persona-specific provocative question: {brief.get('figure_id')}")
             for dimension in DIMENSIONS:
                 section = next((s for s in brief.get("sections", [])
                                 if s.get("id") == dimension), None)
