@@ -415,8 +415,11 @@ class ResilientQuery:
                 return False
         return True
 
-    def _prepare_rows(self, rows, project=True):
-        selected = [dict(row) for row in rows if self._matches(row)]
+    def _prepare_rows(self, rows, project=True, apply_filters=True):
+        selected = [
+            dict(row) for row in rows
+            if not apply_filters or self._matches(row)
+        ]
         for field, descending in reversed(self.orders):
             selected.sort(
                 key=lambda row: (row.get(field) is None, row.get(field)),
@@ -486,16 +489,41 @@ class ResilientQuery:
                         self.table_name,
                     )
             if remote_read_succeeded:
-                merged = {
-                    str(row["id"]): dict(row)
-                    for row in remote_rows if row.get("id") is not None
+                pending_by_id = {
+                    str(row["id"]): row
+                    for row in self.client.store.pending_rows(self.table_name)
+                    if row.get("id") is not None
                 }
-                for row in self.client.store.pending_rows(self.table_name):
-                    record_id = str(row.get("id"))
-                    merged[record_id] = {**merged.get(record_id, {}), **row}
-                rows = list(merged.values())
-            else:
-                rows = self.client.store.rows(self.table_name)
+                remote_ids = {
+                    str(row["id"])
+                    for row in remote_rows
+                    if row.get("id") is not None
+                }
+                merged_rows = []
+
+                # Local inserts that are not on the server yet must remain visible.
+                for record_id, local_row in pending_by_id.items():
+                    if record_id not in remote_ids and self._matches(local_row):
+                        merged_rows.append(dict(local_row))
+
+                # Supabase has already applied filters before projecting selected
+                # columns. Reapplying filters to these partial rows would drop valid
+                # results whenever a filter column is not part of SELECT.
+                for remote_row in remote_rows:
+                    record_id = str(remote_row.get("id"))
+                    if record_id in pending_by_id:
+                        local_row = pending_by_id[record_id]
+                        if not self._matches(local_row):
+                            continue
+                        merged_rows.append({**remote_row, **local_row})
+                    else:
+                        merged_rows.append(dict(remote_row))
+                rows = merged_rows
+                return SimpleNamespace(
+                    data=self._prepare_rows(rows, apply_filters=False)
+                )
+
+            rows = self.client.store.rows(self.table_name)
             return SimpleNamespace(data=self._prepare_rows(rows))
 
         if self.operation in {"insert", "upsert"}:
