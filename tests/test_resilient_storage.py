@@ -169,6 +169,23 @@ class ResilientStorageTests(unittest.TestCase):
         )
         self.assertEqual(selected.data[0]["status"], "selected")
 
+    def test_live_remote_results_do_not_reintroduce_stale_cached_candidates(self):
+        self.remote.tables["shard_content_items"] = [{
+            "id": "row-stale",
+            "title": "Already selected",
+            "status": "candidate",
+        }]
+        self.client.table("shard_content_items").select("*").execute()
+        self.remote.tables["shard_content_items"][0]["status"] = "selected"
+
+        result = (
+            self.client.table("shard_content_items")
+            .select("*")
+            .eq("status", "candidate")
+            .execute()
+        )
+        self.assertEqual(result.data, [])
+
     def test_local_reads_continue_when_remote_is_unavailable(self):
         self.store.save_local("shard_content_items", {
             "id": "cached-1",
