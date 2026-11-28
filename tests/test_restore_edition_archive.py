@@ -124,10 +124,12 @@ class RestoreEditionArchiveTests(unittest.TestCase):
 
     def test_restores_sqlite_state_from_previous_day_without_an_edition_archive(self):
         today = datetime.now(ZoneInfo("Europe/Budapest")).date().isoformat()
-        sqlite_bytes = b"SQLite format 3\x00previous-day-cache"
+        sqlite_bytes = encrypt_bytes(
+            b"SQLite format 3\x00previous-day-cache", "test-secret"
+        )
         buffer = io.BytesIO()
         with ZipFile(buffer, "w") as bundle:
-            bundle.writestr("world-shards-fallback.sqlite3", sqlite_bytes)
+            bundle.writestr("world-shards-fallback.sqlite3.gpg", sqlite_bytes)
 
         runs_response = json.dumps({
             "workflow_runs": [{"id": 100, "created_at": "2026-11-27T07:00:00Z"}]
@@ -144,6 +146,7 @@ class RestoreEditionArchiveTests(unittest.TestCase):
             output_path = os.path.join(directory, "github-output.txt")
             with patch.dict(os.environ, {
                 "GH_TOKEN": "test-token",
+                "SUPABASE_SECRET_KEY": "test-secret",
                 "GITHUB_REPOSITORY": "JayB951/Synapse",
                 "GITHUB_REF_NAME": "main",
                 "GITHUB_RUN_ID": "101",
