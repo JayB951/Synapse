@@ -34,6 +34,7 @@ jobs:
           python -m unittest test_music_collector.py -v
 
       - name: WORLD SHARDS Music of the Day gyujtes
+        if: github.event_name == 'workflow_dispatch'
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
