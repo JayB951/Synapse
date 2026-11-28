@@ -49,14 +49,7 @@ logger = logging.getLogger("world-shards-edition-builder")
 def get_supabase_client():
     url = os.getenv("SUPABASE_URL")
     key = os.getenv("SUPABASE_SECRET_KEY")
-
-    if not url or not key:
-        raise RuntimeError(
-            "Hiányzó SUPABASE_URL vagy SUPABASE_SECRET_KEY."
-        )
-
     return create_resilient_client(url, key)
-
 
 def get_candidates(supabase, section_code, limit=100, edition_date=None, content_type=None):
     query = (
