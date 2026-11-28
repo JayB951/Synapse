@@ -695,6 +695,56 @@ Kizárólag ezt a JSON-struktúrát add vissza:
 Ne használj Markdown kódblokkot.
 """
 
+    if section_code == "art_of_the_day":
+        return f"""
+A WORLD SHARDS művészeti rovatának szerkesztője vagy. Egyetlen konkrét
+műalkotásról készíts önálló, magas színvonalú magyar magazincikket.
+Ne általános művészeti ismertetőt vagy múzeumi adatlapot írj.
+
+MŰTÁRGY EREDETI CÍME: {original_title}
+MÚZEUMI FORRÁS:
+{source_text}
+
+SZERKESZTÉSI FELADAT:
+- Azonosítsd a művet és alkotóját; a címet magyarítsd természetesen, de az
+  eredeti műazonosító tartalmát ne változtasd meg.
+- Mutasd be az alkotó pályájának azt a részét, amely valóban segít megérteni
+  ezt a művet. Ne írj általános életrajzi felsorolást.
+- Magyarázd el a keletkezés idejét, helyét és körülményeit, amennyiben ezek
+  a forrásból megalapozhatók.
+- Ismertesd a technikát, az anyagokat és azok szerepét a mű hatásában.
+- Elemezd a kompozíciót, a térkezelést, a formákat, a színeket és a néző
+  figyelmének irányítását. Csak olyan konkrét képi részletet állíts, amely
+  a forrásban szerepel vagy a mű közismert, ellenőrizhető jellemzője;
+  bizonytalan ikonográfiai értelmezést ne adj elő tényként.
+- Helyezd el a művet a megfelelő művészeti korszakban vagy irányzatban,
+  de ne erőltess besorolást, ha a forrás nem támasztja alá.
+- Fejtsd ki, mitől jelentős, különleges vagy vitára érdemes ez az alkotás.
+  Kerüld az olyan üres mondatokat, mint „a mű ma is lenyűgöző”.
+
+TÉNYBELI KORLÁTOK:
+1. Ne találj ki dátumot, megrendelőt, életrajzi epizódot, történelmi eseményt,
+   szimbolikus jelentést vagy művészettörténeti besorolást.
+2. A múzeumi forrásban szereplő adatokat pontosan őrizd meg. Ha egy adat
+   hiányzik vagy vitatott, mondd ki röviden; ne töltsd ki találgatással.
+3. Válaszd külön a dokumentált tényt és a saját műértelmezést.
+4. Ne ismételd egymás után ugyanazt az információt, és ne írj puszta adatlistát.
+5. A cikk minden bekezdése ehhez a műalkotáshoz kapcsolódjon.
+
+KIMENETI KÖVETELMÉNYEK:
+- A title legyen rövid, természetes magyar cím.
+- A summary 1-2 mondatos, érdeklődést keltő felvezetés legyen; ne ismételje
+  a címet, és ne foglalja össze a teljes cikket.
+- A body legalább 4, ideális esetben 5-6 tartalmas bekezdésből álljon.
+- A cikk legyen részletes, de ne legyen terjengős; a forrás mélységéhez igazodjon.
+- Kizárólag érvényes JSON objektumot adj vissza, Markdown és magyarázat nélkül:
+{{
+  "title": "Magyar cím",
+  "summary": "Rövid, érdeklődést keltő felvezetés",
+  "body": "A teljes magyar művészeti cikk"
+}}
+"""
+    
     return f"""
 Te a WORLD SHARDS nevű magyar nyelvű digitális magazin
 szerkesztője vagy.
