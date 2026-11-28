@@ -144,6 +144,7 @@ class ResilientStorageTests(unittest.TestCase):
         self.assertEqual(len(result.data), 1)
         self.assertEqual(result.data[0]["title"], "Local candidate")
         self.assertEqual(result.data[0]["status"], "candidate")
+        self.assertTrue(self.client.local_fallback_used)
 
     def test_update_fallback_overrides_stale_remote_reads(self):
         self.remote.tables["shard_content_items"] = [{
@@ -168,6 +169,7 @@ class ResilientStorageTests(unittest.TestCase):
             .execute()
         )
         self.assertEqual(selected.data[0]["status"], "selected")
+        self.assertTrue(self.client.local_fallback_used)
 
     def test_live_remote_results_do_not_reintroduce_stale_cached_candidates(self):
         self.remote.tables["shard_content_items"] = [{
@@ -196,6 +198,7 @@ class ResilientStorageTests(unittest.TestCase):
 
         result = self.client.table("shard_content_items").select("*").execute()
         self.assertEqual(result.data[0]["id"], "cached-1")
+        self.assertTrue(self.client.local_fallback_used)
 
     def test_pending_writes_sync_when_remote_recovers(self):
         self.remote.fail_writes = True
