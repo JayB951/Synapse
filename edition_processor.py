@@ -1237,7 +1237,7 @@ def thinker_content_passes(verdict, generated=None):
     if not all(verdict.get(key) is True for key in checks):
         return False
     if generated is not None:
-        paragraphs = [part.strip() for part in re.split(r"\\n\\s*\\n", generated.get("body", "")) if part.strip()]
+        paragraphs = [part.strip() for part in re.split(r"\n\s*\n", generated.get("body", "")) if part.strip()]
         if not 5 <= len(paragraphs) <= 7:
             return False
     return True
