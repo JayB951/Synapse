@@ -161,7 +161,7 @@ def get_supabase_client():
     return create_client(url, key)
 
 
-def get_recent_agora_events(supabase, limit=12):
+def get_recent_agora_events(supabase, limit=12, exclude_edition_date=None):
     """Load recent published/candidate AGORA event identities to prevent repeat topics."""
     response = (
         supabase.table("shard_content_items")
@@ -175,6 +175,8 @@ def get_recent_agora_events(supabase, limit=12):
     seen = set()
     for row in response.data or []:
         metadata = row.get("metadata") or {}
+        if exclude_edition_date and str(metadata.get("edition_date") or "") >= str(exclude_edition_date):
+            continue
         for event in metadata.get("news_items") or []:
             event_id = event.get("event_id")
             identity = (event.get("scope"), event_id)
@@ -241,7 +243,7 @@ def run(edition_date=None):
     pipeline = build_pipeline_result(collection, shortlist_limit=30)
     client = GeminiClient()
     supabase = get_supabase_client()
-    recent_events = get_recent_agora_events(supabase)
+    recent_events = get_recent_agora_events(supabase, exclude_edition_date=edition_date)
     LOGGER.info("Korábbi AGORA-események ellenőrizve: %s", len(recent_events))
     editorial = build_editorial_output(pipeline, json.loads(
         Path("agora_historical_figures.json").read_text(encoding="utf-8")
