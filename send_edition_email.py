@@ -21,8 +21,7 @@ from email.message import EmailMessage
 from urllib.parse import urlencode, urlparse
 from zoneinfo import ZoneInfo
 
-from supabase import create_client
-
+from resilient_storage import create_resilient_client
 TIMEZONE = ZoneInfo("Europe/Budapest")
 EXPECTED_COUNTS = {
     "research_frontier": 7,
@@ -58,7 +57,7 @@ def get_supabase_client():
     key = os.getenv("SUPABASE_SECRET_KEY")
     if not url or not key:
         raise RuntimeError("Hiányzó SUPABASE_URL vagy SUPABASE_SECRET_KEY.")
-    return create_client(url, key)
+    return create_resilient_client(url, key)
 
 
 def validate_edition(edition, items, require_published=True):
