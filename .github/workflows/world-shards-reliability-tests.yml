@@ -87,6 +87,9 @@ jobs:
       - name: Email archive and delivery tests
         run: python -m unittest test_send_edition_email.py -v
 
+      - name: GPG encryption tool
+        run: gpg --version
+
       - name: Artifact encryption tests
         run: python -m unittest discover -s tests -p "test_artifact_crypto.py" -v
 
