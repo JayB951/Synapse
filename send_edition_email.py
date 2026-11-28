@@ -8,8 +8,10 @@ import base64
 import hashlib
 import hmac
 import html
+import json
 import logging
 import os
+from pathlib import Path
 import uuid
 import smtplib
 from collections import Counter
@@ -58,8 +60,8 @@ def get_supabase_client():
     return create_client(url, key)
 
 
-def validate_edition(edition, items):
-    if not edition or edition.get("status") != "published":
+def validate_edition(edition, items, require_published=True):
+    if not edition or (require_published and edition.get("status") != "published"):
         raise RuntimeError("Az e-mail nem küldhető: a napi kiadás nem published státuszú.")
     if len(items) != EXPECTED_TOTAL:
         raise RuntimeError(f"Az e-mail nem küldhető: {len(items)}/{EXPECTED_TOTAL} elem található.")
@@ -68,7 +70,7 @@ def validate_edition(edition, items):
         raise RuntimeError(f"Az e-mail nem küldhető: hibás rovateloszlás: {dict(counts)}.")
     positions = [item.get("position") for item in items]
     if sorted(positions) != list(range(1, EXPECTED_TOTAL + 1)):
-        raise RuntimeError("Az e-mail nem küldhető: a pozíciók nem folytonosak 1–14 között.")
+        raise RuntimeError("Az e-mail nem küldhető: a pozíciók nem folytonosak 1–16 között.")
     for item in items:
         if (
             item.get("processing_status") != "completed"
@@ -278,6 +280,30 @@ def build_email_bodies(edition, items, source_by_id, rating_links_by_item=None):
     return "\n".join(plain), html_body, date_label
 
 
+def load_local_archive():
+    """Load a previously validated, complete edition without requiring Supabase."""
+    target_date = datetime.now(TIMEZONE).date().isoformat()
+    configured_path = os.getenv("WORLD_SHARDS_ARCHIVE_PATH")
+    archive_path = (
+        Path(configured_path) if configured_path
+        else Path(os.getenv("WORLD_SHARDS_ARCHIVE_DIR", "world-shards-archive"))
+        / f"edition-{target_date}.json"
+    )
+    if not archive_path.is_file():
+        return None
+    archive = json.loads(archive_path.read_text(encoding="utf-8"))
+    if archive.get("archive_type") != "world_shards_edition" or archive.get("schema_version") != 1:
+        raise RuntimeError(f"Ismeretlen vagy hibás WORLD SHARDS archívum: {archive_path}")
+    edition = archive.get("edition") or {}
+    items = archive.get("items") or []
+    source_by_id = archive.get("source_by_id") or {}
+    if edition.get("edition_date") != target_date:
+        raise RuntimeError("A helyi archívum dátuma nem egyezik a mai budapesti dátummal.")
+    validate_edition(edition, items, require_published=False)
+    logger.info("A teljes napi kiadás a helyi archívumból töltve: %s", archive_path)
+    return edition, items, source_by_id
+
+
 def load_published_edition(supabase):
     edition_date = datetime.now(TIMEZONE).date().isoformat()
     edition_response = (
@@ -344,28 +370,39 @@ def send_email(plain_body, html_body, date_label):
 
 
 def main():
-    supabase = get_supabase_client()
-    edition, items, source_by_id = load_published_edition(supabase)
+    archived = load_local_archive()
+    if archived:
+        edition, items, source_by_id = archived
+    else:
+        supabase = get_supabase_client()
+        edition, items, source_by_id = load_published_edition(supabase)
+
     rating_links = None
     rating_secret = os.getenv("EMAIL_RATING_SECRET")
     rating_voter_token = os.getenv("EMAIL_RATING_VOTER_TOKEN")
     if rating_secret and rating_voter_token:
-        rating_links = build_rating_links(
-            items,
-            os.getenv("SUPABASE_URL", ""),
-            rating_secret,
-            rating_voter_token,
-        )
-        logger.info("Az e-mailhez 1–5 csillagos értékelési linkek készültek.")
+        try:
+            rating_links = build_rating_links(
+                items,
+                os.getenv("SUPABASE_URL", ""),
+                rating_secret,
+                rating_voter_token,
+            )
+            logger.info("Az e-mailhez 1–5 csillagos értékelési linkek készültek.")
+        except Exception:
+            logger.exception(
+                "Az opcionális értékelési linkek nem készültek el; "
+                "a teljes magazin e-mail ettől függetlenül elküldhető."
+            )
     else:
-        logger.warning("Az e-mail csillagos értékelés nélkül készül: hiányzik az EMAIL_RATING_SECRET vagy EMAIL_RATING_VOTER_TOKEN.")
+        logger.info("Az e-mail értékelési linkek nélkül készül.")
+
     plain_body, html_body, date_label = build_email_bodies(
         edition, items, source_by_id, rating_links
     )
     logger.info("E-mail tartalma ellenőrizve: %s elem, benne mindkét AGORA-rovat.", len(items))
     if not send_email(plain_body, html_body, date_label):
         raise RuntimeError("Az SMTP-küldés nem igazolható; a napi workflow hibával álljon le.")
-
 
 if __name__ == "__main__":
     main()
