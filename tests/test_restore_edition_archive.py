@@ -104,7 +104,7 @@ class RestoreEditionArchiveTests(unittest.TestCase):
 
     def test_restores_sqlite_state_from_previous_day_without_an_edition_archive(self):
         today = datetime.now(ZoneInfo("Europe/Budapest")).date().isoformat()
-        sqlite_bytes = b"SQLite format 3\\x00previous-day-cache"
+        sqlite_bytes = b"SQLite format 3\x00previous-day-cache"
         buffer = io.BytesIO()
         with ZipFile(buffer, "w") as bundle:
             bundle.writestr(".world_shards_fallback.sqlite3", sqlite_bytes)
@@ -146,7 +146,7 @@ class RestoreEditionArchiveTests(unittest.TestCase):
                 restored_sqlite = handle.read()
 
         self.assertFalse(result)
-        self.assertTrue(restored_sqlite.startswith(b"SQLite format 3\\x00"))
+        self.assertTrue(restored_sqlite.startswith(b"SQLite format 3\x00"))
         self.assertIn("archive_found=false", outputs)
         self.assertIn("sqlite_found=true", outputs)
 
