@@ -195,19 +195,21 @@ def collect_research(client):
     inserted = 0
     skipped = 0
     scanned = 0
+    offset = 0
     pages = 0
 
     # Do not stop at the newest 100 database rows: already-imported or
     # unusable records must not hide older, still-unseen publications.
     while scanned < SYNAPSE_MAX_SCAN and inserted < SYNAPSE_LIMIT:
-        publications = get_research_publication_page(client, scanned)
+        publications = get_research_publication_page(client, offset)
         if not publications:
             break
 
         pages += 1
-        scanned += len(publications)
+        offset += len(publications)
 
         for publication in publications:
+            scanned += 1
             doi = publication.get("doi")
 
             source_url = (
@@ -266,7 +268,7 @@ def collect_research(client):
             else:
                 skipped += 1
 
-            if inserted >= SYNAPSE_LIMIT:
+            if inserted >= SYNAPSE_LIMIT or scanned >= SYNAPSE_MAX_SCAN:
                 break
 
         if len(publications) < SYNAPSE_PAGE_SIZE:
