@@ -64,6 +64,8 @@ jobs:
         id: restore
         env:
           GH_TOKEN: ${{ github.token }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          WORLD_SHARDS_FALLBACK_ENCRYPTION_KEY: ${{ secrets.WORLD_SHARDS_FALLBACK_ENCRYPTION_KEY }}
           WORLD_SHARDS_ARCHIVE_DIR: world-shards-archive
         run: python restore_edition_archive.py
 
@@ -156,13 +158,22 @@ jobs:
           python -m unittest test_send_edition_email.py -v
           python send_edition_email.py
 
-      - name: Napi tartalék-adattár es archívum megőrzése
+      - name: Privát napi archívum es SQLite allomany titkositasa
+        if: always()
+        env:
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          WORLD_SHARDS_FALLBACK_ENCRYPTION_KEY: ${{ secrets.WORLD_SHARDS_FALLBACK_ENCRYPTION_KEY }}
+          WORLD_SHARDS_ARCHIVE_DIR: world-shards-archive
+          WORLD_SHARDS_SQLITE_PATH: world-shards-fallback.sqlite3
+        run: python encrypt_fallback_artifacts.py
+
+      - name: Titkositott napi tartalek-adattar megorzese
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: world-shards-edition-${{ github.run_id }}
           path: |
-            world-shards-archive/
-            world-shards-fallback.sqlite3
+            world-shards-archive/*.gpg
+            world-shards-fallback.sqlite3.gpg
           if-no-files-found: ignore
           retention-days: 90
