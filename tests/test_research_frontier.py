@@ -1,6 +1,7 @@
 import importlib.util
 import json
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 
 
@@ -66,6 +67,11 @@ class ResearchFrontierTests(unittest.TestCase):
         self.assertIn("synthesis", prompt.lower())
         self.assertIn("teljes tanulmányt elolvastad", prompt.lower())
         self.assertIn("korrelációt ne nevezz oksági kapcsolatnak", prompt.lower())
+        self.assertIn("külön a szerzők által közölt eredményeket", prompt.lower())
+        self.assertIn("általános tudományos", prompt.lower())
+        self.assertIn("nem szükséges internetes keresés", prompt.lower())
+        self.assertIn("ne találj ki szerzőt", prompt.lower())
+        self.assertIn("ne tulajdoníts a szerzőknek", " ".join(prompt.lower().split()))
         self.assertIn("Szerzők: A. Scientist; B. Researcher", prompt)
         self.assertIn("Journal of Climate Research", prompt)
 
@@ -117,6 +123,42 @@ class ResearchFrontierTests(unittest.TestCase):
                 json.dumps(generated, ensure_ascii=False),
                 section_code="research_frontier"
             )
+
+
+    def test_research_frontier_prompt_uses_ai_context_without_fabricated_citations(self):
+        prompt = processor.build_prompt("research_frontier", research_source()).lower()
+
+        self.assertIn("saját, általános tudományos", prompt)
+        self.assertIn("nem szükséges internetes keresés", prompt)
+        self.assertIn("ne találj ki szerzőt", prompt)
+        self.assertIn("ne állítsd, hogy a tanulmány konkrét korábbi munkára hivatkozik", " ".join(prompt.lower().split()))
+        self.assertIn("ha nincs biztos alap az összevetésre", prompt)
+
+    def test_research_frontier_generation_uses_structured_gemini_schema(self):
+        generated = {
+            "title": "Az óceáni hőfelvétel új vizsgálata",
+            "summary": "A kutatás globális megfigyelésekkel pontosítja az óceáni hőfelvétel regionális mintázatait.",
+            "novelty": (
+                "A kutatás az óceáni hőfelvétel általános trendjeit regionális bontásban vizsgálja. "
+                "A globális adatok összekapcsolása részletesebb térbeli képet adhat. "
+                "Ez a megközelítés a területen ismert összesített elemzésekhez képest más léptéket képvisel. "
+                "A rendelkezésre álló absztrakt alapján azonban konkrét korábbi tanulmányokkal való összevetés nem igazolható."
+            ),
+            "challenge": "Az absztrakt nem részletezi az adatforrások kiválasztását, ezért a regionális különbségek robusztussága ebből nem ítélhető meg.",
+            "synthesis": "A tanulmány regionális mintázatokat tesz láthatóvá, de az absztrakt önmagában nem igazolja azok módszertani robusztusságát."
+        }
+        with patch.object(
+            processor,
+            "call_gemini",
+            return_value=json.dumps(generated, ensure_ascii=False),
+        ) as call:
+            result = processor.generate_content_with_retries(
+                "research_frontier",
+                research_source(),
+            )
+
+        self.assertEqual(result["summary"], generated["summary"])
+        self.assertEqual(call.call_args.kwargs["response_schema"], processor.RESEARCH_FRONTIER_SCHEMA)
 
     def test_non_research_prompt_does_not_use_research_frontier_template(self):
         prompt = processor.build_prompt(
