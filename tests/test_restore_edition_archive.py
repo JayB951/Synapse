@@ -29,7 +29,7 @@ class RestoreEditionArchiveTests(unittest.TestCase):
             )
             bundle.writestr(
                 ".world_shards_fallback.sqlite3",
-                b"SQLite format 3\\x00test-database",
+                b"SQLite format 3\x00test-database",
             )
             if include_receipt:
                 bundle.writestr(
@@ -76,11 +76,12 @@ class RestoreEditionArchiveTests(unittest.TestCase):
                 restored = json.load(handle)
             with open(output_path, encoding="utf-8") as handle:
                 outputs = handle.read()
+            sqlite_path = os.path.join(directory, ".world_shards_fallback.sqlite3")
+            self.assertTrue(os.path.isfile(sqlite_path))
+            with open(sqlite_path, "rb") as handle:
+                self.assertTrue(handle.read().startswith(b"SQLite format 3\\x00"))
 
         self.assertEqual(restored["edition"]["edition_date"], today)
-        sqlite_path = os.path.join(directory, ".world_shards_fallback.sqlite3")
-        # The temporary directory is cleaned on return; verify the database
-        # before cleanup via the captured artifact contents in the output.
         return result, outputs
 
     def test_restores_archive_and_sent_receipt(self):
