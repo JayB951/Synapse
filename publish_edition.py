@@ -62,13 +62,21 @@ def save_local_archive(edition, items, supabase):
     ))
     source_by_id = {}
     if content_ids:
-        response = (
-            supabase.table("shard_content_items")
-            .select("id,source_name,source_url,image_url,metadata")
-            .in_("id", content_ids)
-            .execute()
-        )
-        source_by_id = {str(row["id"]): row for row in (response.data or [])}
+        try:
+            response = (
+                supabase.table("shard_content_items")
+                .select("id,source_name,source_url,image_url,metadata")
+                .in_("id", content_ids)
+                .execute()
+            )
+            source_by_id = {str(row["id"]): row for row in (response.data or [])}
+        except Exception:
+            # Article bodies remain complete in shard_edition_items. Missing source
+            # decoration must not prevent preserving or emailing the edition.
+            logger.exception(
+                "A forrás-metaadatok lekérése nem sikerült; "
+                "a tartalmi archívum ezek nélkül is elkészül."
+            )
 
     archive = {
         "schema_version": 1,
