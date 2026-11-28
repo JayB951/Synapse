@@ -2,21 +2,17 @@ name: WORLD SHARDS - Matrix Error Watchdog
 
 on:
   schedule:
-    # Napi tartalékellenőrzés: 06:15 Budapest (05:15 UTC télen).
-    - cron: "15 5 * * *"
+    # Önálló napi ellenőrzés: 08:00 Budapest télen (07:00 UTC).
+    # Nem függ a napi kiadás workflow_run eseményétől.
+    - cron: "0 7 * * *"
   workflow_dispatch:
-  workflow_run:
-    workflows:
-      - WORLD SHARDS - Daily Automatic Edition
-    types:
-      - completed
 
 permissions:
   actions: read
   contents: read
 
 concurrency:
-  group: world-shards-matrix-watchdog-${{ github.event.workflow_run.id || github.run_id }}
+  group: world-shards-matrix-watchdog-${{ github.run_id }}
   cancel-in-progress: false
 
 jobs:
@@ -80,18 +76,18 @@ jobs:
               default=None,
           )
 
-          if latest and latest.get("status") in ("queued", "in_progress"):
-              print("alert=false")
-              print("A napi kiadás fut; a lezáró workflow_run esemény ellenőrzi az eredményt.")
-              raise SystemExit(0)
-
           delivered = False
           failure_name = "A napi automatikus kiadás ma nem indult el"
           run_url = ""
 
           if latest:
               run_url = latest.get("html_url", "")
-              if latest.get("conclusion") == "success":
+              if latest.get("status") in ("queued", "in_progress"):
+                  failure_name = (
+                      "A napi kiadás a 08:00-s ellenőrzéskor még nem fejeződött be "
+                      "(beragadt vagy túllépte a megengedett futási időt)"
+                  )
+              elif latest.get("conclusion") == "success":
                   jobs = get_json(latest["url"] + "/jobs").get("jobs", [])
                   daily = next(
                       (job for job in jobs if job.get("name") == "daily-edition"),
