@@ -71,7 +71,7 @@ class ResearchFrontierTests(unittest.TestCase):
         self.assertIn("általános tudományos", prompt.lower())
         self.assertIn("nem szükséges internetes keresés", prompt.lower())
         self.assertIn("ne találj ki szerzőt", prompt.lower())
-        self.assertIn("ne tulajdoníts a szerzőknek", prompt.lower())
+        self.assertIn("ne tulajdoníts a szerzőknek", " ".join(prompt.lower().split()))
         self.assertIn("Szerzők: A. Scientist; B. Researcher", prompt)
         self.assertIn("Journal of Climate Research", prompt)
 
@@ -131,7 +131,7 @@ class ResearchFrontierTests(unittest.TestCase):
         self.assertIn("saját, általános tudományos", prompt)
         self.assertIn("nem szükséges internetes keresés", prompt)
         self.assertIn("ne találj ki szerzőt", prompt)
-        self.assertIn("ne állítsd, hogy a tanulmány konkrét korábbi munkára hivatkozik", prompt)
+        self.assertIn("ne állítsd, hogy a tanulmány konkrét korábbi munkára hivatkozik", " ".join(prompt.lower().split()))
         self.assertIn("ha nincs biztos alap az összevetésre", prompt)
 
     def test_research_frontier_generation_uses_structured_gemini_schema(self):
